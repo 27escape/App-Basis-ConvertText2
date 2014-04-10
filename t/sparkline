@@ -1,0 +1,53 @@
+#!/usr/bin/perl -w
+# quick way to create sparkline images
+#
+# (c) kevin Mulholland 2013, moodfarm@cpan.org
+# this code is released under the Perl Artistic License
+
+use 5.10.0;
+use strict;
+use warnings;
+use App::Basis;
+use App::Basis::ConvertText::Sparkline;
+
+# -----------------------------------------------------------------------------
+
+sub validate_scheme {
+    my $scheme = lc( shift) ;
+
+    return grep { $scheme } color_schemes() ;
+}
+
+# -----------------------------------------------------------------------------
+# main
+
+my %opt = init_app(
+    help_text => "Create sparkline images",
+    options   => {
+        'filename|f=s' => {
+            desc     => 'filename to save as',
+            required => 1,
+        },
+        'data|d=s' => {
+            desc     => 'comma separated integer data',
+            required => 1,
+            validate => sub { my $text = shift; $text =~ /^[\d, ]+$/; },
+        },
+        'size|s=s' => {
+            desc     => 'size of the image, width x height',
+            default  => '80x20',
+            validate => sub { my $size = shift; $size =~ /^\s*\d+\s*x\s*\d+\s*$/; },
+        },
+        'scheme=s' => {
+            desc     => 'Choose a colour scheme: ' . join( ', ', color_schemes() ),
+            validate => \&validate_scheme,
+            default  => ( color_schemes() )[0],                  # default to first
+        }
+    }
+);
+
+# some defaults for testing
+$opt{data}     = "1,2,3,5,6,7,4,3,2,1,100,349,100,10, 30,23";
+$opt{filename} = '/tmp/fred.png';
+
+sparkline( $opt{data}, $opt{filename}, \%opt );
