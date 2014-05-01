@@ -32,10 +32,7 @@ package App::Basis::ConvertText::Table;
 use 5.10.0;
 use strict;
 use warnings;
-use File::Slurp qw( write_file);
 use Exporter;
-use Capture::Tiny qw(capture);
-use Data::Printer;
 
 use vars qw( @EXPORT @ISA);
 
@@ -44,11 +41,6 @@ use vars qw( @EXPORT @ISA);
 # this is the list of things that will get imported into the loading packages
 # namespace
 @EXPORT = qw( table );
-
-BEGIN {
-   
-}
-# ----------------------------------------------------------------------------
 
 # ----------------------------------------------------------------------------
 
@@ -92,6 +84,11 @@ create a basic html table
 =cut
 sub table {
     my ( $text, $params ) = @_;
+
+    $params->{title} ||= "";
+
+    $text =~ s/^\n//gsm;
+    $text =~ s/\n$//gsm;
 
     # open the csv file, read contents, calc max, add into data array
     my @data = _split_csv_data($text);

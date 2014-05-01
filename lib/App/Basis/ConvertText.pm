@@ -1,3 +1,4 @@
+
 =head1 NAME
 
  App::Basis::ConvertText
@@ -35,11 +36,15 @@ First created in June 1999, now updated to become App::Basis::ConvertText
 #@todo change from <xml> style markup to fenced code blocks ~~~~ {.extension}
 similar to App::Pandoc-preprocess (and others)
 
+consider using http://blockdiag.com/en/index.html
+consider using gnuplot
+consider gle http://glx.sourceforge.net/
+
 # create drawings for ditta
 http://www.asciiflow.com/#Draw
 
 #@todo change to use plugins, that define themselves and their extension
-
+# https://metacpan.org/pod/Module::Pluggable
 =cut
 
 # ----------------------------------------------------------------------------
@@ -53,20 +58,16 @@ use feature 'state';
 use Moo;
 use Data::Printer;
 use Try::Tiny;
+use Path::Tiny;
 use Digest::MD5 qw(md5_hex);
 use Encode qw(encode_utf8);
-use File::Slurp;
-use File::Basename qw( dirname fileparse);
 use Text::Markdown qw(markdown);
-use File::Copy;
 
-# use Text::CSV::Slurp;
 use GD;
 use MIME::Base64;
 use Furl;
 
 use App::Basis;
-use App::Basis::ConvertFile;
 use App::Basis::ConvertText::Mscgen;
 use App::Basis::ConvertText::Ditaa;
 use App::Basis::ConvertText::Uml;
@@ -80,6 +81,10 @@ use App::Basis::ConvertText::Venn;
 use App::Basis::ConvertText::Table;
 use App::Basis::ConvertText::QRcode;
 use App::Basis::ConvertText::YamlAsJson;
+
+# ----------------------------------------------------------------------------
+use constant PANDOC => 'pandoc';
+use constant PRINCE => 'prince';
 
 # ----------------------------------------------------------------------------
 my $TITLE = "__TITLE__";
@@ -202,17 +207,17 @@ sub BUILD {
     if ( $self->use_cache() ) {
 
         # need to add the name to the cache dirname to make it distinct
-        $self->_set_cache_dir( $self->cache_dir() . "/" . $self->name() );
-        my $cd = $self->cache_dir();
-        $cd =~ s|//|/|g;
+        $self->_set_cache_dir( fix_filename( $self->cache_dir() . "/" . $self->name() ) );
 
-        # replace home
-        $cd =~ s|^~|$ENV{HOME}|;
-        $self->_set_cache_dir($cd);
-
-        # create the cache dir if needed
-        my ( $out, $err, $ret ) = run_cmd( "mkdir -p '" . $self->cache_dir() . "'" );
-        die "Could not create cache dir " . $self->cache_dir() if ( !-d $self->cache_dir() );
+        if ( !-d $self->cache_dir() ) {
+            # create the cache dir if needed
+            try {
+                path( $self->cache_dir() )->mkpath;
+            }
+            catch { 
+            };
+            die "Could not create cache dir " . $self->cache_dir() if ( !-d $self->cache_dir() );
+        }
     }
 }
 
@@ -236,14 +241,18 @@ sub _store_cache {
     # don't do any cleanup if we are not using a cache
     return if ( !$self->use_cache() );
 
+    # for some reason sometimes the full cache dir is not created or 
+    # something deletes part of it, cannot figure it out
+    path( $self->cache_dir() )->mkpath if( !-d $self->cache_dir());
+
     # make sure we are working in the right dir
-    my $f = $self->cache_dir() . "/" . fileparse($filename);
+    my $f = $self->cache_dir() . "/" . path($filename)->basename;
 
     if ( !$contents && -f $f ) {
         unlink($f);
     }
     else {
-        write_file( $f, $contents );
+        path($f)->spew_raw($contents);
     }
 }
 
@@ -257,10 +266,10 @@ sub _get_cache {
     return if ( !$self->use_cache() );
 
     # make sure we are working in the right dir
-    my $f = $self->cache_dir() . "/" . fileparse($filename);
+    my $f = $self->cache_dir() . "/" . path($filename)->basename;
 
     my $result;
-    $result = read_file($f) if ( -f $f );
+    $result = path($f)->slurp_raw if ( -f $f );
 
     return $result;
 }
@@ -272,7 +281,7 @@ sub _in_cache {
     my ($filename) = @_;
 
     # make sure we are working in the right dir
-    my $f = $self->cache_dir() . "/" . fileparse($filename);
+    my $f = $self->cache_dir() . "/" . path($filename)->basename;
     return -f $f ? $f : 0;
 }
 
@@ -283,7 +292,10 @@ sub clean_cache {
     # don't do any cleanup if we are not using a cache
     return if ( !$self->use_cache() );
 
-    my ( $out, $err, $ret ) = run_cmd( "rm -rf '" . $self->cache_dir() . "'/*" );
+    try { path( $self->cache_dir() )->remove_tree } catch {};
+
+    # and make it fresh again
+    path( $self->cache_dir() )->mkpath() ;
 }
 
 # ----------------------------------------------------------------------------
@@ -355,6 +367,24 @@ sub _create_img_src {
 }
 
 # ----------------------------------------------------------------------------
+# add into the keywords
+sub _add_keyword {
+    my $self = shift;
+    my ( $key, $val ) = @_;
+
+    $self->{keywords}->{$key} = $val;
+}
+
+# ----------------------------------------------------------------------------
+# add into the replacements list
+sub _add_replace {
+    my $self = shift;
+    my ( $key, $val ) = @_;
+
+    $self->{replace}->{$key} = $val;
+}
+
+# ----------------------------------------------------------------------------
 sub _process_mscgen {
     my $self = shift;
     my ( $tag, $params, $content ) = @_;
@@ -364,7 +394,6 @@ sub _process_mscgen {
     my $file = $self->_in_cache($png);
     if ( !$file ) {
         $file = $self->cache_dir() . "/" . $png;
-        $params->{title} ||= "";
         mscgen( $content, $file, $params );
     }
 
@@ -604,13 +633,7 @@ sub _process_table {
     my $self = shift;
     my ( $tag, $params, $content ) = @_;
 
-    $params->{title} ||= "";
-
-    $content =~ s/^\n//gsm;
-    $content =~ s/\n$//gsm;
-
-    my $out = table( $content, $params );
-    return $out;
+    return table( $content, $params );
 }
 
 # ----------------------------------------------------------------------------
@@ -643,9 +666,6 @@ sub _process_qrcode {
 sub _process_yamlasjson {
     my $self = shift;
     my ( $tag, $params, $content ) = @_;
-
-    $content =~ s/~~~~{\.yaml}//gsm;
-    $content =~ s/~~~~//gsm;
 
     my $out = yamlasjson($content);
     return $out;
@@ -837,73 +857,6 @@ sub _parse_token {
 }
 
 # ----------------------------------------------------------------------------
-
-# change |a|b|c| into a html table, this does not allow spanning cells or rows
-# or rows that are on multiple lines, its just a simple thing
-# you can add {some stuff for styling} too
-
-# !header|header|
-# |cell1|cell2|cell3|
-# |cell1|cell2|cell3|
-
-# or with no header
-# |cell1|cell2|cell3|
-# |cell1|cell2|cell3|
-#
-# must leave a blank line at the end of the table
-
-# sub html_table {
-#     my $tbl = shift;
-#     my $out = "";
-#     # strip any paragraph stuff that markdown inserts
-#     $tbl =~ s/<\/?p>//gism;
-
-#     # put in spaces for empty cells
-#     $tbl =~ s/\|\|/\|\&nbsp;\|/gsm;
-#     # for some dodgy reason I have to repeat this to get the last ||'s to work!
-#     $tbl =~ s/\|\|/\|\&nbsp;\|/gsm;
-
-#     my $row = 0;
-#     foreach my $line ( split( /\n/, $tbl ) ) {
-#         my $cell = 'td';
-#         my $class = ( $row & 1 ? 'odd' : 'even' );
-
-#         # the first line may be special
-#         if ( !$row ) {
-#             my $style = "width='50%'";
-#             # the first line could be a header line, if it starts with a !
-#             if ( $line =~ /^!/ ) {
-#                 $cell  = 'th';
-#                 $class = 'header';
-#                 $line =~ s/^!/|/;
-#             }
-#             # the first line can also have some extra style etc info
-#             if ( $line =~ /{(.*?)}$/ ) {
-#                 $style = $1;
-#                 $line =~ s/{.*?}$//;    # remove it
-#             }
-
-#             $out .= "\n<table class='md' $style>\n";
-#         }
-#         $row++;
-#         $out .= "  <tr class='$class'>";
-
-#         # remove leading and trailing cell borders
-#         $line =~ s/^(\s*)\|/$1/;        # keep leading spaces
-#         $line =~ s/\|\s*$//;            # ignore trailing spaces
-#                                         # split the cells and find the headers
-#         foreach my $content ( split( /\|/, $line ) ) {
-#             $out .= "<$cell>$content</$cell>";
-#         }
-#         $out .= "</tr>\n";
-#     }
-#     $out .= "</table>\n";
-
-#     $out .= "\n";
-#     return $out;
-# }
-
-# ----------------------------------------------------------------------------
 # fetch any img references and copy into the cache, if the image is already
 # in the cache then nothing will happen, will rewrite other img uri's
 sub rewrite_imgsrc {
@@ -938,7 +891,7 @@ sub rewrite_imgsrc {
 
                 # copy it to the cache location
                 try {
-                    $status = copy( $img, $cachefile );
+                    $status = path($img)->copy($cachefile);
                 }
                 catch {
                     debug( "ERROR", "failed to copy $img to $cachefile" );
@@ -951,12 +904,12 @@ sub rewrite_imgsrc {
 
                     my $furl = Furl->new(
                         agent   => get_program(),
-                        timeout => 10,
+                        timeout => 0.2,
                     );
 
                     my $res = $furl->get($img);
                     if ( $res->is_success ) {
-                        write_file( $cachefile, $res->content );
+                        path($cachefile)->spew_raw( $res->content );
                         $img = $cachefile;
                     }
                     else {
@@ -985,7 +938,7 @@ sub rewrite_imgsrc {
 
         # we encode the image as base64 so that the HTML document can be moved with all images
         # intact
-        my $base64 = MIME::Base64::encode( read_file($img) );
+        my $base64 = MIME::Base64::encode( path($img)->slurp_raw );
         $img = "data:image/$ext;base64,$base64";
     }
     return $pre . $img . $post;
@@ -1074,12 +1027,13 @@ sub rewrite_hdrs {
 # use pandoc to parse markdown into nice HTML
 # pandoc has extra features over and above markdown, eg syntax highlighting
 # and tables
+# pandoc must be in user path
 
-sub pandoc {
+sub pandoc_html {
     my $input = shift;
 
     my $resp = execute_cmd(
-        command     => "$ENV{HOME}/bin/pandoc --email-obfuscation=none -S -R --normalize -t html5 --highlight-style='kate' ",
+        command     => PANDOC . " --email-obfuscation=none -S -R --normalize -t html5 --highlight-style='kate' ",
         timeout     => 30,
         child_stdin => $input
     );
@@ -1099,6 +1053,33 @@ sub pandoc {
 }
 
 # ----------------------------------------------------------------------------
+# use pandoc to nice HTML into another format
+# pandoc must be in user path
+
+sub pandoc_format {
+    my ( $input, $output ) = @_;
+    my $status = 1;
+
+    my $resp = execute_cmd(
+
+        command     => PANDOC . " -o $output ",
+        timeout     => 30,
+        child_stdin => $input
+    );
+
+    debug( "Pandoc: " . $resp->{stderr} ) if ( $resp->{stderr} );
+    if ( !$resp->{exit} ) {
+        $status = 0;
+    }
+    else {
+        debug( "ERROR", "Could not parse with pandoc" );
+        $status = 1;
+    }
+
+    return $status;
+}
+
+# ----------------------------------------------------------------------------
 # parse the data
 sub parse {
     my $self = shift;
@@ -1114,14 +1095,13 @@ sub parse {
 
     my $cachefile = $self->_in_cache("$id.html");
     if ($cachefile) {
-        my $cache = read_file( $cachefile, binmode => ':utf8' );
+        my $cache = path($cachefile)->slurp_utf8;
         $self->_set_output($cache);    # put cached item into output
     }
     else {
         $cachefile = $self->cache_dir() . "/$id.html";
         $self->_set_output("");        # blank the output
 
-        my %keywords;
         my @lines = split( /\n/, $data );
 
         # process top 20 lines for keywords
@@ -1132,7 +1112,7 @@ sub parse {
             # allow keywords to be :keyword or keyword:
             my ( $k, $v ) = ( $lines[$i] =~ /^:?(\w+):?\s+(.*?)\s?$/ );
             next if ( !$k );
-            $keywords{$k} = $v;
+            $self->_add_keyword( $k, $v );
 
             $lines[$i] = '';    # essentially remove the line
         }
@@ -1140,24 +1120,20 @@ sub parse {
         # rebuild the page string
         $data = join( "\n", @lines );
 
-        $self->_set_keywords( \%keywords );
-
         my $style;
-        foreach my $k ( keys %keywords ) {
+        foreach my $k ( keys %{ $self->{keywords} } ) {
 
             # grab the style from the document
             my $word = "%" . uc($k) . "%";
 
             # tags/keywords are synonomus
             if ( lc($k) =~ /keywords|tags/ ) {
-                $self->{replace}->{'%TAGS%'}     = $keywords{$k};
-                $self->{replace}->{'%KEYWORDS%'} = $keywords{$k};
+                $self->{replace}->{'%TAGS%'}     = $self->{keywords}->{$k};
+                $self->{replace}->{'%KEYWORDS%'} = $self->{keywords}->{$k};
             }
             else {
-                $self->{replace}->{$word} = $keywords{$k};
+                $self->{replace}->{$word} = $self->{keywords}->{$k};
             }
-
-            # $data =~ s/^:$k\s+$keywords{$k}*$//gmi;
         }
 
         # now we need to do any replacements that have been passed to us for the
@@ -1167,20 +1143,11 @@ sub parse {
             $data =~ s/$k/$self->{replace}->{$k}/gsm;
         }
 
-        # make sure there is no leading space at the start of the story
-        # $data =~ s/^\s+(#.*)/$1/sm;
-
-        # lets strip out any HTML comments before we proceed
-        # $data =~ s/<!--.*?-->//gsm;
-
         # parse the data find a XML tag and recurse for any others
         $self->_parse_token($data);
 
         # store the markdown before parsing
         $self->_store_cache( $self->cache_dir() . "/$id.md", encode_utf8( $self->_output() ) );
-
-        # parse tiddlywiki type tables
-        # $self->{_output} =~ s/\n\n(\s*[!\|].*?|)\n\n/html_table( $1)/egsm;
 
         # fixup any markdown simple tables | ------ | -> |---------|
 
@@ -1197,7 +1164,7 @@ sub parse {
         # we have created something so we can cache it, if use_cache is off
         # then this will not happen lower down
         # now we convert the parsed output into HTML
-        my $html = $self->html_header . pandoc( $self->_output() ) . $self->html_footer;
+        my $html = $self->html_header . pandoc_html( $self->_output() ) . $self->html_footer;
 
         # build a table of contents, if the html wants it
         if ( $html =~ /%TOC%/ ) {
@@ -1237,6 +1204,53 @@ sub parse {
 
 # ----------------------------------------------------------------------------
 
+=item convert_file
+
+convert the file to a different format from HTML
+
+ parameters
+    file    - file to re-convert
+    format  - format to convert to
+    prince  - use prince rather than pandoc to convert to PDF
+
+=cut
+
+sub convert_file {
+    my ( $file, $format, $prince ) = @_;
+
+    # we work on the is that pandoc should be in your PATH
+    my $fmt_str = $format;
+    my ( $outfile, $exit );
+
+    $outfile = $file;
+    $outfile =~ s/\.(\w+)$/.pdf/;
+
+    # we can use prince to do PDF conversion, its faster and better, but not free for commercial use
+    # you would have to ignore the P symbol on the resultant document
+    if ( $format =~ /pdf/i && $prince ) {
+        my $cmd = PRINCE . " $file -o $outfile";
+        my ( $out, $err );
+        try {
+            # say "$cmd" ;
+            ( $exit, $out, $err ) = run_cmd($cmd);
+        }
+        catch {
+            $err  = "run_cmd($cmd) died - $_";
+            $exit = 1;
+        };
+        debug( "ERROR", $err ) if ($err);    # only debug if return code is not 0
+    }
+    else {
+        # otherwise lets use pandoc to create the file in the other formats
+        $exit = pandoc_format( $outfile, $format );
+    }
+
+    # if we failed to convert, then clear the filename
+    return $exit == 0 ? $outfile : undef;
+}
+
+# ----------------------------------------------------------------------------
+
 =item save_to_file
 
 save the created html to a named file
@@ -1265,10 +1279,7 @@ sub save_to_file {
         }
 
         # either update the cache, or create temp file
-        #        write_file( $cf, {binmode => ':utf8'}, $self->_output() );
-        write_file( $cf, { binmode => ':utf8' }, encode_utf8( $self->_output() ) );
-
-        # write_file( $cf, $self->_output() );
+        path($cf)->spew_utf8( encode_utf8( $self->_output() ) );
     }
 
     my $outfile = $cf;
@@ -1293,8 +1304,7 @@ sub save_to_file {
     # now lets copy it to its final resting place
     if ($outfile) {
         try {
-            # say "copying $outfile $filename" ;
-            $status = copy( $outfile, $filename );
+            $status = path($outfile)->copy($filename);
         }
         catch {
             say STDERR "$_ ";

@@ -37,7 +37,6 @@ use File::Slurp qw( read_file write_file);
 use Exporter;
 use App::Basis;
 use Data::Printer;
-use Carp;
 use Text::CSV::Slurp ;
 use Try::Tiny ;
 

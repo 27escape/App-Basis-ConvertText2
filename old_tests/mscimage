@@ -1,0 +1,97 @@
+#!/usr/bin/perl -w
+# quick way to create mscgen images
+#
+# (c) kevin Mulholland 2013, moodfarm@cpan.org
+# this code is released under the Perl Artistic License
+
+use 5.12.0;
+use strict;
+use warnings;
+use App::Basis;
+use App::Basis::ConvertText::Mscgen;
+
+# -----------------------------------------------------------------------------
+
+my $text = <<EOD;
+msc {
+  #hscale = "2" ;
+  # setup the columns and hide the labels
+  Inview [label=""], IPLA [label=""], STB [label=""];
+  # make nice column headings
+  Inview rbox Inview [label="Inview", textbgcolour="#ff7f7f"] ,
+    IPLA rbox IPLA [label="IPLA", textbgcolour="#7fff7f"] ,
+    STB box STB [label="STB", textbgcolour="#7f7fff"];
+
+  |||;
+  --- [label="Create catalog"] ;
+  Inview => IPLA [label="Obtain full catalog"] ;
+  Inview -> Inview [ label="Build catalog database"];
+
+  |||;
+  --- [label="Browse catalog"] ;
+  STB => Inview [ label="Start IPLA app"] ;
+  Inview >> STB [ label="Initial data"] ;
+  STB => Inview [ label="Request catalog page"] ;
+  Inview >> STB [ label="Catalog page data"] ;
+  STB => IPLA [ label="Obtain catalog page images"] ;
+  STB => STB [ label ="Choose another page"];
+  STB => Inview [ label="Request catalog page data"] ;
+  Inview >> STB [ label="Catalog page data"] ;
+  STB => IPLA [ label="Obtain catalog page images"] ;
+
+  |||;
+  --- [label="Play Movie - no account "] ;
+
+  STB => Inview [ label="Play Movie request"] ;
+  Inview -> Inview [ label = "No user account"] ;
+  Inview => STB [ label = "Page to create user account"] ;
+  Inview <= STB [label = "User detail (email etc)"] ;
+  Inview => IPLA [ label="Create User account"] ;
+  Inview >> STB [ label="Account created"] ;
+
+  |||;
+  --- [label="Play Movie - no money"] ;
+
+  STB => Inview [ label="Play Movie request"] ;
+  Inview -> Inview [ label = "No user credit / subscription"] ;
+  Inview >> STB [ label = "Inview Wallet - paypal"] ;
+  STB :> Inview [ label="Paypal process"] ;
+  Inview :> STB [ label="Paypal process"] ;
+
+  |||;
+  --- [label="Play Movie"] ;
+
+  STB => Inview [ label="Play Movie request"] ;
+  Inview -> Inview [ label = "Check account and payment detail"] ;
+  Inview >> STB [ label="Movie URLs"] ;
+
+  STB -> IPLA [ label="Stream Movie Request"];
+  IPLA -> STB [ label="Stream Movie"];
+  STB -> STB [ label="Decode (un-DRM) stream & play"] ;
+  STB -> IPLA [ label="Update Stream position/details"];
+}
+EOD
+
+# -----------------------------------------------------------------------------
+# main
+
+my %opt = init_app(
+    help_text => "Create simple charts images",
+    options   => {
+        # 'filename|f=s' => {
+        #     desc     => 'filename to save as',
+        #     required => 1,
+        # },
+        # 'input=s' => {
+        #     desc     => 'input data csv file',
+        #     required => 1,
+        #     validate => sub { -f $_ },
+        # },
+     }
+);
+
+
+$opt{filename} = '/tmp/fred.png';
+
+my $status = mscgen( $text, $opt{filename}, undef );
+say "failed to create chart" if ( !$status );

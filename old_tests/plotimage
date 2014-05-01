@@ -1,0 +1,41 @@
+#!/usr/bin/perl -w
+# quick way to create ploticus images
+#
+# (c) kevin Mulholland 2013, moodfarm@cpan.org
+# this code is released under the Perl Artistic License
+
+use 5.12.0;
+use strict;
+use warnings;
+use App::Basis;
+use App::Basis::ConvertText::Ploticus;
+
+# -----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
+# main
+
+my %opt = init_app(
+    help_text => "Create simple charts images",
+    options   => {
+        # 'filename|f=s' => {
+        #     desc     => 'filename to save as',
+        #     required => 1,
+        # },
+        # 'input=s' => {
+        #     desc     => 'input data csv file',
+        #     required => 1,
+        #     validate => sub { -f $_ },
+        # },
+     }
+);
+
+
+$opt{filename} = '/tmp/fred.png';
+$opt{prefab} = 'stack' ;
+$opt{type} = "dist" ;
+$opt{csv} = "/home/kmulholland/tmp/live/all.csv" ;
+$opt{csv} = "/home/kmulholland/tmp/live/some.csv" ;
+
+my $status = ploticus( "", $opt{filename}, \%opt );
+say "failed to create chart" if ( !$status );

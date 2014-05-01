@@ -33,7 +33,7 @@ use 5.10.0;
 use strict;
 use warnings;
 use GD::Sparkline;
-use File::Slurp qw( write_file);
+use Path::Tiny ;
 use Exporter;
 use Capture::Tiny qw(capture);
 use Data::Printer ;
@@ -134,7 +134,7 @@ sub sparkline {
         my $png = $spark->draw();
         if ($png) {
             my ( $stdout, $stderr, $exit ) = capture {
-                $status = 1 if ( write_file( $filename, $png ) );
+                $status = 1 if ( path( $filename)->spew_raw( $png ) );
             };
         }
     }

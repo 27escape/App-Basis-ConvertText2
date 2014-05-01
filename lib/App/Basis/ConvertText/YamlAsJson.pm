@@ -42,7 +42,7 @@ creates
 
 =head1 DESCRIPTION
 
- Convert a YAML block into a JSON block for output
+ Convert a YAML block into a JSON block for output, to be used as part of L<App::Basis::ConvertText>
 
 =head1 AUTHOR
 
@@ -65,9 +65,6 @@ package App::Basis::ConvertText::YamlAsJson;
 use 5.10.0;
 use strict;
 use warnings;
-use App::Basis;
-use File::Temp qw(tempfile);
-use File::Slurp qw(write_file);
 use Exporter;
 use YAML qw(Load);
 use JSON;
@@ -90,11 +87,15 @@ Convert a YAML block into a JSON block
 
 =cut
 
-sub yamlasjson {
+sub yamlasjson
+{
     my ($text) = @_;
 
+    $text =~ s/~~~~{\.yaml}//gsm;
+    $text =~ s/~~~~//gsm;
+
     my $data = Load($text);
-    my $json = JSON->new() ;
+    my $json = JSON->new();
     return "\n~~~~{.json}\n" . $json->pretty->encode($data) . "\n~~~~\n\n";
 }
 

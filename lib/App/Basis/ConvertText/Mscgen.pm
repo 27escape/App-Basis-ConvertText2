@@ -70,9 +70,11 @@ create a simple msc image
         size    - size of image, widthxheight - optional
 
 =cut
-sub mscgen {
+sub mscgen
+{
     my ( $text, $filename, $params ) = @_;
-    $params->{size} ||= "";
+    $params->{title} ||= "";
+    $params->{size}  ||= "";
     my ( $x, $y ) = ( $params->{size} =~ /^\s*(\d+)\s*x\s*(\d+)\s*$/ );
 
     my ( $fh, $mscfile ) = tempfile("/tmp/mscgen.XXXX");
@@ -87,7 +89,7 @@ sub mscgen {
         my $image = Image::Resize->new($filename);
         my $gd = $image->resize( $x, $y );
         # overwrite original file with resized version
-        write_file( $filename, $gd->png ), if ($gd)
+        write_file( $filename, $gd->png ), if ($gd);
     }
 
     return $exit == 0 ? 1 : 0;

@@ -1,0 +1,66 @@
+#!/usr/bin/perl -w
+# quick way to create sparkline images
+#
+# (c) kevin Mulholland 2013, moodfarm@cpan.org
+# this code is released under the Perl Artistic License
+
+use 5.12.0;
+use strict;
+use warnings;
+use App::Basis;
+use App::Basis::ConvertText::Chart;
+
+# -----------------------------------------------------------------------------
+
+sub validate_format {
+    my $format = lc(shift);
+
+    return grep { $format } chart_formats();
+}
+
+# -----------------------------------------------------------------------------
+# main
+
+my %opt = init_app(
+    help_text => "Create simple charts images",
+    options   => {
+        # 'filename|f=s' => {
+        #     desc     => 'filename to save as',
+        #     required => 1,
+        # },
+        # 'input=s' => {
+        #     desc     => 'input data csv file',
+        #     required => 1,
+        #     validate => sub { -f $_ },
+        # },
+        'size|s=s' => {
+            desc     => 'size of the image, width x height',
+            default  => '400x300',
+            validate => sub { my $size = shift; $size =~ /^\s*\d+\s*x\s*\d+\s*$/; },
+        },
+        'format=s' => {
+            desc     => 'how to draw the image',
+            default  => 'mixed',
+            validate => \&validate_format,
+        }
+    }
+);
+
+# some defaults for testing
+my $data = "a,b,c,d,e,f,g,h,i
+1,2,3,5,11,22,33,55
+1,2,3,5,11,22,33,55
+1,2,3,5,11,22,33,55
+1,2,3,5,11,22,33,55
+";
+$opt{filename} = '/tmp/fred.png';
+# $opt{format}   = 'lines3d';
+$opt{legends}  = "sample1,sample2,sample3,sample4,sample5,sample6,sample7,sample8";
+# $opt{types} = "lines" ;
+
+$opt{xaxis} = "X axis";
+$opt{yaxis} = "Y AXIS";
+$opt{title} = "THIS IS THE CHART TITLE";
+
+my $status = chart( $data, $opt{filename}, \%opt );
+say "failed to create chart" if ( !$status );

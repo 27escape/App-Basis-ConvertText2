@@ -53,9 +53,6 @@ package App::Basis::ConvertText::Links;
 use 5.10.0;
 use strict;
 use warnings;
-use App::Basis;
-use File::Temp qw(tempfile);
-use File::Slurp qw(write_file);
 use Exporter;
 
 use vars qw( @EXPORT @ISA);
