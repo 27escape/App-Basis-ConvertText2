@@ -1,4 +1,3 @@
-
 =head1 NAME
 
 App::Basis::ConvertText2::Support
@@ -8,10 +7,6 @@ App::Basis::ConvertText2::Support
 =head1 DESCRIPTION
 
 Support functions for L<App::Basis::ConvertText2> and its plugins
-
-=head1 AUTHOR
-
-kevin mulholland, moodfarm@cpan.org
 
 =cut
 

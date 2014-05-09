@@ -5,7 +5,12 @@ App::Basis::ConvertText::Plugin::Barcode
 
 =head1 SYNOPSIS
 
-Plugin to be used with App::Basis::ConvertText
+    my $content = "12345678" ;
+    my $params = { 
+        type   => "EAN8"
+    } ;
+    my $obj = App::Basis::ConvertText2::Plugin::Barcode->new() ;
+    my $out = $obj->process( 'barcode', $content, $params) ;
 
 =head1 DESCRIPTION
 

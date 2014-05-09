@@ -1,10 +1,23 @@
 
 =head1 NAME
 
-App::Basis::ConvertText::Uml
+App::Basis::ConvertText2::Plugin::Uml
 
 =head1 SYNOPSIS
 
+    my $content = "' this is a comment on one line
+    /' this is a
+    multi-line
+    comment'/
+    Alice -> Bob: Authentication Request
+    Bob --> Alice: Authentication Response
+
+    Alice -> Bob: Another authentication Request
+    Alice <-- Bob: another authentication Response
+    " ;
+    my $params = {} ;
+    my $obj = App::Basis::ConvertText2::Plugin::Uml->new() ;
+    my $out = $obj->process( 'uml', $content, $params) ;
 
 =head1 DESCRIPTION
 

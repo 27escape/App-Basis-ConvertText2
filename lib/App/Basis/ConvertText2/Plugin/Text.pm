@@ -7,44 +7,44 @@ App::Basis::ConvertText2::Plugin::Text
 
 Handle a few simple text code blocks
 
-enter YAML but display as JSON
+    my $obj = App::Basis::ConvertText2::Plugin::Text->new() ;
+    my $content = "" ;
+    my $params = { } ;
+    # new page
+    my $out = $obj->process( 'page', $content, $params) ;
 
-~~~~{.yamlasjson}
-epg:
-  - triplet: [1,2,3,7]
-    channel: BBC3
-    date: 2013-10-20
-    time: 20:30
-    crid: dvb://112.4a2.5ec;2d22~20131020T2030000Z—PT01H30M
-  - triplet: [1,2,3,9]
-    channel: BBC4
-    date: 2013-11-20
-    time: 21:00
-    crid: dvb://112.4a2.5ec;2d22~20131120T2100000Z—PT01H30M
-~~~~
+    # yamlasjson
+    $content = "list:
+      - array: [1,2,3,7]
+        channel: BBC3
+        date: 2013-10-20
+        time: 20:30
+      - array: [1,2,3,9]
+        channel: BBC4
+        date: 2013-11-20
+        time: 21:00
+    " ;
+    $out = $obj->process( 'yamlasjson', $content, $params) ;
 
-insert a table nice and simple
+    # table
+    $content = "row1,entry 1,cell2
+    row2,cell1, entry 2
+    " ;
+    $out = $obj->process( 'table', $content, $params) ;
 
-~~~~{.table separator=','}
-row1,entry 1,cell2
-row2,cell1, entry 2
-~~~~
+    # version
+    $content = "0.1 2014-04-12
+      * removed ConvertFile.pm
+      * using Path::Tiny rather than other things
+      * changed to use pandoc fences ~~~~{.tag} rather than xml format <tag>
+    0.006 2014-04-10
+      * first release to github" ;
+    $out = $obj->process( 'table', $content, $params) ;
 
-create a nice changes table
-
-~~~~{.version class='nicetable' }
-0.1 2014-04-12
-  * removed ConvertFile.pm
-  * using Path::Tiny rather than other things
-  * changed to use pandoc fences ~~~~{.tag} rather than xml format <tag>
-0.006 2014-04-10
-  * first release to github
-~~~~
-
-start a new HTML page
-
-~~~~{.page}
-~~~~
+    $content = "BBC | http://bbc.co.uk
+    DocumentReference  | #docreference
+    27escape | https://github.com/27escape" ;
+    $out = $obj->process( 'table', $content, $params) ;
 
 =head1 DESCRIPTION
 
@@ -69,7 +69,7 @@ use namespace::clean;
 has handles => (
     is       => 'ro',
     init_arg => undef,
-    default  => sub { [qw{yamlasjson table version page}] }
+    default  => sub { [qw{yamlasjson table version page links}] }
 );
 
 # ----------------------------------------------------------------------------
@@ -242,6 +242,63 @@ sub page {
     my ( $tag, $content, $params, $cachedir ) = @_;
 
     return "<div style='page-break-before: always;'></div>" ;
+}
+
+
+# ----------------------------------------------------------------------------
+
+=item ~~~~{.links }
+
+create a list of website links
+links are one per line and the link name is separated from the link with a 
+pipe '|' symbol
+
+ parameters
+    class   - name of class for the list, defaults to weblinks
+
+=cut
+
+sub links {
+    my $self = shift;
+    my ( $tag, $content, $params, $cachedir ) = @_;
+
+    # strip any ending linefeed
+    chomp $content;
+    return "" if ( !$content );
+
+    $params->{class} ||= "weblinks";
+    my $references = "";
+    my $ul         = "<ul class='$params->{class}'>\n";
+    my %refs       = ();
+    my %uls        = ();
+
+    foreach my $line ( split( /\n/, $content ) ) {
+        my ( $ref, $link ) = split( /\|/, $line );
+        next if ( !$link );
+
+        # trim the items
+        $ref  =~ s/^\s+//;
+        $link =~ s/^\s+//;
+        $ref  =~ s/\s+$//;
+        $link =~ s/\s+$//;
+
+        # if there is nothing to link to ignore this
+        next if ( !$ref || !$link );
+
+        $references .= "[$ref]: $link\n";
+
+        # links that reference inside the document do not get added to the
+        # list of weblinks
+        if ( $link !~ /^#/ ) {
+            $uls{ lc($ref) } = "<li><a href='$link'>$ref</a><ul><li>$link</li></ul></li>\n";
+        }
+    }
+
+    # make them nice and sorted
+    map { $ul .= $uls{$_} } sort keys %uls;
+    $ul .= "</ul>\n";
+
+    return "\n" . $references . "\n" . $ul . "\n";
 }
 
 # ----------------------------------------------------------------------------

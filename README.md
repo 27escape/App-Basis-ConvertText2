@@ -6,6 +6,9 @@ keywords: perl, readme
 template: coverpage
 version: 2
 
+This document may not be easily readable in this form, try [pdf](docs/README.pdf) or
+[HTML](docs/README.html) as alternatives. These have been generated from this file and the software provided by this distribution.
+
 This is a perl module and a script that makes use of %TITLE%
 
 Markup is my version of [markdown] with extra fenced code-blocks to allow the

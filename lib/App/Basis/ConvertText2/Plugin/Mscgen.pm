@@ -4,7 +4,28 @@ App::Basis::ConvertText2::Plugin::Mscgen
 
 =head1 SYNOPSIS
 
+    my $content = "# MSC for some fictional process
+    msc {
+      a,b,c;
 
+      a->b [ label = "ab()" ] ;
+      b->c [ label = "bc(TRUE)"];
+      c=>c [ label = "process(1)" ];
+      c=>c [ label = "process(2)" ];
+      ...;
+      c=>c [ label = "process(n)" ];
+      c=>c [ label = "process(END)" ];
+      a<<=c [ label = "callback()"];
+      ---  [ label = "If more to run", ID="*" ];
+      a->a [ label = "next()"];
+      a->c [ label = "ac1()\nac2()"];
+      b<-c [ label = "cb(TRUE)"];
+      b->b [ label = "stalled(...)"];
+      a<-b [ label = "ab() = FALSE"];
+    }" ;
+    my $params = {} ;
+    my $obj = App::Basis::ConvertText2::Plugin::Mscgen->new() ;
+    my $out = $obj->process( 'mscgen', $content, $params) ;
 
 =head1 DESCRIPTION
 

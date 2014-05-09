@@ -854,7 +854,7 @@ sub parse {
         $html = $self->_do_replacements($html);
 
         # and remove any uppercased %word% things that are not processed
-        $html =~ s/%[AZ-_]+\%//gsm;
+        $html =~ s/(?<!_)%[AZ-_]+\%//gsm;
         $html =~ s/_(%.*?%)/$1/gsm;
 
         # fetch any images and store to the cache, make sure they have sizes too

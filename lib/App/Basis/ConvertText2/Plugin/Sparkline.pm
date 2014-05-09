@@ -1,11 +1,14 @@
 
 =head1 NAME
 
-App::Basis::ConvertText2::Sparkline
+App::Basis::ConvertText2::Plugin::Sparkline
 
 =head1 SYNOPSIS
- 
-Plugin to be used with App::Basis::ConvertText
+
+    my $content = "1,2,3,4,5,6,7,8" ;
+    my $params = {} ;
+    my $obj = App::Basis::ConvertText2::Plugin::Sparkline->new() ;
+    my $out = $obj->process( 'sparkline', $content, $params) ;
 
 =head1 DESCRIPTION
 

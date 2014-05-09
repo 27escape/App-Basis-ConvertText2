@@ -5,7 +5,22 @@ App::Basis::ConvertText2::Plugin::Chart
 
 =head1 SYNOPSIS
 
- 
+    my $content = "apples,bananas,cake,cabbage,edam,fromage,tomatoes,chips
+    1,2,3,5,11,22,33,55
+    1,2,3,5,11,22,33,55
+    1,2,3,5,11,22,33,55
+    1,2,3,5,11,22,33,55
+    " ;
+    my $params = { 
+        size    => "600x480",
+        title   => "chart1",
+        xaxis   => 'things xways',
+        yaxis   => 'Vertical things',
+        format  => 'pie',
+        legends => 'a,b,c,d,e,f,g,h'
+    } ;
+    my $obj = App::Basis::ConvertText2::Plugin::Chart->new() ;
+    my $out = $obj->process( 'chart', $content, $params) ;
 
 =head1 DESCRIPTION
 

@@ -5,7 +5,17 @@ App::Basis::ConvertText2::Plugin::Venn
 
 =head1 SYNOPSIS
 
- 
+    my $content = "abel edward momo albert jack julien chris
+    edward isabel antonio delta albert kevin jake
+    gerald jake kevin lucia john edward" ;
+    my $params = { 
+        title   => "sample venn diagram",
+        legends => "team1 team2 team3",
+        scheme  => "rgb", 
+        explain => '1'
+    } ;
+    my $obj = App::Basis::ConvertText2::Plugin::Venn->new() ;
+    my $out = $obj->process( 'venn', $content, $params) ;
 
 =head1 DESCRIPTION
 

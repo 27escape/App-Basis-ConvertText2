@@ -5,6 +5,21 @@ App::Basis::ConvertText2::Plugin::Ditaa
 
 =head1 SYNOPSIS
 
+    my $content = "+--------+   +-------+    +-------+
+    |        | --+ ditaa +--> |       |
+    |  Text  |   +-------+    |diagram|
+    |Document|   |!magic!|    |       |
+    |     {d}|   |       |    |       |
+    +---+----+   +-------+    +-------+
+        :                         ^
+        |       Lots of work      |
+        \-------------------------+
+    " ;
+    my $params = { 
+        size   => "600x480",
+    } ;
+    my $obj = App::Basis::ConvertText2::Plugin::Ditaa->new() ;
+    my $out = $obj->process( 'ditaa', $content, $params) ;
  
 =head1 DESCRIPTION
 
