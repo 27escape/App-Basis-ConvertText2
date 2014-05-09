@@ -1,7 +1,7 @@
 
 =head1 NAME
 
- App::Basis::ConvertText::Venn
+App::Basis::ConvertText2::Plugin::Venn
 
 =head1 SYNOPSIS
 
@@ -9,44 +9,33 @@
 
 =head1 DESCRIPTION
 
- Convert a text string of comma separated numbers into a Venn diagran image PNG
-
-=head1 AUTHOR
-
- kevin mulholland, moodfarm@cpan.org
-
-=head1 VERSIONS
-
- v0.001
-
-=head1 HISTORY
-
-First created in June 1999, now updated to become App::Basis::ConvertText::Venn
+Convert a text string of comma separated numbers into a Venn diagran image PNG
 
 =cut
 
 # ----------------------------------------------------------------------------
 
-package App::Basis::ConvertText::Venn;
+package App::Basis::ConvertText2::Plugin::Venn;
 
 use 5.10.0;
 use strict;
 use warnings;
-use GD ;
+use GD;
+
 # we need to do this to ensure that venn::chart uses the right level of color
-GD::Image->trueColor( 0) ;  
+GD::Image->trueColor(0);
 use Venn::Chart;
-use File::Slurp qw( write_file);
-use Exporter;
-use Data::Printer;
+use Path::Tiny;
+use Moo;
+use App::Basis;
+use App::Basis::ConvertText2::Support;
+use namespace::autoclean;
 
-use vars qw( @EXPORT @ISA);
-
-@ISA = qw(Exporter);
-
-# this is the list of things that will get imported into the loading packages
-# namespace
-@EXPORT = qw( venn );
+has handles => (
+    is       => 'ro',
+    init_arg => undef,
+    default  => sub {[qw{venn}]}
+);
 
 # -----------------------------------------------------------------------------
 
@@ -77,25 +66,34 @@ markdown explaining the diagram, undex/empty if errors
 
 =cut
 
-sub venn {
-    my ( $text, $filename, $params ) = @_;
+sub process {
+    my $self = shift;
+    my ( $tag, $content, $params, $cachedir ) = @_;
+    $params->{size}    ||= "";
     $params->{title}   ||= "";
     $params->{legends} ||= "";
     $params->{size}    ||= "400x400";
     $params->{scheme}  ||= 'default';
     $params->{scheme} = lc( $params->{scheme} );
     my ( $w, $h ) = ( $params->{size} =~ /^\s*(\d+)\s*x\s*(\d+)\s*$/ );
+
     if ( !$h ) {
         $w = 400;
         $h = 400;
     }
-    die "Missing filename" if ( !$filename );
-    die "Missing text"     if ( !$text );
+    return "" if ( !$content );
 
+    # we can use the cache or process everything ourselves
+    my $sig = create_sig( $content, $params );
+    my $filename = cachefile( $cachedir, "$sig.png" );
+
+    # we will not check for the cachefile as we need to create the venn object
+    # each time to get the explaination text, besides not many people will
+    # use this plugin, so lets not go to the extra effort
     my $venn_chart = Venn::Chart->new( $w, $h ) or die("error : $!");
 
     # lose any leading spaces
-    $text =~ s/^\s+//s;
+    $content =~ s/^\s+//s;
 
     # Set a title, colors and a legend for our chart
     my $colors = $_colour_schemes{ $params->{scheme} } ? $_colour_schemes{ $params->{scheme} } : $_colour_schemes{default};
@@ -103,6 +101,7 @@ sub venn {
     $venn_chart->set_options( -title => $params->{title}, -colors => $colors );
 
     my @legends;
+
     # decide how to split the legends
     if ( $params->{legends} =~ /,/ ) {
         @legends = map { my $n = $_; $n =~ s/^\s+//; $n } split( /,/, $params->{legends} );
@@ -115,14 +114,15 @@ sub venn {
     my $lines = 0;
     my @data;
     my @newlegends;
-    foreach my $line ( split( /\n/, $text ) ) {
+    foreach my $line ( split( /\n/, $content ) ) {
         $line =~ s/^s+//;    # remove leading spaces
         next if ( !$line );
+
         # update legends with members
-        my $l = $legends[$lines] ;
-        if( !$l) {
-            $l = 'missing' ;
-            push @legends, $l ;
+        my $l = $legends[$lines];
+        if ( !$l ) {
+            $l = 'missing';
+            push @legends, $l;
         }
         push @newlegends, "$l : $line";
         last if ( ++$lines > 3 );
@@ -133,25 +133,32 @@ sub venn {
 
     # Create a diagram with gd object
     my $gd_venn = $venn_chart->plot(@data);
-    # Create a Venn diagram image in png format
-    write_file( $filename, $gd_venn->png() );
 
-    # now explain what is in each region
-    my @ref_lists = $venn_chart->get_list_regions();
-    my $md = "\n\n";
-    $md .= "* only in $legends[0] : " . join( ' ', @{ $ref_lists[0] } ) . "  
-* only in $legends[1] : " . join( ' ', @{ $ref_lists[1] } ) . "
+    # Create a Venn diagram image in png format
+    path($filename)->spew_raw( $gd_venn->png() );
+
+    my $out;
+    if ( -f $filename ) {
+
+        # now explain what is in each region
+        my @ref_lists = $venn_chart->get_list_regions();
+
+        # create something suitable for the HTML
+        $out = create_img_src( $filename, $params->{title} );
+        $out .= "\n\n" . "* only in $legends[0] : " . join( ' ', @{ $ref_lists[0] } ) . "  
+    * only in $legends[1] : " . join( ' ', @{ $ref_lists[1] } ) . "
     * $legends[0] and $legends[1] share : " . join( ' ', @{ $ref_lists[2] } ) . "\n";
-    if ( scalar(@newlegends) > 2 ) {
-        $md .= "* only in $legends[2] : " . join( ' ', @{ $ref_lists[3] } ) . "
+
+        if ( scalar(@newlegends) > 2 ) {
+            $out .= "* only in $legends[2] : " . join( ' ', @{ $ref_lists[3] } ) . "
     * $legends[0] and $legends[2] share : " . join( ' ', @{ $ref_lists[4] } ) . "
     * $legends[1] and $legends[2] share : " . join( ' ', @{ $ref_lists[5] } ) . "
     * $legends[0], $legends[1] and $legends[2] share : " . join( ' ', @{ $ref_lists[6] } ) . "\n";
+        }
+        $out .= "\n";
     }
+    return $out;
 
-    $md .= "\n";
-
-    return $md;
 }
 
 # ----------------------------------------------------------------------------

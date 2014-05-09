@@ -1,15 +1,15 @@
 #!/usr/bin/env perl
-#!/usr/bin/perl
 
 =head1 NAME
 
-markup
+ct2
 
 =head1 DESCRIPTION
 
 Convert my modified version of markdown into various document formats
 
-this will create a ~/.md2format directory and add some files to it
+this will create a ~/.ct2 directory and add some files to it, such as your
+basic config and the initial templates
 
 =head1 AUTHOR
 
@@ -17,16 +17,16 @@ this will create a ~/.md2format directory and add some files to it
 
 =cut
 
-use v5.14;
+use v5.10;
 use strict;
 use warnings;
 use Data::Printer;
 use POSIX qw(strftime);
 use Try::Tiny;
-use Path::Tiny ;
+use Path::Tiny;
 use App::Basis;
 use App::Basis::Config;
-use App::Basis::ConvertText;
+use App::Basis::ConvertText2;
 
 # -----------------------------------------------------------------------------
 
@@ -35,8 +35,8 @@ $MARKUP_DIR = $ENV{MARKUP_DIR} if ( $ENV{MARKUP_DIR} );
 
 my $CACHE_DIR = "/tmp/" . getpwuid($>) . "/cache";
 
-my $HTML_HEADER = <<EOD;
-<!DOCTYPE HTML PUBLIC '-//W3C//DTD HTML 4.01//EN' 'http://www.w3.org/TR/html4/strict.dtd'>
+my $TEMPLATE = <<EOD;
+<!DOCTYPE html>
 <html>
     <head>
         <title>%TITLE%</title>
@@ -64,7 +64,6 @@ my $HTML_HEADER = <<EOD;
               page-break-after: always;
             }
             #toc p {
-                color: #4f81bd; 
                 font-weight: bold;
                 font-size: 32;
             }
@@ -91,26 +90,6 @@ my $HTML_HEADER = <<EOD;
 
             /* tables*/
             table { page-break-inside: avoid ;}
-            table.md { 
-                border: 1px black solid; 
-                border-collapse: collapse;
-                border-spacing: 0px;
-                padding-bottom:20px;
-            }
-            table.md th {
-                background-color:yellowgreen; 
-                font-weight: bold;
-                border: 1px black solid;
-            }
-            table.md tr { valign:top;}
-            table.md tr.odd { background-color: white;}
-            table.md tr.even {background-color: #F0FFF0;}
-            table.md td {
-                border: 1px black solid; 
-                padding-left:10px;
-                padding-right:10px;
-            }
-
             table.footer { font-size: 10px; width: 100%;}
             table.footer td.commercial { 
                 font-weight: bold; 
@@ -140,23 +119,19 @@ my $HTML_HEADER = <<EOD;
         </style>
     </head>
     <body>
+        <h1>%TITLE%</h1>
+        <!-- uncomment this if you need a Table of Contents -->
+        <!-- <div id='toc' >
+            %TOC%
+        </div> -->
 
-    <!-- remove this if you do not need a Table of Contents -->
-     <div id='toc' >
-        %TOC%
-    </div>
-EOD
+        %_CONTENTS_%
 
-my $HTML_FOOTER = <<EOD;
         <table class='footer' width='100%'>
             <tr><td>(c) %COPYRIGHT%</td><td align='right'>%DATE%</td>
         </table>
     </body>
 </html>
-EOD
-
-my $CSS = <<EOD;
-
 EOD
 
 # -----------------------------------------------------------------------------
@@ -176,7 +151,7 @@ sub other_debug {
 
 sub create_defaults {
     my ( $dir, $verbose ) = @_;
-    my $default = "$dir/styles/default";
+    my $default = "$dir/templates/default";
     my ( $r, $o, $e );
 
     die "dir option required" if ( !$dir );
@@ -185,12 +160,11 @@ sub create_defaults {
 
         # create the defaults if they do not exist
         try { path($default)->mkpath } catch {};
-        msg_exit("Could not create default styles dir in $dir") if ( !-d $default );
+        msg_exit("Could not create default templates dir in $dir") if ( !-d $default );
     }
 
-    # create header and footers
-    path("$default/header.html")->spew_utf8($HTML_HEADER) if ( !-f "$default/header.html" );
-    path("$default/footer.html")->spew_utf8($HTML_FOOTER) if ( !-f "$default/footer.html" );
+    # create HTML template
+    path("$default/template.html")->spew_utf8($TEMPLATE) if ( !-f "$default/template.html" );
 
     my $config = App::Basis::Config->new( filename => "$default/config" );
 
@@ -200,7 +174,7 @@ sub create_defaults {
         $config->set( '/page/orientation', 'Portrait' );
         my $author = getpwuid($>);
         $config->set( '/author',    $author );
-        $config->set( '/copyright', "Property of $author 2013" );
+        $config->set( '/copyright', "Property of $author 2014" );
         $config->store();
     }
 }
@@ -208,24 +182,23 @@ sub create_defaults {
 # -----------------------------------------------------------------------------
 
 sub read_settings {
-    my ( $style, $dir ) = @_;
+    my ( $template, $dir ) = @_;
     my %settings;
 
     die "dir option required" if ( !$dir );
 
-    $style ||= 'default';
-    $style =~ s/\v//g;
-    my $styledir = "$dir/styles/$style";
-    if ( !-d $styledir ) {
-        debug( "INFO", "Style '$style' does not exist, using default" );
-        $styledir = "$dir/styles/default";
+    $template ||= 'default';
+    $template =~ s/\v//g;
+    my $templatedir = "$dir/templates/$template";
+    if ( !-d $templatedir ) {
+        debug( "INFO", "Template '$template' does not exist, using default" );
+        $templatedir = "$dir/templates/default";
     }
-    $settings{config} = App::Basis::Config->new( filename => "$styledir/config" );
+    $settings{config} = App::Basis::Config->new( filename => "$templatedir/config" );
 
-    $settings{style}       = $style;
-    $settings{style_dir}   = $styledir;
-    $settings{html_header} = path("$styledir/header.html")->slurp_utf8;
-    $settings{html_footer} = path("$styledir/footer.html")->slurp_utf8;
+    $settings{template}     = $template;
+    $settings{template_dir} = $templatedir;
+    $settings{template}     = path("$templatedir/template.html")->slurp_utf8;
 
     return \%settings;
 }
@@ -240,12 +213,12 @@ If there is no output option used the output will be to file of same name as inp
 with an extension (if provided) from the document, use format: keyword (pdf html doc).",
     help_cmdline => "filename",
     options      => {
-        'verbose|v'  => 'verbose mode',
-        'clean|c'    => 'Clean up the cache before use',
-        'style|s=s'  => 'name of style to use',
-        'embed|e'    => 'Embed images into HTML, do not use this if converting to doc/odt or pdf via libreoffice',
-        'prince|p'   => 'Convert to PDF using prince rather than libreoffice, can handle embedded images',
-        'output|o=s' => {
+        'verbose|v'    => 'verbose mode',
+        'clean|c'      => 'Clean up the cache before use',
+        'template|s=s' => 'name of template to use',
+        'embed|e'      => 'Embed images into HTML, do not use this if converting to doc/odt or pdf via libreoffice',
+        'prince|p'     => 'Convert to PDF using prince rather than libreoffice, can handle embedded images',
+        'output|o=s'   => {
             desc    => 'Filename to store the output as, extension will control conversion',
             default => "",
         }
@@ -288,45 +261,45 @@ my $replace = {
     # '%REVISION%' => '',   # get from document :revision
 };
 
-# get any style from the stop of the story
+# get any template from the stop of the story
 my $settings;
-my ($style) = ( $story =~ /^:style\s+(.*?)$/sm );
+my ($template) = ( $story =~ /^template:\s?(.*?)$/sm );
 
-# document style overwritten by the command line option
-$style = $opt{style} if ( $opt{style} );
+# document template overwritten by the command line option
+$template = $opt{template} if ( $opt{template} );
 
-$settings = read_settings( $style, $opt{config_dir} );
+$settings = read_settings( $template, $opt{config_dir} );
 
-# add in style defaults if needed
-$replace->{'%DATE%'} ||= strftime( "%Y-%m-%d", gmtime() );
-$replace->{'%COPYRIGHT%'}   ||= $settings->{config}->get("copyright");
-$replace->{'%AUTHOR%'}      ||= $settings->{config}->get("author");
-$replace->{'%PAGE_SIZE%'}   ||= $settings->{config}->get("page/size");
-$replace->{'%ORIENTATION%'} ||= $settings->{config}->get("page/orientation");
+# add in template defaults if needed
+$replace->{DATE} ||= strftime( "%Y-%m-%d", gmtime() );
+$replace->{COPYRIGHT}   ||= $settings->{config}->get("copyright");
+$replace->{AUTHOR}      ||= $settings->{config}->get("author");
+$replace->{PAGE_SIZE}   ||= $settings->{config}->get("page/size");
+$replace->{ORIENTATION} ||= $settings->{config}->get("page/orientation");
 
-my $format = App::Basis::ConvertText->new(
-    name        => get_program(),
-    use_cache   => 1,
-    cache_dir   => $CACHE_DIR,
-    html_header => $settings->{html_header},
-    html_footer => $settings->{html_footer},
-    replace     => $replace,
-    verbose     => $opt{verbose},
-    embed       => $opt{embed},
+my $format = App::Basis::ConvertText2->new(
+    name      => get_program(),
+    use_cache => 1,
+    cache_dir => $CACHE_DIR,
+    template  => $settings->{template},
+    replace   => $replace,
+    verbose   => $opt{verbose},
+    embed     => $opt{embed},
 );
 $format->clean_cache() if ( $opt{clean} );
 
 my $data = $format->parse($story);
 
 # decide on output filename from any format keyword
-my $keywords = $format->keywords;
-if ( !$opt{output} && $keywords->{format} ) {
+# all the keywords are in UPPER-CASE
+my $keywords = $format->replace;
+if ( !$opt{output} && $keywords->{FORMAT} ) {
 
     # same name as input
     $opt{output} = $opt{filename};
 
     # change extension
-    $opt{output} =~ s/\.md$/.$keywords->{format}/i;
+    $opt{output} =~ s/\.md$/.$keywords->{FORMAT}/i;
 }
 
 if ( $opt{output} ) {

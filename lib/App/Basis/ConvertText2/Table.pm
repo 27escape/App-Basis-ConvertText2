@@ -1,46 +1,34 @@
 
 =head1 NAME
 
- App::Basis::ConvertText::Table
+App::Basis::ConvertText2::Plugin::Table
 
 =head1 SYNOPSIS
-
  
 
 =head1 DESCRIPTION
 
- Convert comma separated text strings into a basic table
-
-=head1 AUTHOR
-
- kevin mulholland, moodfarm@cpan.org
-
-=head1 VERSIONS
-
- v0.001
-
-=head1 HISTORY
-
-First created in June 1999, now updated to become App::Basis::ConvertText::Table
+Convert comma separated content strings into a basic table
 
 =cut
 
 # ----------------------------------------------------------------------------
 
-package App::Basis::ConvertText::Table;
+package App::Basis::ConvertText2::Plugin::Table;
 
 use 5.10.0;
 use strict;
 use warnings;
-use Exporter;
+use Moo;
+use App::Basis;
+use App::Basis::ConvertText2::Support;
+use namespace::autoclean;
 
-use vars qw( @EXPORT @ISA);
-
-@ISA = qw(Exporter);
-
-# this is the list of things that will get imported into the loading packages
-# namespace
-@EXPORT = qw( table );
+has handles => (
+    is       => 'ro',
+    init_arg => undef,
+    default  => sub {[qw{table}]}
+);
 
 # ----------------------------------------------------------------------------
 
@@ -82,18 +70,17 @@ create a basic html table
         legends - csv of headings for table, these correspond to the data sets
 
 =cut
-sub table {
-    my ( $text, $params ) = @_;
+sub process {
+    my $self = shift;
+    my ( $tag, $content, $params, $cachedir ) = @_;
 
     $params->{title} ||= "";
 
-    $text =~ s/^\n//gsm;
-    $text =~ s/\n$//gsm;
+    $content =~ s/^\n//gsm;
+    $content =~ s/\n$//gsm;
 
     # open the csv file, read contents, calc max, add into data array
-    my @data = _split_csv_data($text);
-
-    #$out = "\n~~~~\n" . p( @data) . "\n~~~~\n";
+    my @data = _split_csv_data($content);
 
     my $fields = scalar( $data[0]);
     my $out = "<table " ;

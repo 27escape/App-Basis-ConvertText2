@@ -1,6 +1,3 @@
-v0.1 2014-04-
-  * removed ConvertFile.pm
-  * using Path::Tiny rather than other things
-  * changed to use pandoc fences ~~~~{.tag} rather than xml format <tag>
-v0.006 2014-04-10
-  * first release to github 
+0.2 2014-5-09
+    * major refactor from my previous code (not released)
+    * Now has plugins

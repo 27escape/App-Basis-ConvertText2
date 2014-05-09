@@ -1,11 +1,11 @@
 
 =head1 NAME
 
- App::Basis::ConvertText::YamlAsJson
+App::Basis::ConvertText2::Plugin::YamlAsJson
 
 =head1 SYNOPSIS
 
-<yamlasjson>
+~~~~{.yamlasjson}
 epg:
   - triplet: [1,2,3,7]
     channel: BBC3
@@ -17,7 +17,7 @@ epg:
     date: 2013-11-20
     time: 21:00
     crid: dvb://112.4a2.5ec;2d22~20131120T2100000Z—PT01H30M
-</yamlasjson>
+~~~~
  
 creates 
  
@@ -42,40 +42,29 @@ creates
 
 =head1 DESCRIPTION
 
- Convert a YAML block into a JSON block for output, to be used as part of L<App::Basis::ConvertText>
-
-=head1 AUTHOR
-
- kevin mulholland, moodfarm@cpan.org
-
-=head1 VERSIONS
-
- v0.001
-
-=head1 HISTORY
-
-First created in Oct 2013
+Convert a YAML block into a JSON block for output, to be used as part of L<App::Basis::ConvertText>
 
 =cut
 
 # ----------------------------------------------------------------------------
 
-package App::Basis::ConvertText::YamlAsJson;
+package App::Basis::ConvertText2::Plugin::YamlAsJson;
 
 use 5.10.0;
 use strict;
 use warnings;
-use Exporter;
 use YAML qw(Load);
 use JSON;
 
-use vars qw( @EXPORT @ISA);
+use Moo;
+use App::Basis::ConvertText2::Support;
+use namespace::clean;
 
-@ISA = qw(Exporter);
-
-# this is the list of things that will get imported into the loading packages
-# namespace
-@EXPORT = qw( yamlasjson);
+has handles => (
+    is       => 'ro',
+    init_arg => undef,
+    default  => sub {[qw{yamlasjson}]}
+);
 
 # ----------------------------------------------------------------------------
 
@@ -87,16 +76,15 @@ Convert a YAML block into a JSON block
 
 =cut
 
-sub yamlasjson
-{
-    my ($text) = @_;
+sub process {
+    my $self = shift;
+    my ( $tag, $content, $params, $cachedir ) = @_;
 
-    $text =~ s/~~~~{\.yaml}//gsm;
-    $text =~ s/~~~~//gsm;
+    $content =~ s/~~~~{\.yaml}//gsm;
+    $content =~ s/~~~~//gsm;
 
-    my $data = Load($text);
-    my $json = JSON->new();
-    return "\n~~~~{.json}\n" . $json->pretty->encode($data) . "\n~~~~\n\n";
+    my $data = Load($content);
+    return "\n~~~~{.json}\n" . to_json($data, {utf8 => 1, pretty => 1}) . "\n~~~~\n\n";
 }
 
 # ----------------------------------------------------------------------------
