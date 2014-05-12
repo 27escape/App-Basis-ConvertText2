@@ -23,7 +23,7 @@ App::Basis::ConvertText2::Plugin::Ditaa
  
 =head1 DESCRIPTION
 
-convert a ditaa text string into a PNG, requires ditaa program
+convert a ditaa text string into a PNG, requires ditaa program from http://ditaa.sourceforge.net/
 
 =cut
 
@@ -34,7 +34,7 @@ package App::Basis::ConvertText2::Plugin::Ditaa;
 use 5.10.0;
 use strict;
 use warnings;
-use Path::Tiny ;
+use Path::Tiny;
 use App::Basis;
 use Moo;
 use App::Basis;
@@ -44,7 +44,7 @@ use namespace::autoclean;
 has handles => (
     is       => 'ro',
     init_arg => undef,
-    default  => sub {[qw{ditaa}]}
+    default  => sub { [qw{ditaa}] }
 );
 
 use constant DITAA => 'ditaa';
@@ -63,6 +63,7 @@ create a simple ditaa image
         size    - size of image, widthxheight - optional
 
 =cut
+
 sub process {
     my $self = shift;
     my ( $tag, $content, $params, $cachedir ) = @_;
@@ -70,8 +71,8 @@ sub process {
     my ( $x, $y ) = ( $params->{size} =~ /^\s*(\d+)\s*x\s*(\d+)\s*$/ );
 
     # strip any ending linefeed
-    chomp $content ;
-    return "" if( !$content) ;
+    chomp $content;
+    return "" if ( !$content );
 
     # we can use the cache or process everything ourselves
     my $sig = create_sig( $content, $params );
@@ -80,13 +81,15 @@ sub process {
 
         my $ditaafile = Path::Tiny->tempfile("ditaa.XXXX");
 
-        path($ditaafile)->spew_utf8( $content);
+        path($ditaafile)->spew_utf8($content);
 
         my $cmd = DITAA . " -o $ditaafile $filename";
-        my ($exit, $stdout, $stderr) = run_cmd($cmd);
-        warn "Could not run script " . DITAA if( $exit) ;
+        my ( $exit, $stdout, $stderr ) = run_cmd($cmd);
+        if ($exit) {
+            warn "Could not run script " . DITAA . " get it from http://ditaa.sourceforge.net/";
+        }
 
-             # if we want to force the size of the graph
+        # if we want to force the size of the graph
         if ( -f $filename && $x && $y ) {
             my $image = Image::Resize->new($filename);
             my $gd = $image->resize( $x, $y );
@@ -99,7 +102,7 @@ sub process {
     }
 
     my $out;
-    if ( -f $filename) {
+    if ( -f $filename ) {
 
         # create something suitable for the HTML
         $out = create_img_src( $filename, $params->{title} );

@@ -4,7 +4,7 @@
         <title>App::Basis::ConvertText2</title>
         <meta name="Created" content="2014-05-12" />
         <meta name="Author" content="Kevin Mulholland" />
-        <meta name="Copyright" content="Property of kmulholland 2013" />
+        <meta name="Copyright" content="Property of kevin 2014" />
         <meta name="summary" content="%SUMMARY%" />
         <meta name="keywords" content="perl, readme" />
         <meta name="revision" content="%REVISION%" />
@@ -26,7 +26,6 @@
               page-break-after: always;
             }
             #toc p {
-                color: #4f81bd; 
                 font-weight: bold;
                 font-size: 32;
             }
@@ -53,26 +52,6 @@
 
             /* tables*/
             table { page-break-inside: avoid ;}
-            table.md { 
-                border: 1px black solid; 
-                border-collapse: collapse;
-                border-spacing: 0px;
-                padding-bottom:20px;
-            }
-            table.md th {
-                background-color:yellowgreen; 
-                font-weight: bold;
-                border: 1px black solid;
-            }
-            table.md tr { valign:top;}
-            table.md tr.odd { background-color: white;}
-            table.md tr.even {background-color: #F0FFF0;}
-            table.md td {
-                border: 1px black solid; 
-                padding-left:10px;
-                padding-right:10px;
-            }
-
             table.footer { font-size: 10px; width: 100%;}
             table.footer td.commercial { 
                 font-weight: bold; 
@@ -104,46 +83,10 @@
     <body>
         <h1>App::Basis::ConvertText2</h1>
         
-         <div id='toc' >
-            <p>Contents</p>
-<ul>
-  <li><a href='#1_document_header_and_variables'>1 Document header and variables</a></li>
-  <li><a href='#2_table_of_contents'>2 Table of contents</a></li>
-  <li><a href='#3_fenced_code-blocks'>3 Fenced code-blocks</a></li>
-  <li><a href='#4_buffering_data_for_later_use'>4 Buffering data for later use</a></li>
-  <li><a href='#5_sparklines'>5 Sparklines</a></li>
-  <li><a href='#6_charts'>6 Charts</a></li>
-  <li><a href='#6.1_pie_chart'>&nbsp;&nbsp;&nbsp;6.1 Pie chart</a></li>
-  <li><a href='#6.2_bar_chart'>&nbsp;&nbsp;&nbsp;6.2 Bar chart</a></li>
-  <li><a href='#6.3_mixed_chart'>&nbsp;&nbsp;&nbsp;6.3 Mixed chart</a></li>
-  <li><a href='#7_message_sequence_charts_-_mscgen'>7 Message Sequence Charts - mscgen</a></li>
-  <li><a href='#8_diagrams_through_ascii_art_-_ditaa'>8 DIagrams Through Ascii Art - ditaa</a></li>
-  <li><a href='#9_uml_diagrams'>9 UML Diagrams</a></li>
-  <li><a href='#10_graphviz'>10 Graphviz</a></li>
-  <li><a href='#11_venn_diagram'>11 Venn diagram</a></li>
-  <li><a href='#12_barcodes'>12 Barcodes</a></li>
-  <li><a href='#12.1_code39'>&nbsp;&nbsp;&nbsp;12.1 Code39</a></li>
-  <li><a href='#12.2_ean8'>&nbsp;&nbsp;&nbsp;12.2 EAN8</a></li>
-  <li><a href='#12.3_ean13'>&nbsp;&nbsp;&nbsp;12.3 EAN13</a></li>
-  <li><a href='#12.4_coop2of5'>&nbsp;&nbsp;&nbsp;12.4 COOP2of5</a></li>
-  <li><a href='#12.5_iata2of5'>&nbsp;&nbsp;&nbsp;12.5 IATA2of5</a></li>
-  <li><a href='#12.6_industrial2of5'>&nbsp;&nbsp;&nbsp;12.6 Industrial2of5</a></li>
-  <li><a href='#12.7_itf'>&nbsp;&nbsp;&nbsp;12.7 ITF</a></li>
-  <li><a href='#12.8_matrix2of5'>&nbsp;&nbsp;&nbsp;12.8 Matrix2of5</a></li>
-  <li><a href='#12.9_nw7'>&nbsp;&nbsp;&nbsp;12.9 NW7</a></li>
-  <li><a href='#12.10_qr_code'>&nbsp;&nbsp;&nbsp;12.10 QR code</a></li>
-  <li><a href='#13_yaml_convert_to_json'>13 YAML convert to JSON</a></li>
-  <li><a href='#14_table'>14 Table</a></li>
-  <li><a href='#15_links'>15 Links</a></li>
-  <li><a href='#16_version_table'>16 Version table</a></li>
-  <li><a href='#17_start_a_new_page_-_page'>17 Start a new page - page</a></li>
-  <li><a href='#18_gotchas_about_variables'>18 Gotchas about variables</a></li>
-  <li><a href='#19_html_templates'>19 HTML templates</a></li>
-</ul>
+        
 
-        </div>
-
-        <p>This is a perl module and a script that makes use of App::Basis::ConvertText2</p>
+        <p>This document may not be easily readable in this form, try <a href="docs/README.pdf">pdf</a> or <a href="docs/README.html">HTML</a> as alternatives. These have been generated from this file and the software provided by this distribution.</p>
+<p>This is a perl module and a script that makes use of App::Basis::ConvertText2</p>
 <p>Markup is my version of <a href="http://daringfireball.net/projects/markdown">markdown</a> with extra fenced code-blocks to allow the creation of charts and graphs etc. it uses <a href="http://johnmacfarlane.net/pandoc">pandoc</a> to generate documents in a variety of formats and optionally can use <a href="http://www.princexml.com">PrinceXML</a> to generate great looking PDFs.</p>
 <p>As I do not know Haskell which <a href="http://johnmacfarlane.net/pandoc">pandoc</a> is written in and the way to add filters looks awkward, I decided to create a pre-processing system that will output markdown and HTML to <a href="http://johnmacfarlane.net/pandoc">pandoc</a>.</p>
 <p>This also allows you to make use of templates.</p>
@@ -165,7 +108,7 @@ version: 2</code></pre>
 <p>The keys may be used as variables in your document or in the template, by upper-casing and prefixing and postfixing percent symbols ‘%’</p>
 <p><strong>Example</strong></p>
 <pre><code>version as a variable %VERSION%</code></pre>
-<p>If you want to display the name of a variable without it being interpreted, prefix it with an underscore ’_’, this underscore will be removed in the final document.</p>
+<p>If you want to display the name of a variable without it being interpreted, prefix it with an underscore ‘_’, this underscore will be removed in the final document.</p>
 <p><strong>Example</strong></p>
 <pre><code>%TITLE%</code></pre>
 <p><strong>Output</strong></p>
@@ -207,7 +150,6 @@ version: 2</code></pre>
   <li><a href='#16_version_table'>16 Version table</a></li>
   <li><a href='#17_start_a_new_page_-_page'>17 Start a new page - page</a></li>
   <li><a href='#18_gotchas_about_variables'>18 Gotchas about variables</a></li>
-  <li><a href='#19_html_templates'>19 HTML templates</a></li>
 </ul>
 </p>
 <p>Note that if using a TOC, then the HTML headers are changed to have a number prefixed to them, this helps ensure that all the TOC references are unique.</p>
@@ -237,7 +179,7 @@ contents ...
 <p>To use the contents (or output of a buffered code-block) we wrap the name of the buffer once again with percent ‘%’ symbols, once again we force upper case.</p>
 <p><strong>Example</strong></p>
 <pre><code>%SPARK_DATA% has content 1,4,5,20,4,5,3,1
-%GREENSPARK% has a generated image <img src='/tmp/kmulholland/cache/ct2/1f38c66e765de08fb292e4e410263519.png' alt='green sparkline' height='20' width='80' /></code></pre>
+%GREENSPARK% has a generated image <img src='/tmp/kevin/cache/ct2/1f38c66e765de08fb292e4e410263519.png' alt='green sparkline' height='20' width='80' /></code></pre>
 <p>Buffering also allows us to add content into markdown constructs like bullets.</p>
 <p><strong>Example</strong></p>
 <pre><code>* %SPARK_DATA%
@@ -245,7 +187,7 @@ contents ...
 <p><strong>Output</strong></p>
 <ul>
 <li>1,4,5,20,4,5,3,1</li>
-<li><img src='/tmp/kmulholland/cache/ct2/1f38c66e765de08fb292e4e410263519.png' alt='green sparkline' height='20' width='80' /></li>
+<li><img src='/tmp/kevin/cache/ct2/1f38c66e765de08fb292e4e410263519.png' alt='green sparkline' height='20' width='80' /></li>
 </ul>
 <h2 id="sparklines"><a name='5_sparklines'>5 Sparklines</a></h2>
 <p>Sparklines are simple horizontal charts to give an indication of things, sometimes they are barcharts but we have nice smooth lines.</p>
@@ -294,9 +236,9 @@ or we can draw the sparkline using buffered data
 ~~~~</code></pre>
 <p><strong>Output</strong></p>
 <p>here is a standard sparkline</p>
-<p><img src='/tmp/kmulholland/cache/ct2/c9a9b4c7e6f8cb1089d82d00ff3eb216.png' alt='basic sparkline' height='20' width='80' /></p>
+<p><img src='/tmp/kevin/cache/ct2/c9a9b4c7e6f8cb1089d82d00ff3eb216.png' alt='basic sparkline' height='20' width='80' /></p>
 <p>or we can draw the sparkline using buffered data</p>
-<p><img src='/tmp/kmulholland/cache/ct2/fd3d73d870204418c0dd327f7477c09a.png' alt='blue sparkline' height='20' width='80' /></p>
+<p><img src='/tmp/kevin/cache/ct2/fd3d73d870204418c0dd327f7477c09a.png' alt='blue sparkline' height='20' width='80' /></p>
 <h2 id="charts"><a name='6_charts'>6 Charts</a></h2>
 <p>Displaying charts is very important when creating reports, so we have a simple <strong>chart</strong> code-block.</p>
 <p>The various arguments to the code-block are shown in the examples below, hopefully they are self explanatory.</p>
@@ -317,7 +259,7 @@ apples,bananas,cake,cabbage,edam,fromage,tomatoes,chips
     legends=&#39;a,b,c,d,e,f,g,h&#39; }
 ~~~~</code></pre>
 <p><strong>Output</strong></p>
-<p><img src='/tmp/kmulholland/cache/ct2/b82cab1f86108fdab6afbe84d1869d6a.png' alt='chart1' height='400' width='400' /></p>
+<p><img src='/tmp/kevin/cache/ct2/b82cab1f86108fdab6afbe84d1869d6a.png' alt='chart1' height='400' width='400' /></p>
 <h3 id="bar-chart"><a name='6.2_bar_chart'>6.2 Bar chart</a></h3>
 <p><strong>Example</strong></p>
 <pre><code>~~~~{.chart  title=&quot;chart1&quot; from_buffer=&#39;chart_data&#39; size=&quot;600x400&quot;
@@ -325,7 +267,7 @@ apples,bananas,cake,cabbage,edam,fromage,tomatoes,chips
     legends=&#39;a,b,c,d,e,f,g,h&#39; }
 ~~~~</code></pre>
 <p><strong>Output</strong></p>
-<p><img src='/tmp/kmulholland/cache/ct2/2283400d5fd9cc6ee092226a11185a9e.png' alt='chart1' height='400' width='600' /></p>
+<p><img src='/tmp/kevin/cache/ct2/2283400d5fd9cc6ee092226a11185a9e.png' alt='chart1' height='400' width='600' /></p>
 <h3 id="mixed-chart"><a name='6.3_mixed_chart'>6.3 Mixed chart</a></h3>
 <p><strong>Example</strong></p>
 <pre><code>~~~~{.chart  title=&quot;chart1&quot; from_buffer=&#39;chart_data&#39; size=&quot;600x400&quot;
@@ -334,7 +276,7 @@ apples,bananas,cake,cabbage,edam,fromage,tomatoes,chips
   types=&#39;lines linepoints lines bars&#39; }
 ~~~~</code></pre>
 <p><strong>Output</strong></p>
-<p><img src='/tmp/kmulholland/cache/ct2/643551bfe670742e29d6e6c72be7ca6e.png' alt='chart1' height='400' width='600' /></p>
+<p><img src='/tmp/kevin/cache/ct2/643551bfe670742e29d6e6c72be7ca6e.png' alt='chart1' height='400' width='600' /></p>
 <h2 id="message-sequence-charts---mscgen"><a name='7_message_sequence_charts_-_mscgen'>7 Message Sequence Charts - mscgen</a></h2>
 <p>Software (or process) engineers often want to be able to show the sequence in which a number of events take place. We use the <a href="http://www.mcternan.me.uk/mscgen/">msc</a> program for this. This program needs to be installed onto your system to allow this to work</p>
 <p>The content for this code-block is EXACTLY the same that you would use as input to <a href="http://www.mcternan.me.uk/mscgen/">msc</a></p>
@@ -372,7 +314,7 @@ msc {
 }
 ~~~~</code></pre>
 <p><strong>Output</strong></p>
-<p><img src='/tmp/kmulholland/cache/ct2/160e2de7aa8dc2a0f02f2117a1cafd4a.png' alt='mscgen1' height='448' width='600' /></p>
+<p><img src='/tmp/kevin/cache/ct2/160e2de7aa8dc2a0f02f2117a1cafd4a.png' alt='mscgen1' height='448' width='600' /></p>
 <h2 id="diagrams-through-ascii-art---ditaa"><a name='8_diagrams_through_ascii_art_-_ditaa'>8 DIagrams Through Ascii Art - ditaa</a></h2>
 <p>This is a special system to turn ASCII art into pretty pictures, nice to render diagrams. You do need to make sure that you are using a proper monospaced font with your editor otherwise things will go awry with spaces. See <a href="http://ditaa.sourceforge.net">ditaa</a> for reference.</p>
 <p>The content for this code-block must be the same that you would use to with the <a href="http://ditaa.sourceforge.net">ditaa</a> software</p>
@@ -400,7 +342,7 @@ Full example
     \-------------------------+
 ~~~~</code></pre>
 <p><strong>Output</strong></p>
-<p><img src='/tmp/kmulholland/cache/ct2/8ac235932524c7f7b6592ea295b3ad95.png' height='196' width='390' /></p>
+<p>~~~~{.ditaa size=’’ } ~~~~</p>
 <h2 id="uml-diagrams"><a name='9_uml_diagrams'>9 UML Diagrams</a></h2>
 <p>Software engineers love to draw diagrams, <a href="http://plantuml.sourceforge.net">PlantUML</a> is a java component to make this simple.</p>
 <p>You will need to have a script on your system called ‘uml’ that calls java with the component.</p>
@@ -469,7 +411,7 @@ Alice -&gt; Bob: Another authentication Request
 Alice &lt;-- Bob: another authentication Response
 ~~~~</code></pre>
 <p><strong>Output</strong></p>
-<p><img src='/tmp/kmulholland/cache/ct2/e476fbf3e854e012b058fae4ac3a6fdf.png' height='207' width='294' /></p>
+<p><img src='/tmp/kevin/cache/ct2/e476fbf3e854e012b058fae4ac3a6fdf.png' height='207' width='294' /></p>
 <p><a href="http://plantuml.sourceforge.net">PlantUML</a> can also create simple application interfaces <a href="http://plantuml.sourceforge.net/salt.html">See Salt</a></p>
 <p><strong>Example</strong></p>
 <pre><code>~~~~{.uml }
@@ -503,7 +445,7 @@ salt
 @enduml
 ~~~~</code></pre>
 <p><strong>Output</strong></p>
-<p><img src='/tmp/kmulholland/cache/ct2/311e4ee5750d33a093ab106219647946.png' height='318' width='168' /></p>
+<p><img src='/tmp/kevin/cache/ct2/311e4ee5750d33a093ab106219647946.png' height='318' width='168' /></p>
 <h2 id="graphviz"><a name='10_graphviz'>10 Graphviz</a></h2>
 <p><a href="http://graphviz.org">graphviz</a> allows you to draw connected graphs using text descriptions.</p>
 <p>The content for this code-block must be the same that you would use to with the <a href="http://graphviz.org">graphviz</a> software</p>
@@ -549,7 +491,7 @@ digraph G {
 }
 ~~~~</code></pre>
 <p><strong>Output</strong></p>
-<p><img src='/tmp/kmulholland/cache/ct2/d25c89fc3008d30afc6dc3fd38178ab2.png' alt='graphviz1' height='600' width='306' /></p>
+<p><img src='/tmp/kevin/cache/ct2/d25c89fc3008d30afc6dc3fd38178ab2.png' alt='graphviz1' height='600' width='306' /></p>
 <h2 id="venn-diagram"><a name='11_venn_diagram'>11 Venn diagram</a></h2>
 <p>Creating venn diagrams may sometimes be useful, though to be honest this implementation is not great, if I could find a better way to do this then I would!</p>
 <p><strong>Example</strong></p>
@@ -560,14 +502,14 @@ edward isabel antonio delta albert kevin jake
 gerald jake kevin lucia john edward
 ~~~~</code></pre>
 <p><strong>Output</strong></p>
-<p><img src='/tmp/kmulholland/cache/ct2/9e0b98ce7e0ea5829245653fa0eade79.png' alt='sample venn diagram' height='400' width='400' /></p>
+<p><img src='/tmp/kevin/cache/ct2/9e0b98ce7e0ea5829245653fa0eade79.png' alt='sample venn diagram' height='400' width='400' /></p>
 <ul>
-<li>only in team1 : chris jack momo julien abel
+<li>only in team1 : jack momo chris abel julien
 <ul>
-<li>only in team2 : delta antonio isabel</li>
+<li>only in team2 : delta isabel antonio</li>
 <li>team1 and team2 share : albert</li>
 </ul></li>
-<li>only in team3 : lucia john gerald
+<li>only in team3 : john gerald lucia
 <ul>
 <li>team1 and team3 share :</li>
 <li>team2 and team3 share : jake kevin</li>
@@ -606,7 +548,7 @@ gerald jake kevin lucia john edward
 123456789
 ~~~~</code></pre>
 <p><strong>Output</strong></p>
-<p><img src='/tmp/kmulholland/cache/ct2/0e7f2287c82ea14554939a0691e8aae1.png' height='50' width='144' /></p>
+<p><img src='/tmp/kevin/cache/ct2/0e7f2287c82ea14554939a0691e8aae1.png' height='50' width='144' /></p>
 <h3 id="ean8"><a name='12.2_ean8'>12.2 EAN8</a></h3>
 <p>Only allows 8 characters</p>
 <p><strong>Example</strong></p>
@@ -614,7 +556,7 @@ gerald jake kevin lucia john edward
 12345678
 ~~~~</code></pre>
 <p><strong>Output</strong></p>
-<p><img src='/tmp/kmulholland/cache/ct2/3d239d23db81d6fdf1b987b40073e6d4.png' height='50' width='67' /></p>
+<p><img src='/tmp/kevin/cache/ct2/3d239d23db81d6fdf1b987b40073e6d4.png' height='50' width='67' /></p>
 <h3 id="ean13"><a name='12.3_ean13'>12.3 EAN13</a></h3>
 <p>Only allows 13 characters</p>
 <p><strong>Example</strong></p>
@@ -622,49 +564,49 @@ gerald jake kevin lucia john edward
 1234567890123
 ~~~~</code></pre>
 <p><strong>Output</strong></p>
-<p><img src='/tmp/kmulholland/cache/ct2/6d0725ec5ea574ae42925b13a6611b62.png' height='50' width='102' /></p>
+<p><img src='/tmp/kevin/cache/ct2/6d0725ec5ea574ae42925b13a6611b62.png' height='50' width='102' /></p>
 <h3 id="coop2of5"><a name='12.4_coop2of5'>12.4 COOP2of5</a></h3>
 <p><strong>Example</strong></p>
 <pre><code>~~~~{.barcode type=&#39;COOP2of5&#39;}
 12345678
 ~~~~</code></pre>
 <p><strong>Output</strong></p>
-<p><img src='/tmp/kmulholland/cache/ct2/bfaae0b47182da4c5db23aeeaf6b6f9e.png' height='50' width='95' /></p>
+<p><img src='/tmp/kevin/cache/ct2/bfaae0b47182da4c5db23aeeaf6b6f9e.png' height='50' width='95' /></p>
 <h3 id="iata2of5"><a name='12.5_iata2of5'>12.5 IATA2of5</a></h3>
 <p><strong>Example</strong></p>
 <pre><code>~~~~{.barcode type=&#39;IATA2of5&#39;}
 12345678
 ~~~~</code></pre>
 <p><strong>Output</strong></p>
-<p><img src='/tmp/kmulholland/cache/ct2/b4c349edced8f61bc28705a1b82081cf.png' height='50' width='121' /></p>
+<p><img src='/tmp/kevin/cache/ct2/b4c349edced8f61bc28705a1b82081cf.png' height='50' width='121' /></p>
 <h3 id="industrial2of5"><a name='12.6_industrial2of5'>12.6 Industrial2of5</a></h3>
 <p><strong>Example</strong></p>
 <pre><code>~~~~{.barcode type=&#39;Industrial2of5&#39;}
 12345678
 ~~~~</code></pre>
 <p><strong>Output</strong></p>
-<p><img src='/tmp/kmulholland/cache/ct2/477d9962aab1e41cd81388a1b53aa4ce.png' height='50' width='131' /></p>
+<p><img src='/tmp/kevin/cache/ct2/477d9962aab1e41cd81388a1b53aa4ce.png' height='50' width='131' /></p>
 <h3 id="itf"><a name='12.7_itf'>12.7 ITF</a></h3>
 <p><strong>Example</strong></p>
 <pre><code>~~~~{.barcode type=&#39;ITF&#39;}
 12345678
 ~~~~</code></pre>
 <p><strong>Output</strong></p>
-<p><img src='/tmp/kmulholland/cache/ct2/f5b80a3d645e49a0e04361a84f309d7a.png' height='50' width='81' /></p>
+<p><img src='/tmp/kevin/cache/ct2/f5b80a3d645e49a0e04361a84f309d7a.png' height='50' width='81' /></p>
 <h3 id="matrix2of5"><a name='12.8_matrix2of5'>12.8 Matrix2of5</a></h3>
 <p><strong>Example</strong></p>
 <pre><code>~~~~{.barcode type=&#39;Matrix2of5&#39;}
 12345678
 ~~~~</code></pre>
 <p><strong>Output</strong></p>
-<p><img src='/tmp/kmulholland/cache/ct2/f7be15398790609e8c8f8b58b45f0a46.png' height='50' width='95' /></p>
+<p><img src='/tmp/kevin/cache/ct2/f7be15398790609e8c8f8b58b45f0a46.png' height='50' width='95' /></p>
 <h3 id="nw7"><a name='12.9_nw7'>12.9 NW7</a></h3>
 <p><strong>Example</strong></p>
 <pre><code>~~~~{.barcode type=&#39;NW7&#39;}
 12345678
 ~~~~</code></pre>
 <p><strong>Output</strong></p>
-<p><img src='/tmp/kmulholland/cache/ct2/ed9acf0286931ddd8fe783f5b170902a.png' height='50' width='96' /></p>
+<p><img src='/tmp/kevin/cache/ct2/ed9acf0286931ddd8fe783f5b170902a.png' height='50' width='96' /></p>
 <h3 id="qr-code"><a name='12.10_qr_code'>12.10 QR code</a></h3>
 <p>As qrcodes are now quite so prevalent, they have their own code-block type.</p>
 <p>We can do qr codes, just put in anything you like, this is a URL for bbc news</p>
@@ -693,14 +635,14 @@ To change pixel size
 smaller text..
 ~~~~</code></pre>
 <p><strong>Output</strong></p>
-<p><img src='/tmp/kmulholland/cache/ct2/48521737e058cdceb967824b8191d7bf.png' height='66' width='66' /></p>
+<p><img src='/tmp/kevin/cache/ct2/48521737e058cdceb967824b8191d7bf.png' height='66' width='66' /></p>
 <p>To change the size of the barcode</p>
-<p><img src='/tmp/kmulholland/cache/ct2/cbe37a7a8e523a70d94c177d093ac447.png' height='80' width='80' /></p>
+<p><img src='/tmp/kevin/cache/ct2/cbe37a7a8e523a70d94c177d093ac447.png' height='80' width='80' /></p>
 <p>To use version 1</p>
 <p>Version 1 only allows 15 characters</p>
-<p><img src='/tmp/kmulholland/cache/ct2/506a46d9e4aa4fe5a177bf267a667290.png' height='60' width='60' /></p>
+<p><img src='/tmp/kevin/cache/ct2/506a46d9e4aa4fe5a177bf267a667290.png' height='60' width='60' /></p>
 <p>To change pixel size</p>
-<p><img src='/tmp/kmulholland/cache/ct2/ad6751a601e410d24d4154552d9dba0e.png' height='165' width='165' /></p>
+<p><img src='/tmp/kevin/cache/ct2/ad6751a601e410d24d4154552d9dba0e.png' height='165' width='165' /></p>
 <h2 id="yaml-convert-to-json"><a name='13_yaml_convert_to_json'>13 YAML convert to JSON</a></h2>
 <p>Software engineers often use <a href="https://en.wikipedia.org/wiki/Json">JSON</a> to transfer data between systems, this often is not nice to create for documentation. <a href="https://en.wikipedia.org/wiki/Yaml">YAML</a> which is a superset of <a href="https://en.wikipedia.org/wiki/Json">JSON</a> is much cleaner so we have a</p>
 <p><strong>Example</strong></p>
@@ -717,32 +659,32 @@ list:
 
 ~~~~</code></pre>
 <p><strong>Output</strong></p>
-<pre class="sourceCode json"><code class="sourceCode json"><span class="fu">{</span>
-   <span class="dt">&quot;list&quot;</span> <span class="fu">:</span> <span class="ot">[</span>
-      <span class="fu">{</span>
-         <span class="dt">&quot;time&quot;</span> <span class="fu">:</span> <span class="st">&quot;20:30&quot;</span><span class="fu">,</span>
-         <span class="dt">&quot;channel&quot;</span> <span class="fu">:</span> <span class="st">&quot;BBC3&quot;</span><span class="fu">,</span>
-         <span class="dt">&quot;date&quot;</span> <span class="fu">:</span> <span class="st">&quot;2013-10-20&quot;</span><span class="fu">,</span>
-         <span class="dt">&quot;array&quot;</span> <span class="fu">:</span> <span class="ot">[</span>
-            <span class="st">&quot;1&quot;</span><span class="ot">,</span>
-            <span class="st">&quot;2&quot;</span><span class="ot">,</span>
-            <span class="st">&quot;3&quot;</span><span class="ot">,</span>
+<pre class="sourceCode json"><code class="sourceCode json">{
+   <span class="dt">&quot;list&quot;</span> : [
+      {
+         <span class="dt">&quot;array&quot;</span> : [
+            <span class="st">&quot;1&quot;</span>,
+            <span class="st">&quot;2&quot;</span>,
+            <span class="st">&quot;3&quot;</span>,
             <span class="st">&quot;7&quot;</span>
-         <span class="ot">]</span>
-      <span class="fu">}</span><span class="ot">,</span>
-      <span class="fu">{</span>
-         <span class="dt">&quot;time&quot;</span> <span class="fu">:</span> <span class="st">&quot;21:00&quot;</span><span class="fu">,</span>
-         <span class="dt">&quot;date&quot;</span> <span class="fu">:</span> <span class="st">&quot;2013-11-20&quot;</span><span class="fu">,</span>
-         <span class="dt">&quot;channel&quot;</span> <span class="fu">:</span> <span class="st">&quot;BBC4&quot;</span><span class="fu">,</span>
-         <span class="dt">&quot;array&quot;</span> <span class="fu">:</span> <span class="ot">[</span>
-            <span class="st">&quot;1&quot;</span><span class="ot">,</span>
-            <span class="st">&quot;2&quot;</span><span class="ot">,</span>
-            <span class="st">&quot;3&quot;</span><span class="ot">,</span>
+         ],
+         <span class="dt">&quot;time&quot;</span> : <span class="st">&quot;20:30&quot;</span>,
+         <span class="dt">&quot;date&quot;</span> : <span class="st">&quot;2013-10-20&quot;</span>,
+         <span class="dt">&quot;channel&quot;</span> : <span class="st">&quot;BBC3&quot;</span>
+      },
+      {
+         <span class="dt">&quot;array&quot;</span> : [
+            <span class="st">&quot;1&quot;</span>,
+            <span class="st">&quot;2&quot;</span>,
+            <span class="st">&quot;3&quot;</span>,
             <span class="st">&quot;9&quot;</span>
-         <span class="ot">]</span>
-      <span class="fu">}</span>
-   <span class="ot">]</span>
-<span class="fu">}</span></code></pre>
+         ],
+         <span class="dt">&quot;time&quot;</span> : <span class="st">&quot;21:00&quot;</span>,
+         <span class="dt">&quot;date&quot;</span> : <span class="st">&quot;2013-11-20&quot;</span>,
+         <span class="dt">&quot;channel&quot;</span> : <span class="st">&quot;BBC4&quot;</span>
+      }
+   ]
+}</code></pre>
 <h2 id="table"><a name='14_table'>14 Table</a></h2>
 <p>Create a simple table using CSV style data</p>
 <ul>
@@ -997,7 +939,7 @@ Changes
 <ul>
 <li>removed ConvertFile.pm</li>
 <li>using Path::Tiny rather than other things</li>
-<li>changed to use pandoc fences ~<sub>~</sub>{.tag} rather than xml format <tag>
+<li>changed to use pandoc fences ~~~~{.tag} rather than xml format <tag>
 </td></tr>
 <tr><td valign='top'>
 0.006
@@ -1022,12 +964,10 @@ Changes
 <li>Variables used within the content area of a code-block will be evaluated before processing that block, if a variable has not yet been defined or saved to a buffer then it will only be evaluated at the end of document processing, so output may not be as expected.</li>
 <li>Variables used in markdown tables may not do what you expect if the variable is multi-line.</li>
 </ul>
-<h2 id="html-templates"><a name='19_html_templates'>19 HTML templates</a></h2>
-<p>Within the samples directory of the release, there are some sample templates.</p>
 
 
         <table class='footer' width='100%'>
-            <tr><td>(c) Property of kmulholland 2013</td><td align='right'>2014-05-12</td>
+            <tr><td>(c) Property of kevin 2014</td><td align='right'>2014-05-12</td>
         </table>
     </body>
 </html>

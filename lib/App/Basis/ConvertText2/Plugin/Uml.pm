@@ -21,7 +21,8 @@ App::Basis::ConvertText2::Plugin::Uml
 
 =head1 DESCRIPTION
 
-convert a uml text string into a PNG, requires uml program
+convert a uml text string into a PNG, requires uml program and plantuml
+from https://github.com/27escape/bin/blob/master/uml and http://plantuml.sourceforge.net
 
 =cut
 
@@ -90,7 +91,9 @@ sub process {
 
         my $cmd = UML . " $umlfile $filename";
         my ( $exit, $stdout, $stderr ) = run_cmd($cmd);
-        warn "Could not run script " . UML if( $exit) ;
+        if( $exit) {
+            warn "Could not run script " . UML . " get it from https://github.com/27escape/bin/blob/master/uml" ;
+        }
     }
     my $out;
     if ( -f $filename ) {

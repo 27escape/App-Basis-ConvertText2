@@ -1,3 +1,4 @@
+
 =head1 NAME
 
 App::Basis::ConvertText2::Plugin::Mscgen
@@ -29,7 +30,7 @@ App::Basis::ConvertText2::Plugin::Mscgen
 
 =head1 DESCRIPTION
 
-convert a mscgen text string into a PNG, requires mscgen program
+convert a mscgen text string into a PNG, requires mscgen program from http://www.mcternan.me.uk/mscgen/
 
 =cut
 
@@ -50,7 +51,7 @@ use namespace::autoclean;
 has handles => (
     is       => 'ro',
     init_arg => undef,
-    default  => sub { [qw{mscgen}]}
+    default  => sub { [qw{mscgen}] }
 );
 
 use constant MSCGEN => 'mscgen';
@@ -69,6 +70,7 @@ create a simple msc image
         size    - size of image, widthxheight - optional
 
 =cut
+
 sub process {
     my $self = shift;
     my ( $tag, $content, $params, $cachedir ) = @_;
@@ -77,18 +79,21 @@ sub process {
     $params->{title} ||= "";
 
     # strip any ending linefeed
-    chomp $content ;
-    return "" if( !$content) ;
+    chomp $content;
+    return "" if ( !$content );
 
     # we can use the cache or process everything ourselves
     my $sig = create_sig( $content, $params );
     my $filename = cachefile( $cachedir, "$sig.png" );
     if ( !-f $filename ) {
         my $mscfile = Path::Tiny->tempfile("mscgen.XXXX");
-        path( $mscfile)->spew_utf8( $content );
+        path($mscfile)->spew_utf8($content);
         my $cmd = MSCGEN . " -Tpng -o$filename $mscfile";
         my ( $exit, $stdout, $stderr ) = run_cmd($cmd);
-        warn "Could not run script " . MSCGEN if( $exit) ;
+        if ($exit) {
+            warn "Could not run script " . MSCGEN . " get it from http://www.mcternan.me.uk/mscgen/";
+        }
+
         # if we want to force the size of the graph
         if ( -f $filename && $x && $y ) {
             my $image = Image::Resize->new($filename);
@@ -102,7 +107,7 @@ sub process {
     }
 
     my $out;
-    if ( -f $filename) {
+    if ( -f $filename ) {
 
         # create something suitable for the HTML
         $out = create_img_src( $filename, $params->{title} );

@@ -1,3 +1,4 @@
+
 =head1 NAME
 
 App::Basis::ConvertText2::Plugin::Graphviz
@@ -38,7 +39,7 @@ App::Basis::ConvertText2::Plugin::Graphviz
 
 =head1 DESCRIPTION
 
-convert a graphviz text string into a PNG, requires dot program
+convert a graphviz text string into a PNG, requires dot program from http://graphviz.org
 
 =cut
 
@@ -58,7 +59,7 @@ use namespace::autoclean;
 has handles => (
     is       => 'ro',
     init_arg => undef,
-    default  => sub { [qw{graphviz dot}]}
+    default  => sub { [qw{graphviz dot}] }
 );
 
 # ----------------------------------------------------------------------------
@@ -108,7 +109,9 @@ sub process {
         path($dotfile)->spew_utf8($content);
         my $cmd = GRAPHVIZ . " -Tpng -o$filename $dotfile";
         my ( $exit, $stdout, $stderr ) = run_cmd($cmd);
-        warn "Could not run script " . GRAPHVIZ if( $exit) ;
+        if ($exit) {
+            warn "Could not run script " . GRAPHVIZ . " get it from http://graphviz.org";
+        }
 
         # if we want to force the size of the graph
         if ( -f $filename && $x && $y ) {

@@ -20,14 +20,13 @@ use warnings;
 use Path::Tiny;
 use Data::Printer;
 
-use Test::More tests => 23;
+use Test::More tests => 22;
 
 BEGIN {
     # the first set of tests either use other perl modules
     # of have everything they need
     use_ok('App::Basis::ConvertText2::Plugin::Barcode');
     use_ok('App::Basis::ConvertText2::Plugin::Chart');
-    use_ok('App::Basis::ConvertText2::Plugin::Links');
     use_ok('App::Basis::ConvertText2::Plugin::Sparkline');
     use_ok('App::Basis::ConvertText2::Plugin::Venn');
     use_ok('App::Basis::ConvertText2::Plugin::Text');
@@ -127,23 +126,6 @@ $params = extract_args('title="chart1" size="400x400" xaxis="things xways" yaxis
 $out = $obj->process( 'chart', $content, $params, $TEST_DIR );
 ok( has_file($out), 'chart created a file' );
 
-# links
-$obj     = App::Basis::ConvertText2::Plugin::Links->new();
-$content = "pandoc    | http://johnmacfarlane.net/pandoc
-    PrinceXML | http://www.princexml.com
-    markdown  | http://daringfireball.net/projects/markdown
-    msc       | http://www.mcternan.me.uk/mscgen/
-    ditaa     | http://ditaa.sourceforge.net
-    PlantUML  | http://plantuml.sourceforge.net
-    See Salt  | http://plantuml.sourceforge.net/salt.html
-    graphviz  | http://graphviz.org
-    JSON      | https://en.wikipedia.org/wiki/Json
-    YAML      | https://en.wikipedia.org/wiki/Yaml
-";
-$params = undef;
-$out = $obj->process( 'links', $content, $params, $TEST_DIR );
-ok( $out && $out =~ /<ul/, 'links created some content' );
-
 # sparkline
 $content = '1,4,5,20,4,5,3,1';
 $obj     = App::Basis::ConvertText2::Plugin::Sparkline->new();
@@ -160,8 +142,22 @@ $params = extract_args("title='sample venn diagram' legends='team1 team2 team3' 
 $out    = $obj->process( 'sparkline', $content, $params, $TEST_DIR );
 ok( has_file($out), 'venn created a file' );
 
-# version
-# $obj = App::Basis::ConvertText2::Plugin::Barcode->Version();
+# links
+$obj     = App::Basis::ConvertText2::Plugin::Text->new();
+$content = "pandoc    | http://johnmacfarlane.net/pandoc
+    PrinceXML | http://www.princexml.com
+    markdown  | http://daringfireball.net/projects/markdown
+    msc       | http://www.mcternan.me.uk/mscgen/
+    ditaa     | http://ditaa.sourceforge.net
+    PlantUML  | http://plantuml.sourceforge.net
+    See Salt  | http://plantuml.sourceforge.net/salt.html
+    graphviz  | http://graphviz.org
+    JSON      | https://en.wikipedia.org/wiki/Json
+    YAML      | https://en.wikipedia.org/wiki/Yaml
+";
+$params = undef;
+$out = $obj->process( 'links', $content, $params, $TEST_DIR );
+ok( $out && $out =~ /<ul/, 'links created some content' );
 
 # yamlasjson
 $content = 'epg:
