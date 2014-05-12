@@ -24,6 +24,10 @@ for more information.
 Consider adding plugins for http://blockdiag.com/en/index.html, gnuplot and gle 
 http://glx.sourceforge.net/
 
+https://metacpan.org/pod/Chart::Strip
+
+https://metacpan.org/pod/Chart::Clicker
+
 =head1 Public methods
 
 =over 4
@@ -72,7 +76,8 @@ my $TITLE = "%TITLE%";
 
 # ----------------------------------------------------------------------------
 
-has 'name' => ( is => 'ro', );
+has 'name'     => ( is => 'ro', );
+has 'basedir' => ( is => 'ro', );
 
 has 'use_cache' => ( is => 'rw', default => sub { 0; } );
 
@@ -148,6 +153,7 @@ Create a new instance of a of a data formating object
 
 B<Parameters>  passed in a HASH
     name        - name of this formatting action - required
+    basedir     - root directory of document being processed
     cache_dir   - place to store cache files - optional
     use_cache   - decide if you want to use a cache or not
     template    - HTML template to use, must contain %_CONTENTS_%
@@ -421,13 +427,25 @@ sub _parse_lines {
     return if ( !$lines );
 
     my ( $class, $block, $content, $attributes );
-    my $buildline;
+    my ( $buildline, $simple );
     try {
         foreach my $line ( @{$lines} ) {
             $count++;
 
             # header lines may have been removed
             next if ( !defined $line );
+
+            if ( defined $simple ) {
+                if ( $line =~ /^~{4,}\s?$/ ) {
+                    $self->_append_output("~~~~\n$simple\n~~~~\n");
+                    $simple = undef;
+                }
+                else {
+                    $simple .= "$line\n";
+                }
+
+                next;
+            }
 
             # we may need to add successive lines together to get a completed fenced code block
             if ( !$block && $buildline ) {
@@ -444,17 +462,23 @@ sub _parse_lines {
                 }
             }
 
+            # a simple block does not have an identifying {.tag}
+            if ( $line =~ /^~{4,}\s?$/ && !$block ) {
+                $simple = "";
+                next;
+            }
+
             if ( $line =~ /^~{4,}/ ) {
 
                 # does the fenced line wrap before its ended
                 if ( !$block && $line !~ /\}\s*$/ ) {
 
                     # we need to start adding lines till its completed
-                    $buildline = $line;
+                    $buildline = "$line\n";
                     next;
                 }
 
-                if ( $line =~ /\{(.*?)\.(\w+)\s?(.*?)\}\s?$/ ) {
+                if ( $line =~ /\{(.*?)\.(\w+)\s*(.*?)\}\s*$/ ) {
                     $class      = $1;
                     $block      = lc($2);
                     $attributes = $3;
@@ -467,13 +491,27 @@ sub _parse_lines {
                     my $params = _extract_args($attributes);
 
                     # must have reached the end of a block
-                    if ( $valid_tags{$block} ) {
+                    if ( $block && $valid_tags{$block} ) {
                         chomp $content;
                         $self->_call_function( $block, $params, $content, $count );
                     }
                     else {
-                        # put it back
-                        $self->_append_output("~~~~{ $class .$block $attributes}\n$content\n~~~~\n");
+                        if ( !$block ) {
+
+                            # put it back
+                            $content ||= "";
+                            $self->_append_output("~~~~\n$content\n~~~~\n");
+
+                        }
+                        else {
+                            $content    ||= "";
+                            $attributes ||= "";
+                            $block      ||= "";
+
+                            # put it back
+                            $self->_append_output("~~~~{ $class .$block $attributes}\n$content\n~~~~\n");
+
+                        }
                     }
                     $content    = "";
                     $attributes = "";
@@ -514,18 +552,23 @@ sub _rewrite_imgsrc {
         $id .= ".$ext";
 
         # this is what it will be named in the cache
-        $cachefile = cachefile( $self->cache_dir,$id);
+        $cachefile = cachefile( $self->cache_dir, $id );
 
         # not in the cache so we must fetch it and store it local to the cache
         # if we are a local file
         if ( $img !~ m|^\w+://| || $img =~ m|^file://| ) {
             $img =~ s|^file://||;
             $img = fix_filename($img);
-            my $status;
+
+            if ( $img !~ m|/| ) {
+
+                # if file is relative, then we need to add the basedir
+                $img = $self->basedir . "/$img";
+            }
 
             # copy it to the cache location
             try {
-                $status = path($img)->copy($cachefile);
+                path($img)->copy($cachefile);
             }
             catch {
                 debug( "ERROR", "failed to copy $img to $cachefile" );
