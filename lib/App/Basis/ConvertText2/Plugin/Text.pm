@@ -86,6 +86,10 @@ sub yamlasjson {
     my $self = shift;
     my ( $tag, $content, $params, $cachedir ) = @_;
 
+    # make sure we have an extra linefeed at the end to make sure
+    # YAML is correct
+    $content .= "\n\n" ;
+
     $content =~ s/~~~~{\.yaml}//gsm;
     $content =~ s/~~~~//gsm;
 
