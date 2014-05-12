@@ -54,7 +54,7 @@ use Module::Pluggable
     on_require_error => sub {
     my ( $plugin, $err ) = @_;
     warn "$plugin, $err";
-    } ;
+    };
 use App::Basis;
 use App::Basis::ConvertText2::Support;
 
@@ -263,7 +263,6 @@ sub _get_cache {
 
 # ----------------------------------------------------------------------------
 
-
 =item clean_cache
 
 Remove all files from the cache
@@ -426,9 +425,10 @@ sub _parse_lines {
     try {
         foreach my $line ( @{$lines} ) {
             $count++;
+
             # header lines may have been removed
-            next if( !defined $line) ;
-            
+            next if ( !defined $line );
+
             # we may need to add successive lines together to get a completed fenced code block
             if ( !$block && $buildline ) {
                 $buildline .= " $line";
@@ -506,62 +506,57 @@ sub _rewrite_imgsrc {
         $ext = $1;
     }
 
-    $img = fix_filename($img);
-
     # if its an image we have generated then it may already be here
-    if ( !cachefile( $self->cache_dir, $img ) ) {
+    # check to see if we have this in the cache
+    my $cachefile = cachefile( $self->cache_dir, $img );
+    if ( !-f $cachefile ) {
         my $id = md5_hex($img);
         $id .= ".$ext";
 
-        # check to see if we have this in the cache
-        my $cachefile = cachefile( $self->cache_dir, $img );
+        # this is what it will be named in the cache
+        $cachefile = cachefile( $self->cache_dir,$id);
 
-        if ( -f $cachefile ) {
-            $img = $cachefile;
+        # not in the cache so we must fetch it and store it local to the cache
+        # if we are a local file
+        if ( $img !~ m|^\w+://| || $img =~ m|^file://| ) {
+            $img =~ s|^file://||;
+            $img = fix_filename($img);
+            my $status;
+
+            # copy it to the cache location
+            try {
+                $status = path($img)->copy($cachefile);
+            }
+            catch {
+                debug( "ERROR", "failed to copy $img to $cachefile" );
+            };
+
+            $img = $cachefile if ( -f $cachefile );
         }
         else {
-            # this is what it will be named in the cache
-            $cachefile .= "/$id";
+            if ( $img =~ m|^(\w+)://(.*)| ) {
 
-            # not in the cache so we must fetch it and store it local to the cache
-            # if we are a local file
-            if ( $img !~ m|^\w+://| || $img =~ m|^file://| ) {
-                $img =~ s/^file:\/\///;
-                $img =~ s/^~/$ENV{HOME}/;
-                my $status;
+                my $furl = Furl->new(
+                    agent   => get_program(),
+                    timeout => 0.2,
+                );
 
-                # copy it to the cache location
-                try {
-                    $status = path($img)->copy($cachefile);
-                }
-                catch {
-                    debug( "ERROR", "failed to copy $img to $cachefile" );
-                };
-
-                $img = $cachefile if ( -f $cachefile );
-            }
-            else {
-                if ( $img =~ m|^(\w+)://(.*)| ) {
-
-                    my $furl = Furl->new(
-                        agent   => get_program(),
-                        timeout => 0.2,
-                    );
-
-                    my $res = $furl->get($img);
-                    if ( $res->is_success ) {
-                        path($cachefile)->spew_raw( $res->content );
-                        $img = $cachefile;
-                    }
-                    else {
-                        debug( "ERROR", "unknown could not fetch $img" );
-                    }
+                my $res = $furl->get($img);
+                if ( $res->is_success ) {
+                    path($cachefile)->spew_raw( $res->content );
+                    $img = $cachefile;
                 }
                 else {
-                    debug( "ERROR", "unknown protocol for $img" );
+                    debug( "ERROR", "unknown could not fetch $img" );
                 }
             }
+            else {
+                debug( "ERROR", "unknown protocol for $img" );
+            }
         }
+    }
+    else {
+        $img = $cachefile;
     }
 
     # make sure we add the image size if its not already there
@@ -854,7 +849,7 @@ sub parse {
         $html = $self->_do_replacements($html);
 
         # and remove any uppercased %word% things that are not processed
-        $html =~ s/(?<!_)%[AZ-_]+\%//gsm;
+        $html =~ s/(?<!_)%[A-Z-_]+\%//gsm;
         $html =~ s/_(%.*?%)/$1/gsm;
 
         # fetch any images and store to the cache, make sure they have sizes too
