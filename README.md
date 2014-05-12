@@ -4,7 +4,7 @@ date: 2014-05-12
 author: Kevin Mulholland
 keywords: perl, readme
 template: coverpage
-version: 2
+version: 5
 
 This document may not be easily readable in this form, try [pdf](docs/README.pdf) or
 [HTML](docs/README.html) as alternatives. These have been generated from this file and the software provided by this distribution.
@@ -19,6 +19,13 @@ As I do not know Haskell which [pandoc] is written in and the way to add filters
 
 This also allows you to make use of templates.
 
+As a perl module you can obtain it from https://metacpan.org/pod/App::Basis::ConvertText2
+or install
+
+    cpanm App::Basis::ConvertText2
+
+You will then be able to use the ct2 script to process files
+
 ## Document header and variables
 
 If you are just creating simple things, then you do not need a document header, but to make full use of the templating system, having header information is vital.
@@ -31,7 +38,7 @@ If you are just creating simple things, then you do not need a document header, 
     author: Kevin Mulholland
     keywords: perl, readme
     template: coverpage
-    version: 2
+    version: 5
 
 As you can see, we use a series of key value pairs separated with a colon. The keys may be anything you like, except for the following which have special significance.
 
@@ -997,4 +1004,38 @@ Nice and simple, starts a new page
 
 * Variables used within the content area of a code-block will be evaluated before processing that block, if a variable has not yet been defined or saved to a buffer then it will only be evaluated at the end of document processing, so output may not be as expected.
 * Variables used in markdown tables may not do what you expect if the variable is multi-line.
+
+## Using ct2 script to process files
+
+Included in the distribution is a script to make use of all of the above code-blocks to alter [markdown] into nicely formatted documents.
+
+Here is the help
+
+
+    $ ct2 --help
+
+    Syntax: ct2 [options] filename
+
+    About:  Convert my modified markdown text files into other formats, by
+      default will create HTML in same directory as the input file, will only
+      process .md files.
+    If there is no output option used the output will be to file of same name
+    as input filename but with an extension (if provided) from the document, use
+    format: keyword (pdf html doc).
+
+    [options]
+        -h, -?, --help     Show help
+        -c, --clean        Clean up the cache before use
+        -e, --embed        Embed images into HTML, do not use this if converting
+            to doc/odt or pdf via libreoffice
+        -o, --output       Filename to store the output as, extension will
+            control conversion
+        -p, --prince       Convert to PDF using prince rather than libreoffice,
+            can handle embedded images
+        -s, --template     name of template to use
+        -v, --verbose      verbose mode
+
+If you are creating HTML documents to send out in emails or share in other ways, and use locally referenced images, then it is best to make use of the **--embed** option to pack these images into the HTML file.
+
+If you are using [PrinceXML] remember that it is only free for non-commercial use, it also adds a purple **P** to the top right of the first page of your document.
 
