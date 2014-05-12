@@ -237,12 +237,14 @@ if ( $opt{filename} ne '-' && !( -f $opt{filename} && $opt{filename} =~ /\.md$/i
     show_usage("filename must exist and be .md");
 }
 
-my $story;
+my ( $story, $basedir );
 if ( $opt{filename} eq '-' ) {
     $story = do { local $/; <STDIN> };
+    $basedir = Path::Tiny->cwd;
 }
 else {
-    $story = path( $opt{filename} )->slurp_utf8;
+    $story   = path( $opt{filename} )->slurp_utf8;
+    $basedir = path( $opt{filename} )->dirname;
 }
 
 show_usage("Bad markup file $opt{filename}") if ( !$story );
@@ -267,7 +269,6 @@ my ($template) = ( $story =~ /^template:\s?(.*?)$/sm );
 
 # document template overwritten by the command line option
 $template = $opt{template} if ( $opt{template} );
-
 $settings = read_settings( $template, $opt{config_dir} );
 
 # add in template defaults if needed
@@ -279,6 +280,7 @@ $replace->{ORIENTATION} ||= $settings->{config}->get("page/orientation");
 
 my $format = App::Basis::ConvertText2->new(
     name      => get_program(),
+    basedir   => $basedir,
     use_cache => 1,
     cache_dir => $CACHE_DIR,
     template  => $settings->{template},
@@ -288,7 +290,13 @@ my $format = App::Basis::ConvertText2->new(
 );
 $format->clean_cache() if ( $opt{clean} );
 
+# be in the same dir as the input file in case there are an files in plugins
+# that act on relative paths
+my $current = Path::Tiny->cwd ;
+chdir( $basedir) ;
+
 my $data = $format->parse($story);
+
 
 # decide on output filename from any format keyword
 # all the keywords are in UPPER-CASE
@@ -315,3 +323,6 @@ if ( $opt{output} ) {
 else {
     say STDERR "Ignoring $opt{filename}, could not determine a filename to output to, no :format option in file?" if ( $opt{verbose} );
 }
+
+# return to where we came from
+chdir( $current) ;
