@@ -5,15 +5,34 @@ App::Basis::ConvertText2
 
 =head1 SYNOPSIS
 
-TO be used in conjuction with the ct2 script that is part of this distribution.
+TO be used in conjuction with the supplied ct2 script, which is part of this distribution.
 Not really to be used on its own.
 
 =head1 DESCRIPTION
 
-Convert markdown text into other formats. Uses many different plugins together
-perform actions like pandoc code-blocks do.
+This is a perl module and a script that makes use of %TITLE%
 
-Requires a number of extra programs to work,
+This is a wrapper for [pandoc] implementing extra fenced code-blocks to allow the
+creation of charts and graphs etc.
+Documents may be created a variety of formats. If you want to create nice PDFs
+then it can use [PrinceXML] to generate great looking PDFs or you can use [wkhtmltopdf] to create PDFs that are almost as good, the default is to use pandoc which, for me, does not work as well.
+
+HTML templates can also be used to control the layout of your documents.
+
+The fenced code block handlers are implemented as plugins and it is a simple process to add new ones.
+
+There are plugins to handle
+
+    * ditaa
+    * mscgen
+    * graphviz
+    * uml
+    * gnuplot
+    * gle
+    * sparklines
+    * charts
+    * barcodes and qrcodes
+    * and many others
 
 See 
 https://github.com/27escape/App-Basis-ConvertText2/blob/master/README.md
@@ -49,7 +68,6 @@ use Path::Tiny;
 use Digest::MD5 qw(md5_hex);
 use Encode qw(encode_utf8);
 use Text::Markdown qw(markdown);
-
 use GD;
 use MIME::Base64;
 use Furl;
@@ -68,6 +86,7 @@ use App::Basis::ConvertText2::Support;
 use constant CONTENTS => '_CONTENTS_';
 use constant PANDOC   => 'pandoc';
 use constant PRINCE   => 'prince';
+use constant WKHTML   => 'wkhtmltopdf';
 
 my %valid_tags;
 
@@ -76,7 +95,7 @@ my $TITLE = "%TITLE%";
 
 # ----------------------------------------------------------------------------
 
-has 'name'     => ( is => 'ro', );
+has 'name'    => ( is => 'ro', );
 has 'basedir' => ( is => 'ro', );
 
 has 'use_cache' => ( is => 'rw', default => sub { 0; } );
@@ -474,7 +493,7 @@ sub _parse_lines {
                 if ( !$block && $line !~ /\}\s*$/ ) {
 
                     # we need to start adding lines till its completed
-                    $buildline = "$line\n";
+                    $buildline = $line;
                     next;
                 }
 
@@ -756,10 +775,11 @@ sub _pandoc_format {
 #  parameters
 #     file    - file to re-convert
 #     format  - format to convert to
-#     prince  - use prince rather than pandoc to convert to PDF
+#     pdfconvertor  - use prince/wkhtmltopdf rather than pandoc to convert to PDF
 
 sub _convert_file {
-    my ( $file, $format, $prince ) = @_;
+    my $self = shift ;
+    my ( $file, $format, $pdfconvertor ) = @_;
 
     # we work on the is that pandoc should be in your PATH
     my $fmt_str = $format;
@@ -770,18 +790,43 @@ sub _convert_file {
 
     # we can use prince to do PDF conversion, its faster and better, but not free for commercial use
     # you would have to ignore the P symbol on the resultant document
-    if ( $format =~ /pdf/i && $prince ) {
-        my $cmd = PRINCE . " $file -o $outfile";
-        my ( $out, $err );
-        try {
-            # say "$cmd" ;
-            ( $exit, $out, $err ) = run_cmd($cmd);
+    if ( $format =~ /pdf/i && $pdfconvertor ) {
+        my $cmd;
+
+        if ( $pdfconvertor =~ /^prince/i ) {
+            $cmd = PRINCE . " " ;
+            $cmd.= "--pdf-title='$self->{replace}->{TITLE}' " if ($self->{replace}->{TITLE}) ;
+            $cmd.= "--pdf-subject='$self->{replace}->{SUBJECT}' " if ($self->{replace}->{SUBJECT}) ;
+            $cmd.= "--pdf-creator='$self->{replace}->{AUTHOR}' " if ($self->{replace}->{AUTHOR}) ;
+            $cmd.= "--pdf-keywords='$self->{replace}->{KEYWORDS}' " if ($self->{replace}->{KEYWORDS}) ;
+            $cmd .= " --media=print $file -o $outfile";
         }
-        catch {
-            $err  = "run_cmd($cmd) died - $_";
-            $exit = 1;
-        };
-        debug( "ERROR", $err ) if ($err);    # only debug if return code is not 0
+        elsif ( $pdfconvertor =~ /^wkhtmltopdf/i ) {
+            $cmd = WKHTML . " -q --print-media-type " ;
+            $cmd.= "--title '$self->{replace}->{TITLE}' " if ($self->{replace}->{TITLE}) ;
+            # do we want to specify the size
+            $cmd .= "--page-size $self->{replace}->{PAGE_SIZE} " if( $self->{replace}->{PAGE_SIZE}) ;
+            $cmd .= "$file $outfile";
+        }
+        else {
+            warn "Unknown PDF converter ($pdfconvertor), using pandoc";
+
+            # otherwise lets use pandoc to create the file in the other formats
+            $exit = _pandoc_format( $file, $outfile );
+        }
+        if ($cmd) {
+            my ( $out, $err );
+            try {
+                # say "$cmd" ;
+                ( $exit, $out, $err ) = run_cmd($cmd);
+            }
+            catch {
+                $err  = "run_cmd($cmd) died - $_";
+                $exit = 1;
+            };
+
+            debug( "ERROR", $err ) if ($err);    # only debug if return code is not 0
+        }
     }
     else {
         # otherwise lets use pandoc to create the file in the other formats
@@ -918,14 +963,14 @@ save the created html to a named file
 
 B<Parameters>  
     filename    filename to store/convert stored HTML into
-    prince      flag to indicate that we should use prince to create PDF
+    pdfconvertor   indicate that we should use prince or wkhtmltopdf to create PDF
 
 =cut
 
 sub save_to_file {
     state $counter = 0;
     my $self = shift;
-    my ( $filename, $prince ) = @_;
+    my ( $filename, $pdfconvertor ) = @_;
     my ($format) = ( $filename =~ /\.(\w+)$/ );    # get last thing after a '.'
     if ( !$format ) {
         warn "Could not determine outpout file format, using PDF";
@@ -957,8 +1002,11 @@ sub save_to_file {
     # if the marked-up file is more recent than the converted one
     # then we need to convert it again
     if ( $format !~ /html/i ) {
-        if ( !-f $outfile || ( ( stat($cf) )[9] > ( stat($outfile) )[9] ) ) {
-            $outfile = _convert_file( $cf, $format, $prince );
+
+        # as we can generate PDF using a number of convertors we should
+        # always regenerate PDF output incase the convertor used is different
+        if ( !-f $outfile || $format =~ /pdf/i || ( ( stat($cf) )[9] > ( stat($outfile) )[9] ) ) {
+            $outfile = $self->_convert_file( $cf, $format, $pdfconvertor );
 
             # if we failed to convert, then clear the filename
             if ( !$outfile || !-f $outfile ) {
