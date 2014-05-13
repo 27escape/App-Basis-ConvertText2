@@ -20,7 +20,7 @@ use warnings;
 use Path::Tiny;
 use Data::Printer;
 
-use Test::More tests => 22;
+use Test::More tests => 26;
 
 BEGIN {
     # the first set of tests either use other perl modules
@@ -37,11 +37,13 @@ SKIP: {
         if ( $ENV{AUTHOR_TESTING} ) {
             use_ok('App::Basis::ConvertText2::Plugin::Ditaa');
             use_ok('App::Basis::ConvertText2::Plugin::Graphviz');
-            use_ok('App::Basis::ConvertText2::Plugin::Uml');
             use_ok('App::Basis::ConvertText2::Plugin::Mscgen');
+            use_ok('App::Basis::ConvertText2::Plugin::Uml');
+            use_ok('App::Basis::ConvertText2::Plugin::Gle');
+            use_ok('App::Basis::ConvertText2::Plugin::Gnuplot');
         }
         else {
-            skip "Author external programs", 4;
+            skip "Author external programs", 6;
         }
     }
 }
@@ -172,6 +174,7 @@ $content = 'epg:
     time: 21:00
     crid: dvb://112.4a2.5ec;2d22~20131120T2100000Z—PT01H30M
 ';
+
 # page
 $params = undef;
 $obj    = App::Basis::ConvertText2::Plugin::Text->new();
@@ -200,11 +203,7 @@ $content = '0.1 2014-04-12
 $params = undef;
 $obj    = App::Basis::ConvertText2::Plugin::Text->new();
 $out    = $obj->process( 'version', $content, $params, $TEST_DIR );
-ok( $out && 
-    $out =~ /<table.*?>\s?<tr><th.*?>Version/sm &&
-    $out =~ m|<tr><td.*?>0\.1</td><td.*?>2014?|sm, 'version created a table' );
-
-
+ok( $out && $out =~ /<table.*?>\s?<tr><th.*?>Version/sm && $out =~ m|<tr><td.*?>0\.1</td><td.*?>2014?|sm, 'version created a table' );
 
 SKIP: {
     if ( $ENV{AUTHOR_TESTING} ) {
@@ -289,9 +288,72 @@ rectangle checkout {
         $params = undef;
         $out    = $obj->process( 'uml', $content, $params, $TEST_DIR );
         ok( has_file($out), 'uml created a file' );
+
+        # gle
+        $content = 'size 10 9
+set font texcmr hei 0.5 just tc
+
+begin letz
+   data "saddle.z"
+   z = 3/2*(cos(3/5*(y-1))+5/4)/(1+(((x-4)/3)^2))
+   x from 0 to 20 step 0.5
+   y from 0 to 20 step 0.5
+end letz
+
+amove pagewidth()/2 pageheight()-0.1
+write "Saddle Plot (3D)"
+
+begin object saddle
+   begin surface
+      size 10 9
+      data "saddle.z"
+      xtitle "X-axis" hei 0.35 dist 0.7
+      ytitle "Y-axis" hei 0.35 dist 0.7
+      ztitle "Z-axis" hei 0.35 dist 0.9
+      top color blue
+      zaxis ticklen 0.1 min 0 hei 0.25
+      xaxis hei 0.25 dticks 4 nolast nofirst
+      yaxis hei 0.25 dticks 4
+   end surface
+end object
+
+amove pagewidth()/2 0.2
+draw "saddle.bc"
+';
+        $obj    = App::Basis::ConvertText2::Plugin::Gle->new();
+        $params = undef;
+        $out    = $obj->process( 'gle', $content, $params, $TEST_DIR );
+        ok( has_file($out), 'gle created a file' );
+
+# gle
+        $content = '#
+# $Id: surface1.dem,v 1.11 2004/09/17 05:01:12 sfeam Exp $
+#
+set term png size 600, 400
+set output "/tmp/saddle.png"
+set samples 21
+set isosample 11
+set xlabel "X axis" offset -3,-2
+set ylabel "Y axis" offset 3,-2
+set zlabel "Z axis" offset -5
+set title "3D gnuplot demo"
+set label 1 "This is the surface boundary" at -10,-5,150 center
+set arrow 1 from -10,-5,120 to -10,0,0 nohead
+set arrow 2 from -10,-5,120 to 10,0,0 nohead
+set arrow 3 from -10,-5,120 to 0,10,0 nohead
+set arrow 4 from -10,-5,120 to 0,-10,0 nohead
+set xrange [-10:10]
+set yrange [-10:10]
+splot x*y
+';
+        $obj    = App::Basis::ConvertText2::Plugin::Gnuplot->new();
+        $params = undef;
+        $out    = $obj->process( 'gnuplot', $content, $params, $TEST_DIR );
+        ok( has_file($out), 'gnuplot created a file' );
+
     }
     else {
-        skip "Author testing programs", 4;
+        skip "Author testing programs", 6;
 
     }
 }
