@@ -11,20 +11,36 @@ This document may not be easily readable in this form, try [pdf](docs/README.pdf
 
 This is a perl module and a script that makes use of %TITLE%
 
-Markup is my version of [markdown] with extra fenced code-blocks to allow the
-creation of charts and graphs etc. it uses [pandoc] to generate
-documents in a variety of formats and optionally can use [PrinceXML] to generate great looking PDFs.
+This is a wrapper for [pandoc] implementing extra fenced code-blocks to allow the
+creation of charts and graphs etc.
+Documents may be created a variety of formats. If you want to create nice PDFs
+then it can use [PrinceXML] to generate great looking PDFs or you can use [wkhtmltopdf] to create PDFs that are almost as good, the default is to use pandoc which, for me, does not work as well.
 
-As I do not know Haskell which [pandoc] is written in and the way to add filters looks awkward, I decided to create a pre-processing system that will output markdown and HTML to [pandoc].
+HTML templates can also be used to control the layout of your documents.
 
-This also allows you to make use of templates.
+The fenced code block handlers are implemented as plugins and it is a simple process to add new ones.
+
+There are plugins to handle
+
+* ditaa
+* mscgen
+* graphviz
+* uml
+* gnuplot
+* gle
+* sparklines
+* charts
+* barcodes and qrcodes
+* and many others
 
 As a perl module you can obtain it from https://metacpan.org/pod/App::Basis::ConvertText2
 or install
 
     cpanm App::Basis::ConvertText2
 
-You will then be able to use the ct2 script to process files
+Alternatively it is available from
+
+You will then be able to use the [ct2](#using-ct2-script-to-process-files) script to process files
 
 ## Document header and variables
 
@@ -233,44 +249,48 @@ to each of these legends.
 
 **Example**
 
-    ~~~~{.chart  title="chart1" from_buffer='chart_data' size="400x400"
-        xaxis='things xways' yaxis='Vertical things' format='pie'
+    ~~~~{.chart format='pie' title='chart1' from_buffer='chart_data'
+        size='400x400' xaxis='things xways' yaxis='Vertical things'
         legends='a,b,c,d,e,f,g,h' }
     ~~~~
 
 **Output**
 
-~~~~{.chart  title="chart1" from_buffer='chart_data' size="400x400" xaxis='things xways' yaxis='Vertical things' format='pie' legends='a,b,c,d,e,f,g,h' }
+~~~~{.chart format='pie' title='chart1' from_buffer='chart_data'
+    size='400x400' xaxis='things xways' yaxis='Vertical things'
+    legends='a,b,c,d,e,f,g,h' }
 ~~~~
 
 ### Bar chart
 
 **Example**
 
-    ~~~~{.chart  title="chart1" from_buffer='chart_data' size="600x400"
-        xaxis='things ways' yaxis='Vertical things' format='bars'
+    ~~~~{.chart format='bars' title='chart1' from_buffer='chart_data'
+        size='600x400' xaxis='things ways' yaxis='Vertical things'
         legends='a,b,c,d,e,f,g,h' }
     ~~~~
 
 **Output**
 
-~~~~{.chart  title="chart1" from_buffer='chart_data' size="600x400" xaxis='things xways' yaxis='Vertical things' format='bars' legends='a,b,c,d,e,f,g,h' }
+~~~~{.chart format='bars' title='chart1' from_buffer='chart_data'
+    size='600x400' xaxis='things ways' yaxis='Vertical things'
+    legends='a,b,c,d,e,f,g,h' }
 ~~~~
 
 ### Mixed chart
 
 **Example**
 
-    ~~~~{.chart  title="chart1" from_buffer='chart_data' size="600x400"
-      xaxis='things xways' yaxis='Vertical things' format='mixed'
-      legends='a,b,c,d,e,f,g,h'
-      types='lines linepoints lines bars' }
+    ~~~~{.chart format='mixed' title='chart1' from_buffer='chart_data'
+      size='600x400' xaxis='things xways' axis='Vertical things'
+      legends='a,b,c,d,e,f,g,h' types='lines linepoints lines bars' }
     ~~~~
 
 **Output**
 
-~~~~{.chart  title="chart1" from_buffer='chart_data' size="600x400" xaxis='things xways' yaxis='Vertical things' format='mixed' legends='a,b,c,d,e,f,g,h'
-types='lines linepoints lines bars' }
+~~~~{.chart format='mixed' title='chart1' from_buffer='chart_data'
+  size='600x400' xaxis='things xways' axis='Vertical things'
+  legends='a,b,c,d,e,f,g,h' types='lines linepoints lines bars' }
 ~~~~
 
 ## Message Sequence Charts - mscgen
@@ -918,31 +938,33 @@ There is only one argument
 **Example**
 
     ~~~~{.links class='weblinks' }
-    pandoc    | http://johnmacfarlane.net/pandoc
-    PrinceXML | http://www.princexml.com
-    markdown  | http://daringfireball.net/projects/markdown
-    msc       | http://www.mcternan.me.uk/mscgen/
-    ditaa     | http://ditaa.sourceforge.net
-    PlantUML  | http://plantuml.sourceforge.net
-    See Salt  | http://plantuml.sourceforge.net/salt.html
-    graphviz  | http://graphviz.org
-    JSON      | https://en.wikipedia.org/wiki/Json
-    YAML      | https://en.wikipedia.org/wiki/Yaml
+    pandoc      | http://johnmacfarlane.net/pandoc
+    PrinceXML   | http://www.princexml.com
+    markdown    | http://daringfireball.net/projects/markdown
+    msc         | http://www.mcternan.me.uk/mscgen/
+    ditaa       | http://ditaa.sourceforge.net
+    PlantUML    | http://plantuml.sourceforge.net
+    See Salt    | http://plantuml.sourceforge.net/salt.html
+    graphviz    | http://graphviz.org
+    JSON        | https://en.wikipedia.org/wiki/Json
+    YAML        | https://en.wikipedia.org/wiki/Yaml
+    wkhtmltopdf | http://wkhtmltopdf.org/
     ~~~~
 
 **Output**
 
 ~~~~{.links class='weblinks' }
-pandoc    | http://johnmacfarlane.net/pandoc
-PrinceXML | http://www.princexml.com
-markdown  | http://daringfireball.net/projects/markdown
-msc       | http://www.mcternan.me.uk/mscgen/
-ditaa     | http://ditaa.sourceforge.net
-PlantUML  | http://plantuml.sourceforge.net
-See Salt  | http://plantuml.sourceforge.net/salt.html
-graphviz  | http://graphviz.org
-JSON      | https://en.wikipedia.org/wiki/Json
-YAML      | https://en.wikipedia.org/wiki/Yaml
+pandoc      | http://johnmacfarlane.net/pandoc
+PrinceXML   | http://www.princexml.com
+markdown    | http://daringfireball.net/projects/markdown
+msc         | http://www.mcternan.me.uk/mscgen/
+ditaa       | http://ditaa.sourceforge.net
+PlantUML    | http://plantuml.sourceforge.net
+See Salt    | http://plantuml.sourceforge.net/salt.html
+graphviz    | http://graphviz.org
+JSON        | https://en.wikipedia.org/wiki/Json
+YAML        | https://en.wikipedia.org/wiki/Yaml
+wkhtmltopdf | http://wkhtmltopdf.org/
 ~~~~
 
 ## Version table
@@ -1000,6 +1022,141 @@ Nice and simple, starts a new page
     ~~~~{.page}
     ~~~~
 
+## Gle / glx
+
+This is a complex graph/chart drawing package available from http://glx.sourceforge.net/
+
+The full set of optional arguments is
+
+* title
+    * used as the generated images 'alt' argument
+* size
+    * size of image, default 720x540, widthxheight, size is approximate
+* transparent
+    * flag to use a transparent background
+
+**Example**
+
+    ~~~~{.gle}
+
+    set font texcmr hei 0.5 just tc
+
+    begin letz
+       data "saddle.z"
+       z = 3/2*(cos(3/5*(y-1))+5/4)/(1+(((x-4)/3)^2))
+       x from 0 to 20 step 0.5
+       y from 0 to 20 step 0.5
+    end letz
+
+    amove pagewidth()/2 pageheight()-0.1
+    write "Saddle Plot (3D)"
+
+    begin object saddle
+       begin surface
+          size 10 9
+          data "saddle.z"
+          xtitle "X-axis" hei 0.35 dist 0.7
+          ytitle "Y-axis" hei 0.35 dist 0.7
+          ztitle "Z-axis" hei 0.35 dist 0.9
+          top color blue
+          zaxis ticklen 0.1 min 0 hei 0.25
+          xaxis hei 0.25 dticks 4 nolast nofirst
+          yaxis hei 0.25 dticks 4
+       end surface
+    end object
+
+    amove pagewidth()/2 0.2
+    draw "saddle.bc"
+    ~~~~
+
+**Output**
+
+~~~~{.gle}
+size 10 9
+
+set font texcmr hei 0.5 just tc
+
+begin letz
+   data "saddle.z"
+   z = 3/2*(cos(3/5*(y-1))+5/4)/(1+(((x-4)/3)^2))
+   x from 0 to 20 step 0.5
+   y from 0 to 20 step 0.5
+end letz
+
+amove pagewidth()/2 pageheight()-0.1
+write "Saddle Plot (3D)"
+
+begin object saddle
+   begin surface
+      size 10 9
+      data "saddle.z"
+      xtitle "X-axis" hei 0.35 dist 0.7
+      ytitle "Y-axis" hei 0.35 dist 0.7
+      ztitle "Z-axis" hei 0.35 dist 0.9
+      top color blue
+      zaxis ticklen 0.1 min 0 hei 0.25
+      xaxis hei 0.25 dticks 4 nolast nofirst
+      yaxis hei 0.25 dticks 4
+   end surface
+end object
+
+amove pagewidth()/2 0.2
+draw "saddle.bc"
+~~~~
+
+## Gnuplot
+
+This is the granddaddy of charting/plotting programs, available from http://gnuplot.sourceforge.net/.
+
+The full set of optional arguments is
+
+* title
+    * used as the generated images 'alt' argument
+* size
+    * size of image, default 720x540, widthxheight
+
+**Example**
+
+    ~~~~{.gnuplot}
+    # $Id: surface1.dem,v 1.11 2004/09/17 05:01:12 sfeam Exp $
+    #
+    set samples 21
+    set isosample 11
+    set xlabel "X axis" offset -3,-2
+    set ylabel "Y axis" offset 3,-2
+    set zlabel "Z axis" offset -5
+    set title "3D gnuplot demo"
+    set label 1 "This is the surface boundary" at -10,-5,150 center
+    set arrow 1 from -10,-5,120 to -10,0,0 nohead
+    set arrow 2 from -10,-5,120 to 10,0,0 nohead
+    set arrow 3 from -10,-5,120 to 0,10,0 nohead
+    set arrow 4 from -10,-5,120 to 0,-10,0 nohead
+    set xrange [-10:10]
+    set yrange [-10:10]
+    splot x*y
+    ~~~~
+
+**Output**
+
+~~~~{.gnuplot}
+# $Id: surface1.dem,v 1.11 2004/09/17 05:01:12 sfeam Exp $
+#
+set samples 21
+set isosample 11
+set xlabel "X axis" offset -3,-2
+set ylabel "Y axis" offset 3,-2
+set zlabel "Z axis" offset -5
+set title "3D gnuplot demo"
+set label 1 "This is the surface boundary" at -10,-5,150 center
+set arrow 1 from -10,-5,120 to -10,0,0 nohead
+set arrow 2 from -10,-5,120 to 10,0,0 nohead
+set arrow 3 from -10,-5,120 to 0,10,0 nohead
+set arrow 4 from -10,-5,120 to 0,-10,0 nohead
+set xrange [-10:10]
+set yrange [-10:10]
+splot x*y
+~~~~
+
 ## Gotchas about variables
 
 * Variables used within the content area of a code-block will be evaluated before processing that block, if a variable has not yet been defined or saved to a buffer then it will only be evaluated at the end of document processing, so output may not be as expected.
@@ -1011,29 +1168,30 @@ Included in the distribution is a script to make use of all of the above code-bl
 
 Here is the help
 
-
     $ ct2 --help
 
     Syntax: ct2 [options] filename
 
     About:  Convert my modified markdown text files into other formats, by
-      default will create HTML in same directory as the input file, will only
-      process .md files.
+    default will create HTML in same directory as the input file, will only
+    process .md files.
     If there is no output option used the output will be to file of same name
-    as input filename but with an extension (if provided) from the document, use
-    format: keyword (pdf html doc).
+    as the input filename but  with an extension (if provided) from the
+    document, use format: keyword (pdf html doc).
 
     [options]
-        -h, -?, --help     Show help
-        -c, --clean        Clean up the cache before use
-        -e, --embed        Embed images into HTML, do not use this if converting
-            to doc/odt or pdf via libreoffice
-        -o, --output       Filename to store the output as, extension will
+        -h, -?, --help        Show help
+        -c, --clean           Clean up the cache before use
+        -e, --embed           Embed images into HTML, do not use this if
+            converting to doc/odt
+        -o, --output          Filename to store the output as, extension will
             control conversion
-        -p, --prince       Convert to PDF using prince rather than libreoffice,
-            can handle embedded images
-        -s, --template     name of template to use
-        -v, --verbose      verbose mode
+        -p, --prince          Convert to PDF using princexml, can handle
+            embedded images
+        -s, --template        name of template to use
+        -v, --verbose         verbose mode
+        -w, --wkhtmltopdf     Convert to PDF using wkhtmltopdf, can handle
+            embedded images
 
 If you are creating HTML documents to send out in emails or share in other ways, and use locally referenced images, then it is best to make use of the **--embed** option to pack these images into the HTML file.
 
