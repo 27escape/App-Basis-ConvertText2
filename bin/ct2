@@ -11,6 +11,31 @@ Convert my modified version of markdown into various document formats
 this will create a ~/.ct2 directory and add some files to it, such as your
 basic config and the initial templates
 
+    $ ct2 --help
+
+    Syntax: ct2 [options] filename
+
+    About:  Convert my modified markdown text files into other formats, by
+    default will create HTML in same directory as the input file, will only
+    process .md files.
+    If there is no output option used the output will be to file of same name
+    as the input filename but  with an extension (if provided) from the
+    document, use format: keyword (pdf html doc).
+
+    [options]
+        -h, -?, --help        Show help
+        -c, --clean           Clean up the cache before use
+        -e, --embed           Embed images into HTML, do not use this if
+            converting to doc/odt
+        -o, --output          Filename to store the output as, extension will
+            control conversion
+        -p, --prince          Convert to PDF using princexml, can handle
+            embedded images
+        -s, --template        name of template to use
+        -v, --verbose         verbose mode
+        -w, --wkhtmltopdf     Convert to PDF using wkhtmltopdf, can handle
+            embedded images
+
 =head1 AUTHOR
 
  kevin mulholland, moodfarm@cpan.org
@@ -207,18 +232,21 @@ sub read_settings {
 # main
 
 my %opt = init_app(
-    help_text => "Convert my modified markdown text files into other formats, by default will 
-  create HTML in same directory as the input file, will only process .md files.
-If there is no output option used the output will be to file of same name as input filename but
-with an extension (if provided) from the document, use format: keyword (pdf html doc).",
+    help_text => "Convert my modified markdown text files into other formats, by 
+    default will create HTML in same directory as the input file, will only 
+    process .md files. 
+    If there is no output option used the output will be to file of same name 
+    as the input filename but with an extension (if provided) from the
+    document, use format: keyword (pdf html doc).",
     help_cmdline => "filename",
     options      => {
-        'verbose|v'    => 'verbose mode',
-        'clean|c'      => 'Clean up the cache before use',
-        'template|s=s' => 'name of template to use',
-        'embed|e'      => 'Embed images into HTML, do not use this if converting to doc/odt or pdf via libreoffice',
-        'prince|p'     => 'Convert to PDF using prince rather than libreoffice, can handle embedded images',
-        'output|o=s'   => {
+        'verbose|v'     => 'verbose mode',
+        'clean|c'       => 'Clean up the cache before use',
+        'template|s=s'  => 'name of template to use',
+        'embed|e'       => 'Embed images into HTML, do not use this if converting to doc/odt',
+        'prince|p'      => 'Convert to PDF using princexml, can handle embedded images',
+        'wkhtmltopdf|w' => 'Convert to PDF using wkhtmltopdf, can handle embedded images',
+        'output|o=s'    => {
             desc    => 'Filename to store the output as, extension will control conversion',
             default => "",
         }
@@ -226,6 +254,8 @@ with an extension (if provided) from the document, use format: keyword (pdf html
 );
 
 set_debug( \&other_debug ) if ( $opt{verbose} );
+
+show_usage( "You cannot use both prince and wkhtmltopdf options") if( $opt{prince} && $opt{wkhtmltopdf}) ;
 
 $opt{config_dir} ||= $MARKUP_DIR;
 create_defaults( $opt{config_dir} );
@@ -292,11 +322,10 @@ $format->clean_cache() if ( $opt{clean} );
 
 # be in the same dir as the input file in case there are an files in plugins
 # that act on relative paths
-my $current = Path::Tiny->cwd ;
-chdir( $basedir) ;
+my $current = Path::Tiny->cwd;
+chdir($basedir);
 
 my $data = $format->parse($story);
-
 
 # decide on output filename from any format keyword
 # all the keywords are in UPPER-CASE
@@ -311,7 +340,16 @@ if ( !$opt{output} && $keywords->{FORMAT} ) {
 }
 
 if ( $opt{output} ) {
-    my $status = $format->save_to_file( $opt{output}, $opt{prince} );
+    my $pdfconvertor;
+
+    if ( $opt{prince} ) {
+        $pdfconvertor = 'prince';
+    }
+    elsif ($opt{wkhtmltopdf})  {
+        $pdfconvertor = 'wkhtmltopdf';
+    }
+
+    my $status = $format->save_to_file( $opt{output}, $pdfconvertor);
 
     if ( $opt{verbose} && $status ) {
         say "Created $opt{output}";
@@ -325,4 +363,4 @@ else {
 }
 
 # return to where we came from
-chdir( $current) ;
+chdir($current);
