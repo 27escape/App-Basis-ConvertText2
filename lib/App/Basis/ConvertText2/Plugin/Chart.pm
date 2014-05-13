@@ -236,12 +236,13 @@ sub process {
             $chart->set_y_axis_font(gdMediumBoldFont);
             $chart->set_values_font(gdMediumBoldFont);
         }
+
+        my ( $stdout, $stderr, $exit ) = capture {
+            my $gd = $chart->plot( \@data );
+            path($filename)->spew_raw( $gd->png ) if ($$gd);
+        };
     }
 
-    my ( $stdout, $stderr, $exit ) = capture {
-        my $gd = $chart->plot( \@data );
-        path($filename)->spew_raw( $gd->png ) if ($$gd);
-    };
     my $out;
     if ( -f $filename ) {
 
