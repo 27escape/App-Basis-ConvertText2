@@ -40,12 +40,11 @@ for more information.
 
 =head1 Todo
 
-Consider adding plugins for http://blockdiag.com/en/index.html, gnuplot and gle 
-http://glx.sourceforge.net/
+Consider adding plugins for 
 
-https://metacpan.org/pod/Chart::Strip
-
-https://metacpan.org/pod/Chart::Clicker
+    * http://blockdiag.com/en/index.html, 
+    * https://metacpan.org/pod/Chart::Strip
+    * https://metacpan.org/pod/Chart::Clicker
 
 =head1 Public methods
 
@@ -731,7 +730,7 @@ sub _pandoc_html {
     my $html;
 
     debug( "Pandoc: " . $resp->{stderr} ) if ( $resp->{stderr} );
-    if ( !$resp->{exit} ) {
+    if ( !$resp->{exit_code} ) {
         $html = $resp->{stdout};
     }
     else {
@@ -758,7 +757,7 @@ sub _pandoc_format {
     );
 
     debug( "Pandoc: " . $resp->{stderr} ) if ( $resp->{stderr} );
-    if ( !$resp->{exit} ) {
+    if ( !$resp->{exit_code} ) {
         $status = 0;
     }
     else {
