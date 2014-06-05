@@ -42,7 +42,7 @@ use namespace::autoclean;
 has handles => (
     is       => 'ro',
     init_arg => undef,
-    default  => sub {[qw{uml}]}
+    default  => sub { [qw{plantuml uml umltree}] }
 );
 
 # uml is a script to run plantuml basically does java -jar plantuml.jar
@@ -63,7 +63,7 @@ create a simple uml image
 
 =cut
 
-sub process {
+sub uml {
     my $self = shift;
     my ( $tag, $content, $params, $cachedir ) = @_;
     $params->{size} ||= "";
@@ -91,8 +91,8 @@ sub process {
 
         my $cmd = UML . " $umlfile $filename";
         my ( $exit, $stdout, $stderr ) = run_cmd($cmd);
-        if( $exit) {
-            warn "Could not run script " . UML . " get it from https://github.com/27escape/bin/blob/master/uml" ;
+        if ($exit) {
+            warn "Could not run script " . UML . " get it from https://github.com/27escape/bin/blob/master/uml";
         }
     }
     my $out;
@@ -103,6 +103,84 @@ sub process {
     }
 
     return $out;
+}
+
+# ----------------------------------------------------------------------------
+
+=item umltree
+
+create a tree using plantuml's salt 
+
+Draw a bulleted list like a directory tree, bullets are expected to be indented 
+by 4 spaces, we will only process bullets that are * +  or -
+
+    ~~~~{.tree} 
+    * one
+        * 1.1
+    * two
+        * two point 1
+        * 2.2
+    * three 
+        * 3.1
+        * 3.2
+        * three point 3
+    ~~~~
+
+=cut
+
+sub umltree {
+    my $self = shift;
+    my ( $tag, $content, $params, $cachedir ) = @_;
+
+    # make sure we have no tabs
+    $content =~ s/\t/    /gsm;
+
+    # make bullet points all the same
+    #     $content =~ s/(^\s+)[\+-]/$1*/gsm ;
+    #     $content =~ s/^\*/+/gsm ;
+    # say "content1\n$content"     ;
+    #     $content =~ s/^    /+/gsm ;
+    #     $content =~ s/^(\+*)    /$1+/gsm ;
+    # say "content2\n$content"     ;
+    #     $content =~ s/\*//gsm ;
+
+    $content =~ s/\*/+/gsm;
+
+    # $content =~ s/^/ /gsm ;
+
+    $content =~ s/    /+/gsm;
+
+    # $content =~ s/^ \+/+/gsm ;
+    $content =~ s/^\+/ ++/gsm;
+
+    my $out = "
+\@startsalt
+{
+{T
+ +
+$content
+}
+}
+\@endsalt
+";
+
+    # and process with the normal uml command
+    return $self->uml( 'uml', $out, $params, $cachedir );
+}
+
+# ----------------------------------------------------------------------------
+# decide which simple hanlder should process this request
+
+sub process {
+    my $self = shift;
+    my ( $tag, $content, $params, $cachedir ) = @_;
+
+    $tag = 'uml' if ( $tag eq 'plantuml' );
+
+    if ( $self->can($tag) ) {
+        return $self->$tag(@_);
+    }
+    return undef;
 }
 
 # ----------------------------------------------------------------------------
