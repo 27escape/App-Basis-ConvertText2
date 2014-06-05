@@ -19,7 +19,7 @@ use strict;
 use warnings;
 use Path::Tiny;
 
-use Test::More tests => 8;
+use Test::More tests => 10;
 
 BEGIN { use_ok('App::Basis::ConvertText2'); }
 
@@ -64,6 +64,12 @@ SKIP: {
         skip "pandoc is missing, cannot create PDF", 2;
     }
 }
+
+$data = $format->parse( "----");
+ok( $data !~ '---', 'page break replaced') ;
+
+$data = $format->parse( ",£");
+ok( $data !~ '<3', 'smily replaced') ;
 
 $format->clean_cache();
 ok( !-f $file, "file has been cleaned" );

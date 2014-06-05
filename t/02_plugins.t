@@ -20,7 +20,7 @@ use warnings;
 use Path::Tiny;
 use Data::Printer;
 
-use Test::More tests => 26;
+use Test::More tests => 28;
 
 BEGIN {
     # the first set of tests either use other perl modules
@@ -41,6 +41,7 @@ SKIP: {
             use_ok('App::Basis::ConvertText2::Plugin::Uml');
             use_ok('App::Basis::ConvertText2::Plugin::Gle');
             use_ok('App::Basis::ConvertText2::Plugin::Gnuplot');
+            use_ok('App::Basis::ConvertText2::Plugin::Ploticus');
         }
         else {
             skip "Author external programs", 6;
@@ -325,7 +326,7 @@ draw "saddle.bc"
         $out    = $obj->process( 'gle', $content, $params, $TEST_DIR );
         ok( has_file($out), 'gle created a file' );
 
-# gle
+        # gnuplot
         $content = '#
 # $Id: surface1.dem,v 1.11 2004/09/17 05:01:12 sfeam Exp $
 #
@@ -351,9 +352,39 @@ splot x*y
         $out    = $obj->process( 'gnuplot', $content, $params, $TEST_DIR );
         ok( has_file($out), 'gnuplot created a file' );
 
+        # ploticus
+        $content = '//  specify data using proc getdata
+#proc getdata
+data: Brazil 22
+  Columbia 17
+  "Costa Rica" 22
+  Guatemala 3
+  Honduras 12
+  Mexico 14
+  Nicaragua 28
+  Belize 9
+  "United States" 21
+  Canada 8
+
+//  render the pie graph using proc pie
+#proc pie
+datafield: 2
+labelfield: 1
+labelmode: line+label
+center: 4 3
+radius: 1
+colors: oceanblue
+outlinedetails: color=white
+labelfarout: 1.3
+total: 256
+';
+        $obj    = App::Basis::ConvertText2::Plugin::Ploticus->new();
+        $params = undef;
+        $out    = $obj->process( 'ploticus', $content, $params, $TEST_DIR );
+        ok( has_file($out), 'ploticus created a file' );
     }
     else {
-        skip "Author testing programs", 6;
+        skip "Author testing programs", 8;
 
     }
 }
