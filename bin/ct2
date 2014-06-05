@@ -55,6 +55,11 @@ use App::Basis::ConvertText2;
 
 # -----------------------------------------------------------------------------
 
+# if the user does not specify we will convert to pdf
+use constant DEFAULT_FILE_FORMAT => 'pdf' ;
+
+# -----------------------------------------------------------------------------
+
 my $MARKUP_DIR = "$ENV{HOME}/." . get_program();
 $MARKUP_DIR = $ENV{MARKUP_DIR} if ( $ENV{MARKUP_DIR} );
 
@@ -161,19 +166,6 @@ EOD
 
 # -----------------------------------------------------------------------------
 
-sub other_debug {
-    my ( $state, $debug ) = @_;
-
-    # return if ( $state ne 'DEBUG' );
-
-    my $msg = $state;
-    $msg .= " $debug" if ($debug);
-
-    say STDERR localtime() . " " . get_program() . " $msg";
-}
-
-# -----------------------------------------------------------------------------
-
 sub create_defaults {
     my ( $dir, $verbose ) = @_;
     my $default = "$dir/templates/default";
@@ -240,20 +232,18 @@ my %opt = init_app(
     document, use format: keyword (pdf html doc).",
     help_cmdline => "filename",
     options      => {
-        'verbose|v'     => 'verbose mode',
         'clean|c'       => 'Clean up the cache before use',
-        'template|s=s'  => 'name of template to use',
         'embed|e'       => 'Embed images into HTML, do not use this if converting to doc/odt',
-        'prince|p'      => 'Convert to PDF using princexml, can handle embedded images',
-        'wkhtmltopdf|w' => 'Convert to PDF using wkhtmltopdf, can handle embedded images',
         'output|o=s'    => {
             desc    => 'Filename to store the output as, extension will control conversion',
             default => "",
         }
+        'prince|p'      => 'Convert to PDF using princexml, can handle embedded images',
+        'template|s=s'  => 'name of template to use',
+        'wkhtmltopdf|w' => 'Convert to PDF using wkhtmltopdf, can handle embedded images',
+        'verbose|v'     => 'verbose mode',
     }
 );
-
-set_debug( \&other_debug ) if ( $opt{verbose} );
 
 show_usage( "You cannot use both prince and wkhtmltopdf options") if( $opt{prince} && $opt{wkhtmltopdf}) ;
 
@@ -307,6 +297,7 @@ $replace->{COPYRIGHT}   ||= $settings->{config}->get("copyright");
 $replace->{AUTHOR}      ||= $settings->{config}->get("author");
 $replace->{PAGE_SIZE}   ||= $settings->{config}->get("page/size");
 $replace->{ORIENTATION} ||= $settings->{config}->get("page/orientation");
+$replace->{SUBTITLE} ||= $settings->{config}->get("subtitle");
 
 my $format = App::Basis::ConvertText2->new(
     name      => get_program(),
@@ -330,13 +321,39 @@ my $data = $format->parse($story);
 # decide on output filename from any format keyword
 # all the keywords are in UPPER-CASE
 my $keywords = $format->replace;
-if ( !$opt{output} && $keywords->{FORMAT} ) {
+
+
+$keywords->{FORMAT}  ||= DEFAULT_FILE_FORMAT ;
+
+if( $opt{output} ) {
+    # strip quotes from output name
+    $opt{output} =~ s/^["'](.*?)["'"]/$1/ ;
+}
+
+if ( !$opt{output} ) {
 
     # same name as input
     $opt{output} = $opt{filename};
 
-    # change extension
-    $opt{output} =~ s/\.md$/.$keywords->{FORMAT}/i;
+    # change extension and add in the version
+    my $postfix = "" ;
+    if( $keywords->{VERSION}) {
+        $postfix = "-v$keywords->{VERSION}" ;
+    }
+    $postfix .= ".$keywords->{FORMAT}" ; 
+    $opt{output} =~ s/\.md$/$postfix/i;
+} elsif( -d $opt{output} ) {
+    # we can create the same file name in the required directory
+    # append same name as input
+    $opt{output} .= "/" . path($opt{filename})->basename ;
+
+    # change extension and add in the version
+    my $postfix = "" ;
+    if( $keywords->{VERSION}) {
+        $postfix = "-v$keywords->{VERSION}" ;
+    }
+    $postfix .= ".$keywords->{FORMAT}" ; 
+    $opt{output} =~ s/\.md$/$postfix/i;
 }
 
 if ( $opt{output} ) {
@@ -352,14 +369,14 @@ if ( $opt{output} ) {
     my $status = $format->save_to_file( $opt{output}, $pdfconvertor);
 
     if ( $opt{verbose} && $status ) {
-        say "Created $opt{output}";
+        say $opt{output};
     }
     elsif ( !$status ) {
-        say "Failed to create $opt{output}";
+        say STDERR "Failed to create $opt{output}";
     }
 }
 else {
-    say STDERR "Ignoring $opt{filename}, could not determine a filename to output to, no :format option in file?" if ( $opt{verbose} );
+    say STDERR "Ignoring $opt{filename}, could not determine a filename to output to, no :format option in file?" ;
 }
 
 # return to where we came from
