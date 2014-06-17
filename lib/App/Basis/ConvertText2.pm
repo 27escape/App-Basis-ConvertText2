@@ -46,6 +46,10 @@ Consider adding plugins for
     * https://metacpan.org/pod/Chart::Strip
     * https://metacpan.org/pod/Chart::Clicker
 
+Possibly create something for D3.js, though this would need to use PhantomJS too
+https://github.com/ariya/phantomjs/blob/master/examples/rasterize.js
+http://stackoverflow.com/questions/18240391/exporting-d3-js-graphs-to-static-svg-files-programmatically
+
 =head1 Public methods
 
 =over 4
@@ -78,6 +82,7 @@ use Module::Pluggable
     };
 use App::Basis;
 use App::Basis::ConvertText2::Support;
+use App::Basis::ConvertText2::UtfTransform;
 
 # ----------------------------------------------------------------------------
 # this contents string is to be replaced with the body of the markdown file
@@ -562,81 +567,86 @@ sub _rewrite_imgsrc {
         $ext = $1;
     }
 
-    # if its an image we have generated then it may already be here
-    # check to see if we have this in the cache
-    my $cachefile = cachefile( $self->cache_dir, $img );
-    if ( !-f $cachefile ) {
-        my $id = md5_hex($img);
-        $id .= ".$ext";
+    # potentially image is already an embedded image
+    if ( $img !~ /base64,/ ) {
 
-        # this is what it will be named in the cache
-        $cachefile = cachefile( $self->cache_dir, $id );
+        # if its an image we have generated then it may already be here
+        # check to see if we have this in the cache
+        my $cachefile = cachefile( $self->cache_dir, $img );
+        $cachefile =~ s/\n//g;
+        if ( !-f $cachefile ) {
+            my $id = md5_hex($img);
+            $id .= ".$ext";
 
-        # not in the cache so we must fetch it and store it local to the cache
-        # if we are a local file
-        if ( $img !~ m|^\w+://| || $img =~ m|^file://| ) {
-            $img =~ s|^file://||;
-            $img = fix_filename($img);
+            # this is what it will be named in the cache
+            $cachefile = cachefile( $self->cache_dir, $id );
 
-            if ( $img !~ m|/| ) {
+            # not in the cache so we must fetch it and store it local to the cache
+            # if we are a local file
+            if ( $img !~ m|^\w+://| || $img =~ m|^file://| ) {
+                $img =~ s|^file://||;
+                $img = fix_filename($img);
 
-                # if file is relative, then we need to add the basedir
-                $img = $self->basedir . "/$img";
-            }
+                if ( $img !~ m|/| ) {
 
-            # copy it to the cache location
-            try {
-                path($img)->copy($cachefile);
-            }
-            catch {
-                debug( "ERROR", "failed to copy $img to $cachefile" );
-            };
-
-            $img = $cachefile if ( -f $cachefile );
-        }
-        else {
-            if ( $img =~ m|^(\w+)://(.*)| ) {
-
-                my $furl = Furl->new(
-                    agent   => get_program(),
-                    timeout => 0.2,
-                );
-
-                my $res = $furl->get($img);
-                if ( $res->is_success ) {
-                    path($cachefile)->spew_raw( $res->content );
-                    $img = $cachefile;
+                    # if file is relative, then we need to add the basedir
+                    $img = $self->basedir . "/$img";
                 }
-                else {
-                    debug( "ERROR", "unknown could not fetch $img" );
+
+                # copy it to the cache location
+                try {
+                    path($img)->copy($cachefile);
                 }
+                catch {
+                    debug( "ERROR", "failed to copy $img to $cachefile" );
+                };
+
+                $img = $cachefile if ( -f $cachefile );
             }
             else {
-                debug( "ERROR", "unknown protocol for $img" );
+                if ( $img =~ m|^(\w+)://(.*)| ) {
+
+                    my $furl = Furl->new(
+                        agent   => get_program(),
+                        timeout => 0.2,
+                    );
+
+                    my $res = $furl->get($img);
+                    if ( $res->is_success ) {
+                        path($cachefile)->spew_raw( $res->content );
+                        $img = $cachefile;
+                    }
+                    else {
+                        debug( "ERROR", "unknown could not fetch $img" );
+                    }
+                }
+                else {
+                    debug( "ERROR", "unknown protocol for $img" );
+                }
             }
         }
-    }
-    else {
-        $img = $cachefile;
-    }
-
-    # make sure we add the image size if its not already there
-    if ( $want_size && $pre !~ /width=|height=/i && $post !~ /width=|height=/i ) {
-        my $image = GD::Image->new($img);
-        if ($image) {
-            $post =~ s/\/>$//;
-            $post .= " height='" . $image->height() . "' width='" . $image->width() . "' />";
+        else {
+            $img = $cachefile;
         }
-    }
 
-    # do we need to embed the images, if we do this then libreoffice may be pants
-    # however 'prince' is happy
-    if ( $self->embed() ) {
+        # make sure we add the image size if its not already there
+        if ( $want_size && $pre !~ /width=|height=/i && $post !~ /width=|height=/i ) {
+            my $image = GD::Image->new($img);
+            if ($image) {
+                $post =~ s/\/>$//;
+                $post .= " height='" . $image->height() . "' width='" . $image->width() . "' />";
+            }
+        }
 
-        # we encode the image as base64 so that the HTML document can be moved with all images
-        # intact
-        my $base64 = MIME::Base64::encode( path($img)->slurp_raw );
-        $img = "data:image/$ext;base64,$base64";
+        # do we need to embed the images, if we do this then libreoffice may be pants
+        # however 'prince' is happy
+        if ( $self->embed() ) {
+
+            # we encode the image as base64 so that the HTML document can be moved with all images
+            # intact
+            my $base64 = MIME::Base64::encode( path($img)->slurp_raw );
+            $img = "data:image/$ext;base64,$base64";
+        }
     }
     return $pre . $img . $post;
 }
@@ -647,7 +657,9 @@ sub _rewrite_imgsrc {
 sub _build_toc {
     my $html = shift;
 
-    my @items = ( $html =~ m|<h[23].*?><a name=['"'](.*?)['"]>(.*?)</a></h[23]>|gsm );
+    # find any header elements that do not have toc_skip in them
+    #my @items = ( $html =~ m|<h[23].*?(?!toc_skip).*?><a name=['"](.*?)['"]>(.*?)</a></h[23]>|gsm );
+    my @items = ( $html =~ m|<h[23456](?!.*?toc_skip.*?).*?><a name=['"](.*?)['"]>(.*?)</a></h[23456]>|gsm );
 
     my $toc = "<p>Contents</p>\n<ul>\n";
     for ( my $i = 0; $i < scalar(@items); $i += 2 ) {
@@ -674,7 +686,7 @@ sub _build_toc {
 # ----------------------------------------------------------------------------
 # rewrite the headers so that they are nice for the TOC
 sub _rewrite_hdrs {
-    state $counters = { 2 => 0, 3 => 0, 4 => 0 };
+    state $counters = { 2 => 0, 3 => 0, 4 => 0, 5 => 0, 6 => 0};
     state $last_lvl = 0;
     my ( $head, $txt, $tail ) = @_;
     my $pre;
@@ -688,20 +700,29 @@ sub _rewrite_hdrs {
     elsif ( $lvl > $last_lvl ) {
 
         # if we are stepping back up a level then we need to reset the counter below
-        if ( $lvl == 3 ) {
-            $counters->{4} = 0;
-        }
-        elsif ( $lvl == 2 ) {
-            $counters->{3} = 0;
-            $counters->{4} = 0;
-        }
+        # if ( $lvl == 4 ) {
+        #     $counters->{5} = 0;
+        # }
+        # elsif ( $lvl == 3 ) {
+        #     $counters->{4} = 0;
+        # }
+        # elsif ( $lvl == 2 ) {
+        #     map { $counters->{$_} = 0 ;} (3..6) ;
+        # }
 
+        if ( $lvl == 2 ) {
+            map { $counters->{$_} = 0 ;} (3..6) ;
+        } else {
+            $counters->{$lvl+1} = 0;
+        }
     }
     $counters->{$lvl}++;
 
     if    ( $lvl == 2 ) { $pre = "$counters->{2}"; }
     elsif ( $lvl == 3 ) { $pre = "$counters->{2}.$counters->{3}"; }
     elsif ( $lvl == 4 ) { $pre = "$counters->{2}.$counters->{3}.$counters->{4}"; }
+    elsif ( $lvl == 5 ) { $pre = "$counters->{2}.$counters->{3}.$counters->{4}.$counters->{5}"; }
+    elsif ( $lvl == 6 ) { $pre = "$counters->{2}.$counters->{3}.$counters->{4}.$counters->{5}.$counters->{6}"; }
 
     $ref =~ s/\s/_/gsm;
 
@@ -738,6 +759,9 @@ sub _pandoc_html {
         warn "Could not parse with pandoc, using markdown";
         $html = markdown($input);
     }
+
+    # strip out any HTML comments that may have come in from template
+    $html =~ s/<!--.*?-->//gsm;
 
     return $html;
 }
@@ -777,7 +801,7 @@ sub _pandoc_format {
 #     pdfconvertor  - use prince/wkhtmltopdf rather than pandoc to convert to PDF
 
 sub _convert_file {
-    my $self = shift ;
+    my $self = shift;
     my ( $file, $format, $pdfconvertor ) = @_;
 
     # we work on the is that pandoc should be in your PATH
@@ -793,18 +817,19 @@ sub _convert_file {
         my $cmd;
 
         if ( $pdfconvertor =~ /^prince/i ) {
-            $cmd = PRINCE . " " ;
-            $cmd.= "--pdf-title='$self->{replace}->{TITLE}' " if ($self->{replace}->{TITLE}) ;
-            $cmd.= "--pdf-subject='$self->{replace}->{SUBJECT}' " if ($self->{replace}->{SUBJECT}) ;
-            $cmd.= "--pdf-creator='$self->{replace}->{AUTHOR}' " if ($self->{replace}->{AUTHOR}) ;
-            $cmd.= "--pdf-keywords='$self->{replace}->{KEYWORDS}' " if ($self->{replace}->{KEYWORDS}) ;
+            $cmd = PRINCE . " ";
+            $cmd .= "--pdf-title='$self->{replace}->{TITLE}' "       if ( $self->{replace}->{TITLE} );
+            $cmd .= "--pdf-subject='$self->{replace}->{SUBJECT}' "   if ( $self->{replace}->{SUBJECT} );
+            $cmd .= "--pdf-creator='$self->{replace}->{AUTHOR}' "    if ( $self->{replace}->{AUTHOR} );
+            $cmd .= "--pdf-keywords='$self->{replace}->{KEYWORDS}' " if ( $self->{replace}->{KEYWORDS} );
             $cmd .= " --media=print $file -o $outfile";
         }
         elsif ( $pdfconvertor =~ /^wkhtmltopdf/i ) {
-            $cmd = WKHTML . " -q --print-media-type " ;
-            $cmd.= "--title '$self->{replace}->{TITLE}' " if ($self->{replace}->{TITLE}) ;
+            $cmd = WKHTML . " -q --print-media-type ";
+            $cmd .= "--title '$self->{replace}->{TITLE}' " if ( $self->{replace}->{TITLE} );
+
             # do we want to specify the size
-            $cmd .= "--page-size $self->{replace}->{PAGE_SIZE} " if( $self->{replace}->{PAGE_SIZE}) ;
+            $cmd .= "--page-size $self->{replace}->{PAGE_SIZE} " if ( $self->{replace}->{PAGE_SIZE} );
             $cmd .= "$file $outfile";
         }
         else {
@@ -891,7 +916,7 @@ sub parse {
 
         # fixup any markdown simple tables | ------ | -> |---------|
 
-        # my @tmp = split( /\n/, $self->{_output} );
+        # my @tmp = split( /\n/, $self->{output} );
         # my $done = 0;
         # for ( my $i = 0; $i < scalar @tmp; $i++ ) {
         #     if ( $tmp[$i] =~ /^\|[\s\|\-\+]+$/ ) {
@@ -899,7 +924,15 @@ sub parse {
         #         $done++;
         #     }
         # }
-        # $self->{_output} = join( "\n", @tmp ) if ($done);
+        # $self->{output} = join( "\n", @tmp ) if ($done);
+
+        # we have a special replace for '---' alone on a line which is used to
+        # signifiy a page break
+
+        $self->{output} =~ s|^-{3,}\s?$|<div style='page-break-before: always;'></div>\n\n|gsm;
+
+        # add in some smilies
+        $self->{output} = utf_smilies( $self->{output} );
 
         # we have created something so we can cache it, if use_cache is off
         # then this will not happen lower down
@@ -928,7 +961,7 @@ sub parse {
 
         # do we need to add a table of contents
         if ( $html =~ /%TOC%/ ) {
-            $html =~ s|(<h[234].*?>)(.*?)(</h[234]>)|_rewrite_hdrs( $1, $2, $3)|egsi;
+            $html =~ s|(<h[23456].*?>)(.*?)(</h[23456]>)|_rewrite_hdrs( $1, $2, $3)|egsi;
             $self->{replace}->{TOC} = _build_toc($html);
         }
 
@@ -944,9 +977,6 @@ sub parse {
 
         # write any css url images and store to the cache
         $html =~ s/(url\s*\(['"]?)(.*?)(['"]?\))/$self->_rewrite_imgsrc( $1, $2, $3, 0)/egs;
-
-        # strip out any HTML comments that may have come in from template
-        $html =~ s/<!--.*?-->//gsm;
 
         $self->{output} = $html;
         $self->_store_cache( $cachefile, $html );
@@ -972,7 +1002,7 @@ sub save_to_file {
     my ( $filename, $pdfconvertor ) = @_;
     my ($format) = ( $filename =~ /\.(\w+)$/ );    # get last thing after a '.'
     if ( !$format ) {
-        warn "Could not determine outpout file format, using PDF";
+        warn "Could not determine output file format, using PDF";
         $format = '.pdf';
     }
 
@@ -1000,7 +1030,7 @@ sub save_to_file {
 
     # if the marked-up file is more recent than the converted one
     # then we need to convert it again
-    if ( $format !~ /html/i ) {
+    if ( $format !~ /html?/i ) {
 
         # as we can generate PDF using a number of convertors we should
         # always regenerate PDF output incase the convertor used is different
