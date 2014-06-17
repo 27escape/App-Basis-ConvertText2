@@ -61,14 +61,41 @@ create a simple ditaa image
 
  hashref params of
         size    - size of image, widthxheight - optional
+        shadow  - have shadow, default true
+        alias   - apply aliasing, default true
+        round   - round edges, default false
+        separation - default false
 
 =cut
 
 sub process {
     my $self = shift;
     my ( $tag, $content, $params, $cachedir ) = @_;
-    $params->{size} ||= "";
+    $params->{size}   ||= "";
+    $params->{shadow} ||= 'true';
+    $params->{separation} ||= 'false';
+    $params->{alias} ||= 'false';
+    $params->{round} ||= 'false';
+
     my ( $x, $y ) = ( $params->{size} =~ /^\s*(\d+)\s*x\s*(\d+)\s*$/ );
+    my $args    = "";
+    # say STDERR "params " .Data::Printer::p( $params) ;
+    my %allowed = (
+        shadow     => { false  => '--no-shadows ' },
+        alias      => { false  => '--no-antialias ' },
+        round      => { true  => '--round-corners ' },
+        separation => { false => '--no-separation ' }
+    );
+
+    foreach my $p (qw( shadow round separation)) {
+        next if( !$params->{$p}) ;
+        if ( $params->{$p} =~ /^true$|^1$|^yes$/i ) {
+            $args .= ( $allowed{$p}->{true} || '' );
+        }
+        else {
+            $args .= ( $allowed{$p}->{false} || '' );
+        }
+    }
 
     # strip any ending linefeed
     chomp $content;
@@ -83,7 +110,8 @@ sub process {
 
         path($ditaafile)->spew_utf8($content);
 
-        my $cmd = DITAA . " -o $ditaafile $filename";
+        my $cmd = DITAA . " $args -o $ditaafile $filename";
+        # say STDERR $cmd ;
         my ( $exit, $stdout, $stderr ) = run_cmd($cmd);
         if ($exit) {
             warn "Could not run script " . DITAA . " get it from http://ditaa.sourceforge.net/";
