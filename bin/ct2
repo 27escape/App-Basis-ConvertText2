@@ -237,7 +237,7 @@ my %opt = init_app(
         'output|o=s'    => {
             desc    => 'Filename to store the output as, extension will control conversion',
             default => "",
-        }
+        },
         'prince|p'      => 'Convert to PDF using princexml, can handle embedded images',
         'template|s=s'  => 'name of template to use',
         'wkhtmltopdf|w' => 'Convert to PDF using wkhtmltopdf, can handle embedded images',
@@ -335,10 +335,14 @@ if ( !$opt{output} ) {
     # same name as input
     $opt{output} = $opt{filename};
 
-    # change extension and add in the version
+    # change extension and add in the version or the date
     my $postfix = "" ;
     if( $keywords->{VERSION}) {
         $postfix = "-v$keywords->{VERSION}" ;
+    } elsif( $keywords->{DATE}) {
+        my $d = $keywords->{DATE} ;
+        $d =~ s/\s/-/g;
+        $postfix = "-$d" ;        
     }
     $postfix .= ".$keywords->{FORMAT}" ; 
     $opt{output} =~ s/\.md$/$postfix/i;
