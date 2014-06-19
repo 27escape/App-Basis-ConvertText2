@@ -31,7 +31,7 @@ basic config and the initial templates
             control conversion
         -p, --prince          Convert to PDF using princexml, can handle
             embedded images
-        -s, --template        name of template to use
+        -t, --template        name of template to use
         -v, --verbose         verbose mode
         -w, --wkhtmltopdf     Convert to PDF using wkhtmltopdf, can handle
             embedded images
@@ -56,7 +56,7 @@ use App::Basis::ConvertText2;
 # -----------------------------------------------------------------------------
 
 # if the user does not specify we will convert to pdf
-use constant DEFAULT_FILE_FORMAT => 'pdf' ;
+use constant DEFAULT_FILE_FORMAT => 'pdf';
 
 # -----------------------------------------------------------------------------
 
@@ -232,23 +232,39 @@ my %opt = init_app(
     document, use format: keyword (pdf html doc).",
     help_cmdline => "filename",
     options      => {
-        'clean|c'       => 'Clean up the cache before use',
-        'embed|e'       => 'Embed images into HTML, do not use this if converting to doc/odt',
-        'output|o=s'    => {
+        'clean|c'    => 'Clean up the cache before use',
+        'embed|e'    => 'Embed images into HTML, do not use this if converting to doc/odt',
+        'output|o=s' => {
             desc    => 'Filename to store the output as, extension will control conversion',
             default => "",
         },
         'prince|p'      => 'Convert to PDF using princexml, can handle embedded images',
-        'template|s=s'  => 'name of template to use',
+        'template|t=s'  => 'name of template to use',
+        'templates'     => 'list available templates',
         'wkhtmltopdf|w' => 'Convert to PDF using wkhtmltopdf, can handle embedded images',
         'verbose|v'     => 'verbose mode',
     }
 );
 
-show_usage( "You cannot use both prince and wkhtmltopdf options") if( $opt{prince} && $opt{wkhtmltopdf}) ;
+show_usage("You cannot use both prince and wkhtmltopdf options") if ( $opt{prince} && $opt{wkhtmltopdf} );
 
 $opt{config_dir} ||= $MARKUP_DIR;
 create_defaults( $opt{config_dir} );
+
+# get list of installed templates
+if ( $opt{templates} ) {
+    my @templates;
+    my $iter = path("$opt{config_dir}/templates")->iterator();
+
+    while ( my $path = $iter->() ) {
+        my $d = $path->stringify;
+        if ( -d $d && -f "$d/template.html" ) {
+            push @templates, $path->basename;
+        }
+    }
+
+    msg_exit( "Templates:\n    " . join( "\n    ", sort @templates ) );
+}
 
 $opt{filename} = $ARGV[0];
 $opt{filename} =~ s/^~/$ENV{HOME}/ if ( $opt{filename} );
@@ -297,7 +313,7 @@ $replace->{COPYRIGHT}   ||= $settings->{config}->get("copyright");
 $replace->{AUTHOR}      ||= $settings->{config}->get("author");
 $replace->{PAGE_SIZE}   ||= $settings->{config}->get("page/size");
 $replace->{ORIENTATION} ||= $settings->{config}->get("page/orientation");
-$replace->{SUBTITLE} ||= $settings->{config}->get("subtitle");
+$replace->{SUBTITLE}    ||= $settings->{config}->get("subtitle");
 
 my $format = App::Basis::ConvertText2->new(
     name      => get_program(),
@@ -322,12 +338,12 @@ my $data = $format->parse($story);
 # all the keywords are in UPPER-CASE
 my $keywords = $format->replace;
 
+$keywords->{FORMAT} ||= DEFAULT_FILE_FORMAT;
 
-$keywords->{FORMAT}  ||= DEFAULT_FILE_FORMAT ;
+if ( $opt{output} ) {
 
-if( $opt{output} ) {
     # strip quotes from output name
-    $opt{output} =~ s/^["'](.*?)["'"]/$1/ ;
+    $opt{output} =~ s/^["'](.*?)["'"]/$1/;
 }
 
 if ( !$opt{output} ) {
@@ -336,27 +352,30 @@ if ( !$opt{output} ) {
     $opt{output} = $opt{filename};
 
     # change extension and add in the version or the date
-    my $postfix = "" ;
-    if( $keywords->{VERSION}) {
-        $postfix = "-v$keywords->{VERSION}" ;
-    } elsif( $keywords->{DATE}) {
-        my $d = $keywords->{DATE} ;
-        $d =~ s/\s/-/g;
-        $postfix = "-$d" ;        
+    my $postfix = "";
+    if ( $keywords->{VERSION} ) {
+        $postfix = "-v$keywords->{VERSION}";
     }
-    $postfix .= ".$keywords->{FORMAT}" ; 
+    elsif ( $keywords->{DATE} ) {
+        my $d = $keywords->{DATE};
+        $d =~ s/\s/-/g;
+        $postfix = "-$d";
+    }
+    $postfix .= ".$keywords->{FORMAT}";
     $opt{output} =~ s/\.md$/$postfix/i;
-} elsif( -d $opt{output} ) {
+}
+elsif ( -d $opt{output} ) {
+
     # we can create the same file name in the required directory
     # append same name as input
-    $opt{output} .= "/" . path($opt{filename})->basename ;
+    $opt{output} .= "/" . path( $opt{filename} )->basename;
 
     # change extension and add in the version
-    my $postfix = "" ;
-    if( $keywords->{VERSION}) {
-        $postfix = "-v$keywords->{VERSION}" ;
+    my $postfix = "";
+    if ( $keywords->{VERSION} ) {
+        $postfix = "-v$keywords->{VERSION}";
     }
-    $postfix .= ".$keywords->{FORMAT}" ; 
+    $postfix .= ".$keywords->{FORMAT}";
     $opt{output} =~ s/\.md$/$postfix/i;
 }
 
@@ -366,11 +385,11 @@ if ( $opt{output} ) {
     if ( $opt{prince} ) {
         $pdfconvertor = 'prince';
     }
-    elsif ($opt{wkhtmltopdf})  {
+    elsif ( $opt{wkhtmltopdf} ) {
         $pdfconvertor = 'wkhtmltopdf';
     }
 
-    my $status = $format->save_to_file( $opt{output}, $pdfconvertor);
+    my $status = $format->save_to_file( $opt{output}, $pdfconvertor );
 
     if ( $opt{verbose} && $status ) {
         say $opt{output};
@@ -380,7 +399,7 @@ if ( $opt{output} ) {
     }
 }
 else {
-    say STDERR "Ignoring $opt{filename}, could not determine a filename to output to, no :format option in file?" ;
+    say STDERR "Ignoring $opt{filename}, could not determine a filename to output to, no :format option in file?";
 }
 
 # return to where we came from
