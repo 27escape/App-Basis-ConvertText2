@@ -359,7 +359,8 @@ if ( !$opt{output} ) {
     elsif ( $keywords->{DATE} ) {
         my $d = $keywords->{DATE};
         $d =~ s/\s/-/g;
-        $postfix = "-$d";
+        # add to end of path if the path does not already have it
+        $postfix = "-$d" if( $opt{output} !~ /$d/);
     }
     $postfix .= ".$keywords->{FORMAT}";
     $opt{output} =~ s/\.md$/$postfix/i;
