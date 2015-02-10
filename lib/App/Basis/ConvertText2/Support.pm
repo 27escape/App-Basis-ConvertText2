@@ -1,3 +1,4 @@
+
 =head1 NAME
 
 App::Basis::ConvertText2::Support
@@ -17,10 +18,11 @@ package App::Basis::ConvertText2::Support;
 use 5.10.0;
 use strict;
 use warnings;
-use Path::Tiny ;
+use Path::Tiny;
 use Digest::MD5 qw(md5_hex);
 use Encode qw(encode_utf8);
 use GD;
+use App::Basis ;
 use Exporter;
 
 use vars qw( @EXPORT @ISA);
@@ -38,12 +40,11 @@ use vars qw( @EXPORT @ISA);
 # ----------------------------------------------------------------------------
 # check if a file is in the cache, if so return the full file name
 sub cachefile {
-    my ($cache, $filename) = @_;
+    my ( $cache, $filename ) = @_;
 
     # make sure we are working in the right dir
     return $cache . "/" . path($filename)->basename;
 }
-
 
 # ----------------------------------------------------------------------------
 # create a signature based on content and params to a element
@@ -60,7 +61,10 @@ sub create_sig {
 sub create_img_src {
     my ( $file, $alt ) = @_;
 
-    return "" if ( !$file || !-f $file );
+    return "" if ( !$file );
+    $file= fix_filename( $file) ;
+    # return "src $file is missing" if( !-f $file) ;
+    return "" if( !-f $file) ;
 
     my $out = "<img src='$file' ";
     $out .= "alt='$alt' " if ($alt);

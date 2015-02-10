@@ -57,6 +57,7 @@ SKIP: {
     if ($has_pandoc) {
         $file = "$dir/output.pdf";
         $status = $format->save_to_file($file);
+        note "file is $file" ;
         ok( $status,  "reported PDF file saved" );
         ok( -f $file, "PDF file exists" );
     }
@@ -68,7 +69,7 @@ SKIP: {
 $data = $format->parse( "----");
 ok( $data !~ '---', 'page break replaced') ;
 
-$data = $format->parse( ",£");
+$data = $format->parse( "<3");
 ok( $data !~ '<3', 'smily replaced') ;
 
 $format->clean_cache();

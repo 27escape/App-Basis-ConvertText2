@@ -1,18 +1,17 @@
 title: App::Basis::ConvertText2
 format: pdf
-date: 2014-05-12
+date: 2015-02-06
 author: Kevin Mulholland
 keywords: perl, readme
 template: coverpage
-version: 5
+version: 6
 
 This document may not be easily readable in this form, try [pdf](docs/README.pdf) or
 [HTML](docs/README.html) as alternatives. These have been generated from this file and the software provided by this distribution.
 
 This is a perl module and a script that makes use of %TITLE%
 
-This is a wrapper for [pandoc] implementing extra fenced code-blocks to allow the
-creation of charts and graphs etc.
+This is a wrapper for [pandoc] implementing extra fenced code-blocks to allow the creation of charts and graphs etc.
 Documents may be created a variety of formats. If you want to create nice PDFs
 then it can use [PrinceXML] to generate great looking PDFs or you can use [wkhtmltopdf] to create PDFs that are almost as good, the default is to use pandoc which, for me, does not work as well.
 
@@ -38,9 +37,11 @@ or install
 
     cpanm App::Basis::ConvertText2
 
-Alternatively it is available from
+Alternatively it is available from https://github.com/27escape/App-Basis-ConvertText2
 
 You will then be able to use the [ct2](#using-ct2-script-to-process-files) script to process files
+
+If you are reading this document in PDF form, then note that all the images are created by the various plugins and included in the output, there is no store of pre-built images. That you can read this proves the plugins all work!
 
 ## Document header and variables
 
@@ -80,7 +81,7 @@ with an underscore '_', this underscore will be removed in the final document.
 
 ## Table of contents
 
-As documents are processed, all the HTML headers (H1..H4) are collected together to make a table of contents. This can be used either in your template or document using the TOC variable.
+As documents are processed, the HTML headers (H2..H3) are collected together to make a table of contents. This can be used either in your template or document using the TOC variable.
 
 **Example**
 
@@ -89,6 +90,16 @@ As documents are processed, all the HTML headers (H1..H4) are collected together
 %TOC%
 
 Note that if using a TOC, then the HTML headers are changed to have a number prefixed to them, this helps ensure that all the TOC references are unique.
+
+### Skipping header {.toc_skip}
+
+If you do not want an item added to the toc add the class 'toc_skip' to the header
+
+**Example**
+
+    ### Skipping header {.toc_skip}
+
+Hopefully you can see that the header for this section is not in the TOC
 
 ## Fenced code-blocks
 
@@ -109,6 +120,20 @@ We use this construct to create our own handlers to generate HTML or markdown.
 
 Note that only code-blocks described in this documentation have special handlers and
 can make use of extra features such as buffering.
+
+### Code-block short cuts
+
+Sometimes using a fenced code-block is overkill, especially if the command to be executed does not have any content. So there is a shortcut to this. Additionally this will allow you to use multiple commands on a single line, this may be important in some instances.
+
+Finally note that the shortcut must completely reside on a single line, it cannot span onto a separate next line, the parser will ignore it!
+
+We wrap the command and its arguments with double braces.
+
+**Example**
+
+    { {.tag argument1='fred' arg2=3}}
+
+To stop the parser from parsing the above example, there is a space character between the opening braces. Do not include this space when creating your markup or things will not work!
 
 ## Buffering data for later use
 
@@ -354,7 +379,7 @@ msc {
 }
 ~~~~
 
-## DIagrams Through Ascii Art - ditaa
+## Diagrams Through Ascii Art - ditaa
 
 This is a special system to turn ASCII art into pretty pictures, nice to render diagrams.
 You do need to make sure that you are using a proper monospaced font with your editor otherwise things will go awry with spaces. See [ditaa] for reference.
@@ -548,6 +573,47 @@ salt
   }
 }
 @enduml
+~~~~
+
+## Umltree
+
+Draw a bulleted list as a tree using the plantuml salt GUI layout tool.
+Bullets are expected to be indented by 4 spaces, we will only process bullets that are * +  or -.
+
+**Example**
+
+    ~~~~{.umltree}
+    * one
+        * 1.1
+    * two
+        * two point 1
+        * 2.2
+    * three
+        * 3.1
+        * 3.2
+        * three point 3
+            * four
+                * five
+            * six
+        * 3 . seven
+    ~~~~
+
+**Output**
+
+~~~~{.umltree}
+* one
+    * 1.1
+* two
+    * two point 1
+    * 2.2
+* three
+    * 3.1
+    * 3.2
+    * three point 3
+        * four
+            * five
+        * six
+    * 3 . seven
 ~~~~
 
 
@@ -975,11 +1041,14 @@ table of this history.
 The content for this code-block comprises a number of sections, each section then makes a row in the generated table.
 
     version YYYY-MM-DD
-       change text
+       indented change text
        more changes
 
 The version may be any string, YYYY-MM-DD shows the date the change took place.
 Alternate date formats is DD-MM-YYYY and '/' may also be used as a field separator.
+
+So give proper formatting to the content in the changes column you should indent
+text after the version/date line with 4 spaces, not a tab character.
 
 * class
     * HTML/CSS class name
@@ -994,12 +1063,12 @@ Alternate date formats is DD-MM-YYYY and '/' may also be used as a field separat
 
     ~~~~{.version class='versiontable' width='100%'}
     0.1 2014-04-12
-      * removed ConvertFile.pm
-      * using Path::Tiny rather than other things
-      * changed to use pandoc fences
-        ~~~~{.tag} rather than xml format <tag>
+        * removed ConvertFile.pm
+        * using Path::Tiny rather than other things
+        * changed to use pandoc fences
+       ~~~~{.tag} rather than xml format <tag>
     0.006 2014-04-10
-      * first release to github
+        * first release to github
     ~~~~
 
 **Output**
@@ -1008,19 +1077,134 @@ Alternate date formats is DD-MM-YYYY and '/' may also be used as a field separat
 0.1 2014-04-12
   * removed ConvertFile.pm
   * using Path::Tiny rather than other things
-  * changed to use pandoc fences ~~~~{.tag} rather than xml format <tag>
 0.006 2014-04-10
   * first release to github
 ~~~~
 
 ## Start a new page - page
 
-Nice and simple, starts a new page
+There are 2 ways for force the start of a new page, using the **.page** fenced code block or by having '---' on a line on its own
 
 **Example**
 
+  This is start a new page
+
     ~~~~{.page}
     ~~~~
+
+  as will this
+
+  ---
+
+**Output**
+
+I will not show the output as it will mess up the document!
+
+## Columns
+
+Create a columner layout, like a newspaper.
+
+The full set of optional arguments is
+
+* count
+    * number of columns to split into, defaults to 2
+* lines
+    * number of lines the section should hold, defaults to 20
+* ruler
+    * show a line between the columns, defaults to no,
+      options are 1, true or yes to show it
+* width
+    * how wide should the column area be, defaults to 100%
+
+**Example**
+
+    ~~~~{.columns count=3 ruler=yes width='75%'}
+    Flexitarian lo-fi occupy, Echo Park yr chia keffiyeh iPhone pug kale chips
+    fashion axe PBR&B 90's readymade beard.  McSweeney's Tumblr semiotics
+    beard, flexitarian artisan bitters twee small batch next level PBR mustache
+    post-ironic stumptown.  Umami Pinterest mixtape Truffaut, Blue Bottle ugh
+    artisan whatever blog street art Odd Future crucifix.  Slow-carb Tumblr
+    actually fashion axe, kitsch Williamsburg Austin bicycle rights forage
+    Carles occupy.  Aesthetic High Life cray seitan.  Mumblecore butcher
+    biodiesel mixtape Bushwick fanny pack.  Tofu twee typewriter Truffaut.
+
+    Leggings church-key ethical banjo twee.  Jean shorts messenger bag vinyl,
+    pork belly blog aesthetic Pinterest ennui mustache lo-fi hella.  Yr blog
+    hoodie, iPhone whatever twee deep v sriracha polaroid occupy pickled food
+    truck.  Letterpress Austin kale chips pop-up mixtape vinyl.  Drinking
+    vinegar slow-carb mlkshk chia sriracha, shabby chic pour-over.  Mlkshk
+    brunch bespoke Kickstarter fingerstache deep v.  Vegan letterpress
+    sustainable, squid quinoa organic asymmetrical XOXO.
+    ~~~~
+
+---
+
+**Output**
+
+Before this section I forced a new page with
+
+    ---
+
+~~~~{.columns count=3 ruler=yes width='75%'}
+Flexitarian lo-fi occupy, Echo Park yr chia keffiyeh iPhone pug kale chips
+fashion axe PBR&B 90's readymade beard.  McSweeney's Tumblr semiotics
+beard, flexitarian artisan bitters twee small batch next level PBR mustache
+post-ironic stumptown.  Umami Pinterest mixtape Truffaut, Blue Bottle ugh
+artisan whatever blog street art Odd Future crucifix.  Slow-carb Tumblr
+actually fashion axe, kitsch Williamsburg Austin bicycle rights forage
+Carles occupy.  Aesthetic High Life cray seitan.  Mumblecore butcher
+biodiesel mixtape Bushwick fanny pack.  Tofu twee typewriter Truffaut
+
+Leggings church-key ethical banjo twee.  Jean shorts messenger bag vinyl,
+pork belly blog aesthetic Pinterest ennui mustache lo-fi hella.  Yr blog
+hoodie, iPhone whatever twee deep v sriracha polaroid occupy pickled food
+truck.  Letterpress Austin kale chips pop-up mixtape vinyl.  Drinking
+vinegar slow-carb mlkshk chia sriracha, shabby chic pour-over.  Mlkshk
+brunch bespoke Kickstarter fingerstache deep v.  Vegan letterpress
+sustainable, squid quinoa organic asymmetrical XOXO.
+~~~~
+
+## Tree
+
+Draw a bulleted list as a directory tree. Bullets are expected to be indented
+by 4 spaces, we will only process bullets that are * +  or -.
+
+**Example**
+
+    ~~~~{.tree}
+    * one
+        * 1.1
+    * two
+        * two point 1
+        * 2.2
+    * three
+        * 3.1
+        * 3.2
+        * three point 3
+            * four
+                * five
+            * six
+        * 3 . seven
+    ~~~~
+
+**Output**
+
+~~~~{.tree}
+* one
+    * 1.1
+* two
+    * two point 1
+    * 2.2
+* three
+    * 3.1
+    * 3.2
+    * three point 3
+        * four
+            * five
+        * six
+    * 3 . seven
+~~~~
+
 
 ## Gle / glx
 
@@ -1031,7 +1215,7 @@ The full set of optional arguments is
 * title
     * used as the generated images 'alt' argument
 * size
-    * size of image, default 720x540, widthxheight, size is approximate
+    * size of image, default 720x512, widthxheight, size is approximate
 * transparent
     * flag to use a transparent background
 
@@ -1113,7 +1297,7 @@ The full set of optional arguments is
 * title
     * used as the generated images 'alt' argument
 * size
-    * size of image, default 720x540, widthxheight
+    * size of image, default 720x512, widthxheight
 
 **Example**
 
@@ -1157,6 +1341,254 @@ set yrange [-10:10]
 splot x*y
 ~~~~
 
+## Ploticus
+
+This is a rather old school charting applitcation, though it can create some
+graphs and charts that the other plugins cannot, e.g. Timelines.
+
+The full set of optional arguments is
+
+* title
+    * used as the generated images 'alt' argument
+
+Its best to let ploticus control the size of the generated images, you may need
+some trial and error with the ploticus 'pagesize:' directive.
+
+**Example**
+
+    ~~~~{.ploticus}
+    //  specify data using proc getdata
+    #proc getdata
+    data: Brazil 22
+      Columbia 17
+      "Costa Rica" 22
+      Guatemala 3
+      Honduras 12
+      Mexico 14
+      Nicaragua 28
+      Belize 9
+      "United States" 21
+      Canada 8
+
+    //  render the pie graph using proc pie
+    #proc pie
+    datafield: 2
+    labelfield: 1
+    labelmode: line+label
+    center: 4 3
+    radius: 1
+    colors: oceanblue
+    outlinedetails: color=white
+    labelfarout: 1.3
+    total: 256
+    ~~~~
+
+**Output**
+
+~~~~{.ploticus}
+//  specify data using proc getdata
+
+pagesize: 8 8
+
+#proc getdata
+data: Brazil 22
+  Columbia 17
+  "Costa Rica" 22
+  Guatemala 3
+  Honduras 12
+  Mexico 14
+  Nicaragua 28
+  Belize 9
+  "United States" 21
+  Canada 8
+
+//  render the pie graph using proc pie
+#proc pie
+datafield: 2
+labelfield: 1
+labelmode: line+label
+center: 4 3
+radius: 1
+colors: oceanblue
+outlinedetails: color=white
+labelfarout: 1.3
+total: 256
+~~~~
+
+And here is that timeline (from http://ploticus.sourceforge.net/gallery/clickmap_time2.htm)
+
+~~~~{.ploticus}
+#proc getdata
+data:
+   NBC  8:00  9:00  "Wind\non Water"
+   NBC  9:00  9:30  "Encore!\nEncore!"
+   NBC  9:30  10:00 "Conrad\nBloom"
+   NBC  10:00 11:00 "Trinity"
+   ABC  8:00  8:30  "Secret\nLives"
+   ABC  8:30  9:00  "Sports\nNight"
+   ABC  9:00  11:00 "Movie of the Week"
+   CBS  8:00  8:30  "Cosby"
+   CBS  8:30  9:00  "Kids say..."
+   CBS  9:00  10:00 "Charmed"
+   CBS  10:00 11:00 "To have\nand to Hold"
+
+#proc areadef
+   title: Evening television schedule
+   rectangle: 1 1 7 3
+   xscaletype: time
+   xrange: 08:00 11:00
+   yscaletype: categories
+   ycategories:
+  NBC
+  ABC
+  CBS
+
+#proc xaxis
+   stubs: inc 1 hours
+
+#proc yaxis
+   stubs: categories
+
+#proc bars
+   color: powderblue2
+   axis: x
+   locfield: 1
+   segmentfields: 2 3
+   labelfield: 4
+   longwayslabel: yes
+   labeldetails: size=6
+~~~~
+
+## Badges
+
+Badges (or shields) are a way to display information, often used to show status of an operation on websites such as github.
+
+Examples of shields can be seen at http://shields.io/
+
+The badges are placed inline, so you can insert text around the fenced codeblock.
+
+Depending on your template the color of the text and the color for the status portion may clash, so take care!
+
+**Example**
+
+    First time
+    ~~~~{.badge subject='test run' status='completed' color='green'}
+    ~~~~
+    Next up
+    ~~~~{.badge subject='test run' status='failed' color='red'}
+    ~~~~
+    Finally
+    ~~~~{.shield subject='test run' status='pending'}
+    ~~~~
+
+**Output**
+
+First time
+~~~~{.badge subject='test run' status='completed' color='green'}
+~~~~
+followed by
+~~~~{.badge subject='test run' status='failed' color='red'}
+~~~~
+And finally
+~~~~{.shield subject='test run' status='pending'}
+~~~~
+
+## Polaroid
+
+Display an image with a bounding box so it looks like a polaroid snap.
+
+reate a polaroid style image with space underneath for writing on.
+Image may be automatically rotated depending upon the exif information
+
+The full set of optional arguments is
+
+* src
+    * filename to convert to a polaroid
+* title
+    * optional title for the photo
+* date
+    * optional date for the photo
+
+**Example**
+
+    ~~~~{.polaroid src='heartp.jpg' title='The heart of Paris' date='2015-02-06'}
+    ~~~~
+
+
+**Output**
+
+~~~~{.polaroid src='heartp.jpg' title='The heart of Paris' date='2015-02-06'}
+~~~~
+
+TODO: hmmm seems only to work when the page size is forced to be 4x6 inches
+
+## Box
+
+Show that something is important by putting it in a box
+
+The full set of optional arguments is
+
+* class
+    * HTML/CSS class name
+* id
+    * HTML/CSS class
+* width
+    * width of the box (default 98%)
+* title
+    * optional title for the section
+* style
+    * style the box if not doing anything else
+
+**Example**
+
+    ~~~~{.box title='Lorem Ipsum - Important Notice' width='80%'}
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque sit amet accumsan est. Nulla facilisi. Nulla lacus augue, gravida sit amet laoreet id, commodo vitae velit. Fusce in nisi mi. Nulla congue nulla ac bibendum semper. In rutrum sem eget purus auctor porttitor. Mauris vel pellentesque lorem. Vestibulum consectetur massa non fermentum dignissim. Aliquam mauris erat, bibendum at mi imperdiet, molestie placerat sem. In fermentum sapien at vulputate mollis. Nulla nec ultrices nulla, ut scelerisque justo. Maecenas a nibh id ligula faucibus fringilla non in nisl.
+    ~~~~
+
+**Output**
+
+~~~~{.box title='Lorem Ipsum - Important Notice' width='80%'}
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque sit amet accumsan est. Nulla facilisi. Nulla lacus augue, gravida sit amet laoreet id, commodo vitae velit. Fusce in nisi mi. Nulla congue nulla ac bibendum semper. In rutrum sem eget purus auctor porttitor. Mauris vel pellentesque lorem. Vestibulum consectetur massa non fermentum dignissim. Aliquam mauris erat, bibendum at mi imperdiet, molestie placerat sem. In fermentum sapien at vulputate mollis. Nulla nec ultrices nulla, ut scelerisque justo. Maecenas a nibh id ligula faucibus fringilla non in nisl.
+~~~~
+
+## Smilies
+
+Conversion of some smilies to unicode characters. This is tricky to show as however I change things the processor will make smilies of these   :) <3  ;) .
+
+Just try some of your favourite smilies and see what comes out!
+
+There are a range of smilies that are words pre/post fixed with a colon
+
+| smilie      | symbol          |
+|-------------+-----------------|
+| <3          | heart           |
+| :)          | smile           |
+| :D          | grin            |
+| 8-)         | cool            |
+| :P          | tongue          |
+| :(          | cry             |
+| :(          | sad             |
+| ;)          | wink            |
+| :halo:      | halo            |
+| :devil:     | devil horns     |
+| (c)         | c, copyright    |
+| (r)         | r, registered   |
+| (tm)        | tm, trademark   |
+| :email:     | email           |
+| :yes:       | tick            |
+| :no:        | cross           |
+| :beer:      | beer            |
+| :wine:      | wine wine_glass |
+| :cake:      | cake            |
+| :star:      | star            |
+| :ok:        | ok, thumbsup    |
+| :bad:       | bad, thumbsdown |
+| :ghost:     | ghost           |
+| :skull:     | skull           |
+| :hourglass: | hourglass       |
+| :time:      | watch face      |
+| :sleep:     | sleep           |
+
 ## Gotchas about variables
 
 * Variables used within the content area of a code-block will be evaluated before processing that block, if a variable has not yet been defined or saved to a buffer then it will only be evaluated at the end of document processing, so output may not be as expected.
@@ -1195,5 +1627,5 @@ Here is the help
 
 If you are creating HTML documents to send out in emails or share in other ways, and use locally referenced images, then it is best to make use of the **--embed** option to pack these images into the HTML file.
 
-If you are using [PrinceXML] remember that it is only free for non-commercial use, it also adds a purple **P** to the top right of the first page of your document.
+If you are using [PrinceXML] remember that it is only free for non-commercial use, it also adds a purple **P** to the top right of the first page of your document, though this does not appear when you print out the document.
 

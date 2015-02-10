@@ -6,7 +6,7 @@ App::Basis::ConvertText2::Plugin::Ditaa
 =head1 SYNOPSIS
 
     my $content = "+--------+   +-------+    +-------+
-    |        | --+ ditaa +--> |       |
+    |        +---+ ditaa +--> |       |
     |  Text  |   +-------+    |diagram|
     |Document|   |!magic!|    |       |
     |     {d}|   |       |    |       |

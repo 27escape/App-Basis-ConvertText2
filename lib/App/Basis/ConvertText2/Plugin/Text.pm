@@ -54,23 +54,55 @@ Various simple text transformations
 
 # ----------------------------------------------------------------------------
 
-package App::Basis::ConvertText2::Plugin::Text;
+package App::Basis::ConvertText2::Plugin::Text ;
 
-use 5.10.0;
-use strict;
-use warnings;
-use YAML qw(Load);
-use JSON;
+use 5.10.0 ;
+use strict ;
+use warnings ;
+use YAML qw(Load) ;
+use JSON::MaybeXS ;
 
-use Moo;
-use App::Basis::ConvertText2::Support;
-use namespace::clean;
+use Moo ;
+use App::Basis::ConvertText2::Support ;
+use Text::Markdown qw(markdown) ;
+use namespace::clean ;
+
+use feature 'state' ;
 
 has handles => (
     is       => 'ro',
     init_arg => undef,
-    default  => sub { [qw{yamlasjson table version page links}] }
-);
+    default  => sub { [qw{yamlasjson table version page columns links tree box}] }
+) ;
+
+
+# ----------------------------------------------------------------------------
+# make numeric entries in a hash properly numbers so that when the hash is used
+# to generate JSON then the correct values will be displayed
+# ie. numbers will not be represented as strings
+# use this function recursively to keep things simple!
+
+sub _make_numbers
+{
+    my $item = shift ;
+
+    if ( ref($item) eq 'HASH' ) {
+        foreach my $key ( keys %{$item} ) {
+            $item->{$key} = _make_numbers( $item->{$key} ) ;
+        }
+    } elsif ( ref($item) eq 'ARRAY' ) {
+        for ( my $i = 0; $i < scalar( @{$item} ); $i++ ) {
+            ${$item}[$i] = _make_numbers( ${$item}[$i] ) ;
+        }
+    } elsif ( ref( $item) eq '' || ref($item) eq 'SCALAR') {
+        if ( $item =~ /^\d+(\.\d+)?$/ ) {
+            # force numbers to be numbers
+            $item += 0 ;
+        }
+    }
+
+    return $item ;
+}
 
 # ----------------------------------------------------------------------------
 
@@ -82,45 +114,68 @@ Convert a YAML block into a JSON block
 
 =cut
 
-sub yamlasjson {
-    my $self = shift;
-    my ( $tag, $content, $params, $cachedir ) = @_;
+sub yamlasjson
+{
+    my $self = shift ;
+    # state $css ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
 
     # make sure we have an extra linefeed at the end to make sure
     # YAML is correct
     $content .= "\n\n" ;
 
-    $content =~ s/~~~~{\.yaml}//gsm;
-    $content =~ s/~~~~//gsm;
+    $content =~ s/~~~~\{\.yaml\}//gsm ;
+    $content =~ s/~~~~//gsm ;
 
-    my $data = Load($content);
-    return "\n~~~~{.json}\n" . to_json( $data, { utf8 => 1, pretty => 1 } ) . "\n~~~~\n\n";
+    my $data = Load($content) ;
+    my $str = "" ;
+#     if( !$css) {
+#         $str .= "
+# <style type='text/css'>
+# #sourceCode #json pre {
+#  white-space: pre-wrap;       /* css-3 */
+#  white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */
+#  white-space: -pre-wrap;      /* Opera 4-6 */
+#  white-space: -o-pre-wrap;    /* Opera 7 */
+#  word-wrap: break-word;       /* Internet Explorer 5.5+ */
+# }
+# </style>" ;
+#         $css = 1 ;
+#     }
+    if( $data) {
+        $data = _make_numbers( $data) ;
+        my $json = JSON::MaybeXS->new( utf8 => 1, pretty => 1 ) ;
+        $str .= "\n\n~~~~{.json wrap=72}\n" . $json->encode($data) . "\n~~~~\n\n</div>\n" ;
+    } 
+
+    return $str ;
 }
 
 # ----------------------------------------------------------------------------
 
-sub _split_csv_data {
-    my ( $data, $separator ) = @_;
-    my @d = ();
+sub _split_csv_data
+{
+    my ( $data, $separator ) = @_ ;
+    my @d = () ;
 
-    $separator ||= ',';
+    $separator ||= ',' ;
 
-    my $j = 0;
+    my $j = 0 ;
     foreach my $line ( split( /\n/, $data ) ) {
-        last if ( !$line );
-        my @row = split( /$separator/, $line );
+        last if ( !$line ) ;
+        my @row = split( /$separator/, $line ) ;
 
         for ( my $i = 0; $i <= $#row; $i++ ) {
-            undef $row[$i] if ( $row[$i] eq 'undef' );
+            undef $row[$i] if ( $row[$i] eq 'undef' ) ;
 
             # dont' bother with any zero values either
-            undef $row[$i] if ( $row[$i] =~ /^0\.?0?$/ );
-            push @{ $d[$j] }, $row[$i];
+            undef $row[$i] if ( $row[$i] =~ /^0\.?0?$/ ) ;
+            push @{ $d[$j] }, $row[$i] ;
         }
-        $j++;
+        $j++ ;
     }
 
-    return @d;
+    return @d ;
 }
 
 # ----------------------------------------------------------------------------
@@ -142,36 +197,37 @@ create a basic html table
 
 =cut
 
-sub table {
-    my $self = shift;
-    my ( $tag, $content, $params, $cachedir ) = @_;
+sub table
+{
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
 
-    $params->{title} ||= "";
+    $params->{title} ||= "" ;
 
-    $content =~ s/^\n//gsm;
-    $content =~ s/\n$//gsm;
+    $content =~ s/^\n//gsm ;
+    $content =~ s/\n$//gsm ;
 
     # open the csv file, read contents, calc max, add into data array
-    my @data = _split_csv_data( $content, $params->{separator} );
+    my @data = _split_csv_data( $content, $params->{separator} ) ;
 
-    my $out = "<table ";
-    $out .= "class='$params->{class}' " if ( $params->{class} );
-    $out .= "id='$params->{id}' "       if ( $params->{id} );
-    $out .= "width='$params->{width}' " if ( $params->{width} );
-    $out .= "class='$params->{style}' " if ( $params->{style} );
-    $out .= ">\n";
+    my $out = "<table " ;
+    $out .= "class='$params->{class}' " if ( $params->{class} ) ;
+    $out .= "id='$params->{id}' "       if ( $params->{id} ) ;
+    $out .= "width='$params->{width}' " if ( $params->{width} ) ;
+    $out .= "class='$params->{style}' " if ( $params->{style} ) ;
+    $out .= ">\n" ;
 
     for ( my $i = 0; $i < scalar(@data); $i++ ) {
-        $out .= "<tr>";
+        $out .= "<tr>" ;
 
         # decide if the top row has the legends
-        my $tag = ( !$i && $params->{legends} ) ? 'th' : 'td';
-        map { $out .= "<$tag>$_</$tag>"; } @{ $data[$i] };
-        $out .= "</tr>\n";
+        my $tag = ( !$i && $params->{legends} ) ? 'th' : 'td' ;
+        map { $out .= "<$tag>$_</$tag>" ; } @{ $data[$i] } ;
+        $out .= "</tr>\n" ;
     }
 
-    $out .= "</table>\n";
-    return $out;
+    $out .= "</table>\n" ;
+    return $out ;
 }
 
 # ----------------------------------------------------------------------------
@@ -191,63 +247,182 @@ create a version table
         class   - HTML/CSS class name
         id      - HTML/CSS class
         width   - width of the table
+        title   - option title for the section, default 'Document Revision History'
         style   - style the table if not doing anything else
         separator - characters to be used to separate the fields
 
 =cut
 
-sub version {
-    my $self = shift;
-    my ( $tag, $content, $params, $cachedir ) = @_;
+sub version
+{
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
+    $params->{title} ||= 'Document Revision History' ;
 
-    $content =~ s/^\n//gsm;
-    $content =~ s/\n$//gsm;
+    $content =~ s/^\n//gsm ;
+    $content =~ s/\n$//gsm ;
 
-    my $out = "<table ";
-    $out .= "class='$params->{class}' " if ( $params->{class} );
-    $out .= "id='$params->{id}' "       if ( $params->{id} );
-    $out .= "width='$params->{width}' " if ( $params->{width} );
-    $out .= "class='$params->{style}' " if ( $params->{style} );
-    $out .= ">\n";
+    $params->{class} ||= "version" ;
 
-    $out .= "<tr><th>Version</th><th>Date</th><th>Changes</th></tr>\n";
+    my $out = "<h2 class='toc_skip'>$params->{title}</h2>
+<table " ;
+    $out .= "class='$params->{class}' " if ( $params->{class} ) ;
+    $out .= "id='$params->{id}' "       if ( $params->{id} ) ;
+    $out .= "width='$params->{width}' " if ( $params->{width} ) ;
+    $out .= "class='$params->{style}' " if ( $params->{style} ) ;
+    $out .= ">\n" ;
 
-    my $section = '^(.*?)\s+(\d{2,4}[-\/]\d{2}[-\/]\d{2,4})' ;
+    $out .= "<tr><th>Version</th><th>Date</th><th>Changes</th></tr>\n" ;
 
-    my @data = split( /\n/, $content );
+    # my $section = '^(.*?)\s+(\d{2,4}[-\/]\d{2}[-\/]\d{2,4})\s?$' ;
+    my $section = '^([\d|v].*?)\s+(\d{2,4}[-\/]\d{2}[-\/]\d{2,4})\s?$' ;
+
+    my @data = split( /\n/, $content ) ;
     for ( my $i = 0; $i < scalar(@data); $i++ ) {
         if ( $data[$i] =~ /$section/ ) {
-            my $vers = $1;
-            my $date = $2;
-            $i++;
-            my $c = "";
+            my $vers = $1 ;
+            my $date = $2 ;
+            $i++ ;
+            my $c = "" ;
 
             # get all the lines in this section
             while ( $i < scalar(@data) && $data[$i] !~ /$section/ ) {
-                $c .= "$data[$i]\n";
-                $i++;
+                $data[$i] =~ s/^\s{4}// ;
+                $c .= "$data[$i]\n" ;
+                $i++ ;
             }
-            $out .= "<tr><td valign='top'>$vers</td><td valign='top'>$date</td><td valign='top'>$c</td></tr>\n";
-            # adjust $i back so we are either at the wnd correctly or on the next section
+
+            # convert any of the data with markdown
+            $out
+                .= "<tr><td valign='top'>$vers</td><td valign='top'>$date</td><td valign='top'>"
+                . markdown($c)
+                . "</td></tr>\n" ;
+
+ # adjust $i back so we are either at the end correctly or on the next section
             $i-- ;
         }
     }
 
-    $out .= "</table>\n";
-    return $out;
+    $out .= "</table>\n" ;
+    return $out ;
 }
 
 # ----------------------------------------------------------------------------
 
-# start a new HTML page
+=item ~~~~{.page }
 
-sub page {
-    my $self = shift;
-    my ( $tag, $content, $params, $cachedir ) = @_;
+Start a new page, alternatively just use '---' as the only thing on a line
+
+There are no contents to a page
+
+    ~~~~{.page}
+    ~~~~
+
+=cut
+
+sub page
+{
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
 
     return "<div style='page-break-before: always;'></div>" ;
 }
 
+# ----------------------------------------------------------------------------
+
+=item ~~~~{.columns }
+
+Split a section into multiple columns
+
+ parameters
+    count   - number of columns to split into, defaults to 2
+    lines   - number of lines the section should hold, defaults to 20
+    ruler   - show a line between the columns, defaults to no, 
+              options are 1, true or yes to show it
+    width   - how wide should it be, defaults to 100%
+
+    ~~~~{.columns count=2 lines=5} 
+    some text
+    more text
+    even more text
+    line 4
+    line5
+    this should be at the start of column 2
+    ~~~~
+
+=cut
+
+sub columns
+{
+    my $self = shift ;
+    state $style ;
+    state $style_count = 0 ;
+
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
+    my $out  = "" ;
+    my $rule = 'none' ;
+
+    $params->{count} ||= 2 ;
+    $params->{lines} ||= 20 ;
+    $params->{ruler} ||= 'no' ;
+    $params->{width} ||= '100%' ;
+
+    # make sure its a string
+    $params->{ruler} .= "" ;
+    if ( $params->{ruler} =~ /^(1|yes|true)$/i ) {
+        $rule = 'thin solid black' ;
+        $params->{ruler} = 'yes' ;
+    } else {
+        $params->{ruler} = 'yes' ;
+    }
+
+    # we create a sig based on the parameters and do not include the content
+    # as we can reuse the same layout for other elements
+    my $sig = create_sig( '', $params ) ;
+    my $idname ;
+
+    # we may have to add a new style section for this column layout
+    if ( !$style->{$sig} ) {
+
+        # create a uniq name for this style
+        $style_count++ ;
+        $idname = "text_column_id$style_count" ;
+
+        # add in the webkit and mozilla styling for completeness
+        # just in case someones browser is not up to date and we are
+        # creating html only
+        $out = "<style type=\"text/css\">
+    .$idname {
+        max-height: $params->{lines} ;
+        width: $params->{width};
+        column-width: auto;
+        column-count: $params->{count} ;
+        column-rule: $rule;
+        column-gap: 2em;
+        column-rule: $rule;
+        overflow: visible;
+
+        -webkit-column-count: $params->{count};
+        -webkit-column-rule: $rule;
+        -webkit-column-gap: 2em;
+
+        -moz-column-count: $params->{count};
+        -moz-column-rule: $rule;
+        -moz-column-gap: 2em;
+
+        display: block;       
+    }
+</style>\n" ;
+
+        $style->{$sig} = { style => $out, name => $idname } ;
+    } else {
+        $idname = $style->{$sig}->{name} ;
+    }
+
+    $out .= "<div class='$idname'>\n$content\n</div>\n" ;
+
+    return $out ;
+}
 
 # ----------------------------------------------------------------------------
 
@@ -262,63 +437,255 @@ pipe '|' symbol
 
 =cut
 
-sub links {
-    my $self = shift;
-    my ( $tag, $content, $params, $cachedir ) = @_;
+sub links
+{
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
 
     # strip any ending linefeed
-    chomp $content;
-    return "" if ( !$content );
+    chomp $content ;
+    return "" if ( !$content ) ;
 
-    $params->{class} ||= "weblinks";
-    my $references = "";
-    my $ul         = "<ul class='$params->{class}'>\n";
-    my %refs       = ();
-    my %uls        = ();
+    $params->{class} ||= "weblinks" ;
+    my $references = "" ;
+    my $ul         = "<ul class='$params->{class}'>\n" ;
+    my %refs       = () ;
+    my %uls        = () ;
 
     foreach my $line ( split( /\n/, $content ) ) {
-        my ( $ref, $link ) = split( /\|/, $line );
-        next if ( !$link );
+        my ( $ref, $link ) = split( /\|/, $line ) ;
+        next if ( !$link ) ;
 
         # trim the items
-        $ref  =~ s/^\s+//;
-        $link =~ s/^\s+//;
-        $ref  =~ s/\s+$//;
-        $link =~ s/\s+$//;
+        $ref  =~ s/^\s+// ;
+        $link =~ s/^\s+// ;
+        $ref  =~ s/\s+$// ;
+        $link =~ s/\s+$// ;
 
         # if there is nothing to link to ignore this
-        next if ( !$ref || !$link );
+        next if ( !$ref || !$link ) ;
 
-        $references .= "[$ref]: $link\n";
+        $references .= "[$ref]: $link\n" ;
 
         # links that reference inside the document do not get added to the
         # list of weblinks
         if ( $link !~ /^#/ ) {
-            $uls{ lc($ref) } = "<li><a href='$link'>$ref</a><ul><li>$link</li></ul></li>\n";
+            $uls{ lc($ref) }
+                = "<li><a href='$link'>$ref</a><ul><li>$link</li></ul></li>\n"
+                ;
         }
     }
 
     # make them nice and sorted
-    map { $ul .= $uls{$_} } sort keys %uls;
-    $ul .= "</ul>\n";
+    map { $ul .= $uls{$_} } sort keys %uls ;
+    $ul .= "</ul>\n" ;
 
-    return "\n" . $references . "\n" . $ul . "\n";
+    return "\n" . $references . "\n" . $ul . "\n" ;
 }
 
 # ----------------------------------------------------------------------------
-# decide which simple hanlder should process this request
 
-sub process {
-    my $self = shift;
-    my ( $tag, $content, $params, $cachedir ) = @_;
+=item ~~~~{.tree }
+
+Draw a bulleted list as a directory tree, bullets are expected to be indented 
+by 4 spaces, we will only process bullets that are * +  or -
+
+    ~~~~{.tree} 
+    * one
+        * 1.1
+    * two
+        * two point 1
+        * 2.2
+    * three 
+        * 3.1
+        * 3.2
+        * three point 3
+    ~~~~
+
+This shows up great when creating PDF with princexml, less well when using wkhtmltopdf
+or viewing HTML with a browser, not sure why, likely to be the embedded background images
+which are not displaying
+
+ parameters
+    color   - the foreground color of the tree items, default black
+
+@todo try this: find . -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g'
+or 
+tree -C -L 2 -T "Ice's webpage" -H "http://mama.indstate.edu/users/ice" --charset=utf8 -o 00Tree.html
+
+=cut
+
+sub tree
+{
+    my $self = shift ;
+    state $style       = {} ;
+    state $style_count = 1 ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
+    my $out = "" ;
+    my $class ;
+
+    $params->{color} ||= 'black' ;
+
+    if ( !$style->{ $params->{color} } ) {
+        $class = "tree$style_count" ;
+        $style_count++ ;
+
+        # taken from http://odyniec.net/articles/turning-lists-into-trees/
+        $out .= "<style type=\"text/css\">
+ul.$class, ul.$class ul {
+    list-style-type: none;
+    /* vline.png */
+    background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAKAQMAAABPHKYJAAAAA1BMVEWIiIhYZW6zAAAACXBIWXMA
+AAsTAAALEwEAmpwYAAAAB3RJTUUH1ggGExMZBky19AAAAAtJREFUCNdjYMAEAAAUAAHlhrBKAAAA
+AElFTkSuQmCC
+) repeat-y;
+    margin: 0;
+    padding: 0;
+}
+
+ul.$class ul {
+    margin-left: 10px;
+}
+
+ul.$class li {
+    margin: 0;
+    padding: 0 12px;
+    line-height: 20px;
+    /* node.png */
+    background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAUAQMAAACK1e4oAAAABlBMVEUAAwCIiIgd2JB2AAAAAXRS
+TlMAQObYZgAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9YIBhQIJYVaFGwAAAARSURBVAjX
+Y2hgQIf/GTDFGgDSkwqATqpCHAAAAABJRU5ErkJggg==
+) no-repeat;
+    color: $params->{color};
+    font-weight: bold;
+}
+
+ul.$class li.last {
+    /*lastnode.png*/
+ background: #fff url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAUAQMAAACK1e4oAAAABlBMVEUAAwCIiIgd2JB2AAAAAXRS
+TlMAQObYZgAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9YIBhQIIhs+gc8AAAAQSURBVAjX
+Y2hgQIf/GbAAAKCTBYBUjWvCAAAAAElFTkSuQmCC
+) no-repeat;
+}
+</style>\n" ;
+        $style->{ $params->{color} } = {
+            class => $class,
+            style => $out
+        } ;
+    } else {
+        $class = $style->{ $params->{color} }->{color} ;
+    }
+
+    # we need to convert the bullet list into a HTML one
+    $content = markdown($content) ;
+
+    # make sure the first ul has class tree
+    $content =~ s/<ul>/<ul class='$class'>/ ;
+
+    # last nodes before the end of list need marking up
+
+    # <ul class='tree1'>
+    #     <li>one
+    #         <ul>
+    #             <li>1.1</li>
+    #         </ul>
+    #     </li>
+    #     <li>two
+    #         <ul>
+    #             <li>two point 1</li>
+    #             <li>2.2</li>
+    #         </ul>
+    #     </li>
+    #     <li>three
+    #         <ul>
+    #             <li>3.1</li>
+    #             <li>3.2</li>
+    #             <li>three point 3
+    #                 <ul>
+    #                     <li>four
+    #                         <ul>
+    #                             <li>five</li>
+    #                         </ul>
+    #                     </li>
+    #                     <li>six</li>
+    #                 </ul>
+    #             </li>
+    #             <li>3 . seven</li>
+    #         </ul>
+    #     </li>
+    # </ul>
+
+    # $content =~ s|<li>(.*?</li>\s*</ul>)|<li class='last'>$1|gsm;
+
+    my @lines = split( /\n/, $content ) ;
+    for ( my $i = 0; $i < scalar(@lines); $i++ ) {
+        if ( $lines[$i] =~ /<li>/ && $lines[ $i + 1 ] =~ /<\/ul>/ ) {
+            $lines[$i] =~ s/<li>/<li class='last'>/ ;
+        }
+        $out .= "$lines[$i]\n" ;
+    }
+
+    # $out .= "$content\n";
+
+    # say STDERR $out;
+
+    return "$out<br>" ;
+}
+
+
+# ----------------------------------------------------------------------------
+
+=item box
+
+create a box around some text
+
+    hashref params of
+        class   - HTML/CSS class name
+        id      - HTML/CSS class
+        width   - width of the box (default 98%)
+        title   - optional title for the section
+        style   - style the box if not doing anything else
+
+=cut
+
+sub box
+{
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
+    #  defaults
+    $params->{width} ||= '98%' ;
+    $params->{class} ||= "box" ;
+
+    my $out = "<div " ;
+    $out .= "class='$params->{class}' " if ( $params->{class} ) ;
+    $out .= "id='$params->{id}' "       if ( $params->{id} ) ;
+    $out .= "width='$params->{width}' " if ( $params->{width} ) ;
+    $out .= "class='$params->{style}' " if ( $params->{style} ) ;
+    $out .= ">\n" ;
+    $out .= "<p class='box_header'>$params->{title}</p>" if( $params->{title}) ;
+    
+    # convert any content to HTML from Markdown
+    $out .= markdown($content) ;
+    $out .= "</div>\n" ;
+    return $out ;
+}
+
+
+# ----------------------------------------------------------------------------
+# decide which simple handler should process this request
+
+sub process
+{
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
 
     if ( $self->can($tag) ) {
-        return $self->$tag(@_);
+        return $self->$tag(@_) ;
     }
-    return undef;
+    return undef ;
 }
 
 # ----------------------------------------------------------------------------
 
-1;
+1 ;
 

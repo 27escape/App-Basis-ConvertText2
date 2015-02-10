@@ -52,6 +52,7 @@ use Path::Tiny;
 use App::Basis;
 use App::Basis::Config;
 use App::Basis::ConvertText2;
+use utf8::all ;
 
 # -----------------------------------------------------------------------------
 
@@ -145,6 +146,59 @@ my $TEMPLATE = <<EOD;
             code > span.al { color: #ff0000; font-weight: bold; }
             code > span.fu { color: #06287e; }
             code > span.er { color: #ff0000; font-weight: bold; }
+
+            /* bit of style for badges */
+            span.badge { vertical-align: center;}
+            
+            span.badge span.subject { 
+                color: white; 
+                background-color: darkslategray;
+                border-top-left-radius: 5px;
+                border-bottom-left-radius: 5px;                
+            }
+            span.badge span.status  { 
+                color: white; 
+                background-color: lightslategray;
+                border-top-right-radius: 5px;
+                border-bottom-right-radius: 5px;                                
+            }
+
+            /* style for boxes */
+            div.box { 
+                background-color: #eeeeee;
+                margin: 0 auto ;
+            }
+            div.box p { 
+                width: 100% ;
+                padding: 5px;
+                margin: 0 auto ;
+                background-color: #eeeeee;
+            }
+            div.box p.box_header   {
+                background-color: black ; 
+                color: white;
+                font-weight: bold;
+                margin-top: 0px ;
+            }
+
+            .polaroid {
+               background-color: grey;
+                width: 4in;
+                height: 6in;
+                max-width: 4in ;
+                hax-height: 6in;
+                margin-bottom: 75px;
+                padding-bottom: 75px;
+                background-color: white;
+                border: 1px solid black;
+                z-index: -100;
+            }
+            .polaroid img {
+                width: 4in;
+                height: 6in;
+                max-width: 4in ;
+                max-height: 6in;
+            }
 
         </style>
     </head>

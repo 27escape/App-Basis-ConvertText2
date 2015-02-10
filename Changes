@@ -1,3 +1,21 @@
+
+0.5 
+    * version in Text Plugin, now expects indented data
+    * columns, box and tree in Text Plugin
+    * umltree in Uml Plugin
+    * TOC items now can be skipped if 'skip_toc' exists as part of an attribute a header element
+    * toc now includes level 4 headers (h4 or ####)
+    * can handle htm output filenames
+    * if output file not specified or is a directory, version number will be added to generated output filename
+    * output filename stripped of any wrapping quotes
+    * ct2 script 
+        * now puls in any subtitle from the template config
+        * change to use standard App::Basis debug
+    * use JSON::MaybeXS
+    * yamlasjon now forces things that look like numbers to be numbers
+    * Switched to use Text::MultiMarkdown when pandoc is not available
+    * fixed sub item TOC indenting
+    * added short block commands '{{.tag}}'
 0.4 2014-5-14
     * fix testing where pandoc is not available
 0.3 2014-5-13

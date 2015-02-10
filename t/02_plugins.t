@@ -20,7 +20,7 @@ use warnings;
 use Path::Tiny;
 use Data::Printer;
 
-use Test::More tests => 28;
+use Test::More tests => 31;
 
 BEGIN {
     # the first set of tests either use other perl modules
@@ -30,6 +30,7 @@ BEGIN {
     use_ok('App::Basis::ConvertText2::Plugin::Sparkline');
     use_ok('App::Basis::ConvertText2::Plugin::Venn');
     use_ok('App::Basis::ConvertText2::Plugin::Text');
+    use_ok('App::Basis::ConvertText2::Plugin::Badge');
 
     # tests that require external programs can only be tested
     # by the author
@@ -205,6 +206,15 @@ $params = undef;
 $obj    = App::Basis::ConvertText2::Plugin::Text->new();
 $out    = $obj->process( 'version', $content, $params, $TEST_DIR );
 ok( $out && $out =~ /<table.*?>\s?<tr><th.*?>Version/sm && $out =~ m|<tr><td.*?>0\.1</td><td.*?>2014?|sm, 'version created a table' );
+
+# badge
+$obj    = App::Basis::ConvertText2::Plugin::Badge->new();
+$content = '' ;
+$params = { subject => 'test subject', status => 'test status'} ;
+$out    = $obj->process( 'badge', $content, $params, $TEST_DIR );
+ok($out && $out =~ /class='badge'/, ' badge works') ;
+$out    = $obj->process( 'shield', $content, $params, $TEST_DIR );
+ok($out && $out =~ /class='badge'/, ' sheild as badge alternate works') ;
 
 SKIP: {
     if ( $ENV{AUTHOR_TESTING} ) {
