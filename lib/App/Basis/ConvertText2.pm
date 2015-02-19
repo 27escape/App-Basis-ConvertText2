@@ -34,15 +34,15 @@ There are plugins to handle
     * barcodes and qrcodes
     * and many others
 
-See 
+See
 https://github.com/27escape/App-Basis-ConvertText2/blob/master/README.md
 for more information.
 
 =head1 Todo
 
-Consider adding plugins for 
+Consider adding plugins for
 
-    * http://blockdiag.com/en/index.html, 
+    * http://blockdiag.com/en/index.html,
     * https://metacpan.org/pod/Chart::Strip
     * https://metacpan.org/pod/Chart::Clicker
 
@@ -444,7 +444,7 @@ sub _call_function
                     $out = "" if ( $params->{no_output} ) ;
                 }
             }
-            $self->_append_output("$out\n") if ( defined $out ) ;
+            # $self->_append_output("$out\n") if ( defined $out ) ;
         }
         catch {
             debug( "ERROR",
@@ -455,9 +455,28 @@ sub _call_function
                 . join( " ", map {"$_='$params->{$_}'"} keys %{$params} )
                 . " }\n"
                 . "~~~~\n" ;
-            $self->_append_output($out) ;
+            # $self->_append_output($out) ;
         } ;
     }
+    return $out ;
+}
+
+# ----------------------------------------------------------------------------
+# handle any {{.tag args='11'}} type things in given text
+
+sub _rewrite_short_block {
+    my $self = shift ;
+    my ( $block, $attributes) = @_ ;
+    my $out ;
+    my $params = _extract_args($attributes) ;
+
+    if ( $block && $valid_tags{$block} ) {
+        return  $self->_call_function( $block, $params, $params->{content}, 0 ) ;
+        } else {
+            # build the short block back together, if we do not have a match
+            $out = "{{.block $attributes}}" ;
+        }
+    return $out ;
 }
 
 # ----------------------------------------------------------------------------
@@ -468,6 +487,7 @@ sub _parse_lines
     my $self  = shift ;
     my $lines = shift ;
     my $count = 0 ;
+    my $curr_line ="" ;
 
     return if ( !$lines ) ;
 
@@ -475,58 +495,23 @@ sub _parse_lines
     my ( $buildline, $simple ) ;
     try {
         foreach my $line ( @{$lines} ) {
+            $curr_line = $line ;
             $count++ ;
 
             # header lines may have been removed
-            next if ( !defined $line ) ;
-
+            if ( !defined $line ) {
+                # we may want a blank line to space out things like indented blocks
+                $self->_append_output("\n") ;
+                next ;
+            }
 
             # a short block is {{.tag arguments}}
             # or {{.tag}}
             # can have multiple ones on a single line like {{.tag1}} {{.tag_two}}
-            # we will recurse to parse each possible one
-
-            my $short_block = 0 ;
-            my $pre ;
-            my $remain = "" ;
-            if ( $line =~ /(.*?)\{\{(.*?)\.(\w+)\s*(.*?)\}\}(.*?)$/ ) {
-                $pre = $1 ;
-                $class      = $2 ;
-                $block      = lc($3) ;
-                $attributes = $4 ;
-                $remain = $5 ;
-                $short_block =1 ;
-            } elsif ( $line =~ /(.*?)\{\{\.(\w+)\s?\}\}(.*?)$/ ) {
-                my $pre = $1 ;
-                $block      = lc($2) ;
-                $remain = $3 ;
-                $attributes = {} ;
-                $short_block =1 ;
-            } 
-            if( $short_block) {
-                # make sure things before the command are output
-                $self->_append_output( $pre) ;
-                my $params = _extract_args($attributes) ;
-
-                # check our block command is good
-                if ( $valid_tags{$block} ) {
-                    # there is no content for a short block
-                    $self->_call_function( $block, $params, "", $count ) ;
-
-                    # clear before we go back for another line
-                    $attributes = "" ;
-                    $block      = "" ;
-
-                    # and process any other occurances on this line
-                    # cast as array reference
-                    $self->_parse_lines( [$remain]) if( $remain);
-
-                    next ;
-                } 
-                # make sure its cleared when we don't use it
-                $attributes = "" ;
-                $block      = "" ;                    
-            }
+            # short tags cannot have the form
+            # {{.class .tag args=123}}
+            # replace all tags on this line
+            $line =~ s/\{\{\.(\w+)(\b.*?)\}\}/$self->_rewrite_short_block( $1, $2)/egs ;
 
             if ( defined $simple ) {
                 if ( $line =~ /^~{4,}\s?$/ ) {
@@ -539,7 +524,7 @@ sub _parse_lines
                 next ;
             }
 
-# we may need to add successive lines together to get a completed fenced code block
+            # we may need to add successive lines together to get a completed fenced code block
             if ( !$block && $buildline ) {
                 $buildline .= " $line" ;
                 if ( $line =~ /\}\s*$/ ) {
@@ -582,14 +567,18 @@ sub _parse_lines
                     # must have reached the end of a block
                     if ( $block && $valid_tags{$block} ) {
                         chomp $content if ($content) ;
-                        $self->_call_function( $block, $params, $content,
-                            $count ) ;
+                        my $out = $self->_call_function( $block, $params, $content, $count ) ;
+                        # not all blocks output things, eg buffer operations
+                        if( $out) {
+                            # add extra line to make sure things are spaced away from other content
+                            $self->_append_output("$out\n\n") ;
+                        }
                     } else {
                         if ( !$block ) {
 
                             # put it back
                             $content ||= "" ;
-                            $self->_append_output("~~~~\n$content\n~~~~\n") ;
+                            $self->_append_output("~~~~\n$content\n~~~~\n\n") ;
 
                         } else {
                             $content    ||= "" ;
@@ -598,9 +587,8 @@ sub _parse_lines
 
                             # put it back
                             $self->_append_output(
-                                "~~~~{ $class .$block $attributes}\n$content\n~~~~\n"
+                                "~~~~{ $class .$block $attributes}\n$content\n~~~~\n\n"
                             ) ;
-
                         }
                     }
                     $content    = "" ;
@@ -617,7 +605,7 @@ sub _parse_lines
         }
     }
     catch {
-        die "Issue at line $count $_" ;
+        die "Issue at line $count $_ ($curr_line)" ;
     } ;
 }
 
@@ -707,12 +695,12 @@ sub _rewrite_imgsrc
             }
         }
 
- # do we need to embed the images, if we do this then libreoffice may be pants
- # however 'prince' is happy
+         # do we need to embed the images, if we do this then libreoffice may be pants
+         # however 'prince' is happy
         if ( $self->embed() ) {
 
-# we encode the image as base64 so that the HTML document can be moved with all images
-# intact
+            # we encode the image as base64 so that the HTML document can be moved with all images
+            # intact
             my $base64 = MIME::Base64::encode( path($img)->slurp_raw ) ;
             $img = "data:image/$ext;base64,$base64" ;
         }
@@ -961,7 +949,7 @@ sub _convert_file
 
 parse the markup into HTML and return it, HTML is also stored internally
 
-B<Parameter>  
+B<Parameter>
     markdown text
 
 =cut
@@ -998,7 +986,11 @@ sub parse
             my ( $k, $v ) = ( $lines[$i] =~ /^:?(\w+):?\s+(.*?)\s?$/ ) ;
             next if ( !$k ) ;
 
-            $self->_add_replace( $k, $v ) ;
+            # date/DATE is a special one as it may be that they want to use the current date
+            # so we will ignore it
+            if( !($k eq 'date' && $v eq '%DATE%')) {
+                $self->_add_replace( $k, $v ) ;
+            }
             $lines[$i] = undef ;    # essentially remove the line
         }
 
@@ -1010,18 +1002,6 @@ sub parse
             $self->cache_dir() . "/$id.md",
             encode_utf8( $self->{output} )
         ) ;
-
-        # fixup any markdown simple tables | ------ | -> |---------|
-
-        # my @tmp = split( /\n/, $self->{output} );
-        # my $done = 0;
-        # for ( my $i = 0; $i < scalar @tmp; $i++ ) {
-        #     if ( $tmp[$i] =~ /^\|[\s\|\-\+]+$/ ) {
-        #         $tmp[$i] =~ s/\s/-/g;
-        #         $done++;
-        #     }
-        # }
-        # $self->{output} = join( "\n", @tmp ) if ($done);
 
         # we have a special replace for '---' alone on a line which is used to
         # signifiy a page break
@@ -1049,7 +1029,7 @@ sub parse
         my $rep = "%" . CONTENTS . "%" ;
         $html =~ s/$rep/$pan/gsm ;
 
-# if the user has not used :title, the we need to grab the title from the page so far
+# if the user has not used title:, the we need to grab the title from the page so far
         if ( !$self->{replace}->{TITLE} ) {
             my (@h1) = ( $html =~ m|<h1.*?>(.*?)</h1>|gsmi ) ;
 
@@ -1075,6 +1055,16 @@ sub parse
         # replace things we have saved
         $html = $self->_do_replacements($html) ;
 
+        # this allows us to put short blocks as output of other blocks or inline
+        # with things that might otherwise not allow them
+        # we use the single line parse version too
+        # short tags cannot have the form
+        # {{.class .tag args=123}}
+
+        $html =~ s/\{\{\.(\w+)(\b.*?)\}\}/$self->_rewrite_short_block( $1, $2)/egs ;
+        # and without arguments
+        # $html =~ s/\{\{\.(\w+)\s?\}\}/$self->_rewrite_short_block( '', $1, {})/egs ;
+
         # and remove any uppercased %word% things that are not processed
         $html =~ s/(?<!_)%[A-Z-_]+\%//gsm ;
         $html =~ s/_(%.*?%)/$1/gsm ;
@@ -1089,6 +1079,9 @@ sub parse
             =~ s/(url\s*\(['"]?)(.*?)(['"]?\))/$self->_rewrite_imgsrc( $1, $2, $3, 0)/egs
             ;
 
+        # replace any escaped \{ braces when needing to explain short code blocks in examples
+        $html =~ s/\\\{/{/gsm ;
+
         $self->{output} = $html ;
         $self->_store_cache( $cachefile, $html ) ;
     }
@@ -1101,7 +1094,7 @@ sub parse
 
 save the created html to a named file
 
-B<Parameters>  
+B<Parameters>
     filename    filename to store/convert stored HTML into
     pdfconvertor   indicate that we should use prince or wkhtmltopdf to create PDF
 

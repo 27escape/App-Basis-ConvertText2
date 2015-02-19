@@ -200,6 +200,28 @@ my $TEMPLATE = <<EOD;
                 max-height: 6in;
             }
 
+            span.glossary {
+              display: inline-block;
+              position: relative;
+              color: green ;
+            }
+            span.glossary:before {
+              content: "~~~~~~~~~~~~";
+              font-size: 0.6em;
+              font-weight: 700;
+              font-family: Times New Roman, Serif;
+              color: green;
+              width: 100%;
+              position: absolute;
+              top: 12px;
+              left: -1px;
+              overflow: hidden;
+            }
+            table.glossary td.key {
+              font-weight: bold;
+              color: gree;
+            }
+
         </style>
     </head>
     <body>
@@ -235,7 +257,11 @@ sub create_defaults {
     }
 
     # create HTML template
-    path("$default/template.html")->spew_utf8($TEMPLATE) if ( !-f "$default/template.html" );
+    if ( !-f "$default/template.html" ) {
+        path("$default/template.html")->spew_utf8($TEMPLATE) ;
+        say "Created default template in '$default/template.html'" ;
+
+    }
 
     my $config = App::Basis::Config->new( filename => "$default/config" );
 
@@ -247,6 +273,7 @@ sub create_defaults {
         $config->set( '/author',    $author );
         $config->set( '/copyright', "Property of $author 2014" );
         $config->store();
+        say "created default config in '$default/config'" ;
     }
 }
 
@@ -323,7 +350,7 @@ if ( $opt{templates} ) {
 $opt{filename} = $ARGV[0];
 $opt{filename} =~ s/^~/$ENV{HOME}/ if ( $opt{filename} );
 
-if ( $opt{filename} ne '-' && !( -f $opt{filename} && $opt{filename} =~ /\.md$/i ) ) {
+if ( !$opt{filename} ||( $opt{filename} ne '-' && !( -f $opt{filename} && $opt{filename} =~ /\.md$/i ) )) {
     show_usage("filename must exist and be .md");
 }
 

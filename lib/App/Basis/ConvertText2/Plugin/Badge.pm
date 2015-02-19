@@ -38,7 +38,7 @@ has handles => (
 
 # -----------------------------------------------------------------------------
 
-=item badge
+=item badge | shield
 
 aka shield
 
@@ -47,9 +47,11 @@ Create abadge/shield to show status of something
  parameters
 
     hashref params of
-        subject - whats the badge for 
+        subject - whats the badge for
         status  - how well is it doing
         color   - what color is the status part, defaults to goldenrod
+        size    - change the font-size from the CSS one to this
+
 
 =cut
 
@@ -59,17 +61,24 @@ sub badge
     my ( $tag, $content, $params, $cachedir ) = @_;
 
     my $out;
-    $params->{color} //= 'goldenrod' ;  
-    my $style = "background-color: $params->{color};"  ;
+    $params->{color} //= 'goldenrod' ;
+    my $subject_style = "" ;
+    my $status_style = "background-color: $params->{color}; "  ;
     $params->{subject} //= 'Missing subject' ;
     $params->{status} //= 'Missing status' ;
 
+    if( $params->{size}) {
+        $params->{size} =~ s/%//g ;
+        $status_style .= "font-size: $params->{size}%; " ;
+        $subject_style .= "font-size: $params->{size}%; " ;
+    }
+
     # create something suitable for the HTML, no spaces
     $out = "<span class='badge'>" .
-        "<span class='subject'>&nbsp;&nbsp;" . $params->{subject} . 
-        "&nbsp;</span><span class='status' style='$style'>&nbsp;" . $params->{status} . "&nbsp;&nbsp;</span>
+        "<span class='subject' style='$subject_style'>&nbsp;&nbsp;" . $params->{subject} .
+        "&nbsp;</span><span class='status' style='$status_style'>&nbsp;" . $params->{status} . "&nbsp;&nbsp;</span>
 </span>";
-    
+
     return $out;
 }
 
@@ -82,7 +91,6 @@ sub process
     my ( $tag, $content, $params, $cachedir ) = @_;
 
     $tag = 'badge' if( $tag eq 'shield') ;
-
     if ( $self->can($tag) ) {
         return $self->$tag(@_);
     }

@@ -131,9 +131,16 @@ We wrap the command and its arguments with double braces.
 
 **Example**
 
-    { {.tag argument1='fred' arg2=3}}
+    \{\{.tag argument1='fred' arg2=3}}
 
-To stop the parser from parsing the above example, there is a space character between the opening braces. Do not include this space when creating your markup or things will not work!
+Its is possible to add content that would normally be in the fenced code-block, if there is not too much information, by adding it to a *content* attribute.
+
+We can see this in action below and in the barcode examples later on.
+
+**Example**
+
+    \{\{.tag argument1='fred' arg2=3 content='some text'}}
+
 
 ## Buffering data for later use
 
@@ -390,16 +397,20 @@ The content for this code-block must be the same that you would use to with the 
     * used as the generated images 'alt' argument
 * size
     * size of image, default 80x20, widthxheight
+    * shadow  - have shadow, default true
+    * alias   - apply aliasing, default true
+    * round   - round edges, default false
+    * separation - default false
 
 **Example**
 
     ~~~~{.ditaa }
     Full example
     +--------+   +-------+    +-------+
-    |        | --+ ditaa +--> |       |
+    |        +-->| ditaa +--->|       |
     |  Text  |   +-------+    |diagram|
     |Document|   |!magic!|    |       |
-    |     {d}|   |       |    |       |
+    |     {d}|   |       |    |cBLU   |
     +---+----+   +-------+    +-------+
         :                         ^
         |       Lots of work      |
@@ -411,10 +422,10 @@ The content for this code-block must be the same that you would use to with the 
 ~~~~{.ditaa }
 Full example
 +--------+   +-------+    +-------+
-|        | --+ ditaa +--> |       |
+|        +-->| ditaa +--->|       |
 |  Text  |   +-------+    |diagram|
 |Document|   |!magic!|    |       |
-|     {d}|   |       |    |       |
+|     {d}|   |       |    |cBLU   |
 +---+----+   +-------+    +-------+
     :                         ^
     |       Lots of work      |
@@ -739,15 +750,11 @@ The arguments allowed are
 
 **Example**
 
-    ~~~~{.barcode type='code39'}
-    123456789
-    ~~~~
+    \{\{.barcode type='code39' content=123456789}}
 
 **Output**
 
-~~~~{.barcode type='code39'}
-123456789
-~~~~
+{{.barcode type='code39' content=123456789}}
 
 ### EAN8
 
@@ -958,6 +965,41 @@ list:
 
 ~~~~
 
+## YAML convert to XML
+
+Software engineers often use [XML] to transfer data between systems, this often is not nice to create for documentation. We cam create basic XML, we do not allow element attributes. If you want real XML layout use *.xml* in a fenced code block.
+
+**Example**
+
+    ~~~~{.yamlasxml }
+    list:
+      - array: [1,2,3,7]
+        channel: BBC3
+        date: 2013-10-20
+        time: 20:30
+      - array: [1,2,3,9]
+        channel: BBC4
+        date: 2013-11-20
+        time: 21:00
+
+    ~~~~
+
+**Output**
+
+~~~~{.yamlasxml }
+list:
+  - array: [1,2,3,7]
+    channel: BBC3
+    date: 2013-10-20
+    time: 20:30
+  - array: [1,2,3,9]
+    channel: BBC4
+    date: 2013-11-20
+    time: 21:00
+
+~~~~
+
+
 ## Table
 
 Create a simple table using CSV style data
@@ -1083,18 +1125,17 @@ text after the version/date line with 4 spaces, not a tab character.
 
 ## Start a new page - page
 
-There are 2 ways for force the start of a new page, using the **.page** fenced code block or by having '---' on a line on its own
+There are 2 ways for force the start of a new page, using the **.page** fenced code block or by having 4 '-' signs next to each other, i.e. '----' on a line on their own
 
 **Example**
 
-  This is start a new page
+  This is start a new page, again using short block form.
 
-    ~~~~{.page}
-    ~~~~
+    \{\{.page}}
 
-  as will this
+    as will this
 
-  ---
+    ----
 
 **Output**
 
@@ -1463,7 +1504,7 @@ data:
 
 Badges (or shields) are a way to display information, often used to show status of an operation on websites such as github.
 
-Examples of shields can be seen at http://shields.io/
+Examples of shields can be seen at [sheilds.io](http://shields.io/)
 
 The badges are placed inline, so you can insert text around the fenced codeblock.
 
@@ -1474,24 +1515,22 @@ Depending on your template the color of the text and the color for the status po
     First time
     ~~~~{.badge subject='test run' status='completed' color='green'}
     ~~~~
-    Next up
-    ~~~~{.badge subject='test run' status='failed' color='red'}
-    ~~~~
-    Finally
-    ~~~~{.shield subject='test run' status='pending'}
-    ~~~~
+     followed by \{\{.badge subject='test run' status='failed' color='red'}}
+
+    Finally, badges / shields work well as short blocks
+    \{\{.shield subject='test run' status='pending' size='150'}}
+    \{\{.shield subject='build' status='passing' color='#33aa00' size='75'}}
 
 **Output**
 
 First time
 ~~~~{.badge subject='test run' status='completed' color='green'}
 ~~~~
-followed by
-~~~~{.badge subject='test run' status='failed' color='red'}
-~~~~
-And finally
-~~~~{.shield subject='test run' status='pending'}
-~~~~
+ followed by {{.badge subject='test run' status='failed' color='red'}}
+
+Finally, badges / shields work well as short blocks
+{{.shield subject='test run' status='pending' size='150'}}
+{{.shield subject='build' status='passing' color='#33aa00' size='75'}}
 
 ## Polaroid
 
@@ -1519,8 +1558,6 @@ The full set of optional arguments is
 
 ~~~~{.polaroid src='heartp.jpg' title='The heart of Paris' date='2015-02-06'}
 ~~~~
-
-TODO: hmmm seems only to work when the page size is forced to be 4x6 inches
 
 ## Box
 
@@ -1550,6 +1587,36 @@ The full set of optional arguments is
 ~~~~{.box title='Lorem Ipsum - Important Notice' width='80%'}
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque sit amet accumsan est. Nulla facilisi. Nulla lacus augue, gravida sit amet laoreet id, commodo vitae velit. Fusce in nisi mi. Nulla congue nulla ac bibendum semper. In rutrum sem eget purus auctor porttitor. Mauris vel pellentesque lorem. Vestibulum consectetur massa non fermentum dignissim. Aliquam mauris erat, bibendum at mi imperdiet, molestie placerat sem. In fermentum sapien at vulputate mollis. Nulla nec ultrices nulla, ut scelerisque justo. Maecenas a nibh id ligula faucibus fringilla non in nisl.
 ~~~~
+
+## Glossary
+
+Build a glossary of terms or abbreviations as you progress with your document. Show them later on, there is no way (currently) to place the glossary ahead of any definitions.
+
+**Example**
+
+    This is a \{\{.gloss abbr='SMPL' def='short spelling of SAMPLE'}}
+    There are other things we can do
+    \{\{.glossary abbr='test' define='Test long form and arguments'}}
+
+    Optionally if there is a link to a item e.g. [Links](#links)
+    \{\{.gloss abbr='msc' define='Message Sequence Charts' link=1}}
+    then this can link to the relevant website, the following link
+    has not been added to
+    \{\{.gloss abbr='JSON' define='JavaScript Object Notation'}},
+    so no link to the website.
+
+    Now finally, show the results
+    \{\{.gloss show=1}}
+
+**Output**
+
+This is a {{.gloss abbr='SMPL' def='short spelling of SAMPLE'}}
+There are other things we can do {{.glossary abbr='test' define='Test long form and arguments'}}
+
+Optionally if there is a link to a item in [Links](#links) {{.gloss abbr='msc' define='Message Sequence Charts' link=1}} then this can link to the relevant website, the following link has not been added to {{.gloss abbr='JSON' define='JavaScript Object Notation'}}, so no link to the website.
+
+Now finally, show the results
+{{.gloss show=1}}
 
 ## Smilies
 
@@ -1594,6 +1661,7 @@ There are a range of smilies that are words pre/post fixed with a colon
 * Variables used within the content area of a code-block will be evaluated before processing that block, if a variable has not yet been defined or saved to a buffer then it will only be evaluated at the end of document processing, so output may not be as expected.
 * Variables used in markdown tables may not do what you expect if the variable is multi-line.
 
+----
 ## Using ct2 script to process files
 
 Included in the distribution is a script to make use of all of the above code-blocks to alter [markdown] into nicely formatted documents.
@@ -1605,26 +1673,31 @@ Here is the help
     Syntax: ct2 [options] filename
 
     About:  Convert my modified markdown text files into other formats, by
-    default will create HTML in same directory as the input file, will only
-    process .md files.
-    If there is no output option used the output will be to file of same name
-    as the input filename but  with an extension (if provided) from the
-    document, use format: keyword (pdf html doc).
+        default will create HTML in same directory as the input file, will only
+        process .md files.
+        If there is no output option used the output will be to file of same
+        name
+        as the input filename but with an extension (if provided) from the
+        document, use format: keyword (pdf html doc).
 
     [options]
         -h, -?, --help        Show help
         -c, --clean           Clean up the cache before use
         -e, --embed           Embed images into HTML, do not use this if
-            converting to doc/odt
+        converting to doc/odt
         -o, --output          Filename to store the output as, extension will
-            control conversion
+        control conversion
         -p, --prince          Convert to PDF using princexml, can handle
-            embedded images
-        -s, --template        name of template to use
+        embedded images
+        --templates           list available templates
+        -t, --template        name of template to use
         -v, --verbose         verbose mode
         -w, --wkhtmltopdf     Convert to PDF using wkhtmltopdf, can handle
-            embedded images
+        embedded images
 
+On the first time you run **ct2** a default template will be created in **~/.ct2/templates/default/template.html**, a config file to accompany this will be created in *~/.ct2/templates/default/template.html**
+
+Create new templates in *~/.ct2/templates*, one directory for each template, follow the example in the default directory.
 If you are creating HTML documents to send out in emails or share in other ways, and use locally referenced images, then it is best to make use of the **--embed** option to pack these images into the HTML file.
 
 If you are using [PrinceXML] remember that it is only free for non-commercial use, it also adds a purple **P** to the top right of the first page of your document, though this does not appear when you print out the document.

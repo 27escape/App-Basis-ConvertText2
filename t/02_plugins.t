@@ -214,7 +214,7 @@ $params = { subject => 'test subject', status => 'test status'} ;
 $out    = $obj->process( 'badge', $content, $params, $TEST_DIR );
 ok($out && $out =~ /class='badge'/, ' badge works') ;
 $out    = $obj->process( 'shield', $content, $params, $TEST_DIR );
-ok($out && $out =~ /class='badge'/, ' sheild as badge alternate works') ;
+ok($out && $out =~ /class='badge'/, ' shield as badge alternate works') ;
 
 SKIP: {
     if ( $ENV{AUTHOR_TESTING} ) {
@@ -222,7 +222,7 @@ SKIP: {
         # ditaa
         $content = 'Full example
 +--------+   +-------+    +-------+
-|        | --+ ditaa +--> |       |
+|        +---+ ditaa +--->|       |
 |  Text  |   +-------+    |diagram|
 |Document|   |!magic!|    |       |
 |     {d}|   |       |    |       |

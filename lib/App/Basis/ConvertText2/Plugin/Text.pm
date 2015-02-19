@@ -25,6 +25,8 @@ Handle a few simple text code blocks
         time: 21:00
     " ;
     $out = $obj->process( 'yamlasjson', $content, $params) ;
+    # or as XML
+    $out = $obj->process( 'yamlasxml', $content, $params) ;
 
     # table
     $content = "row1,entry 1,cell2
@@ -61,6 +63,7 @@ use strict ;
 use warnings ;
 use YAML qw(Load) ;
 use JSON::MaybeXS ;
+use XML::Simple qw(XMLout) ;
 
 use Moo ;
 use App::Basis::ConvertText2::Support ;
@@ -72,7 +75,7 @@ use feature 'state' ;
 has handles => (
     is       => 'ro',
     init_arg => undef,
-    default  => sub { [qw{yamlasjson table version page columns links tree box}] }
+    default  => sub { [qw{yamlasjson yamlasxml table version page columns links tree box note}] }
 ) ;
 
 
@@ -117,39 +120,61 @@ Convert a YAML block into a JSON block
 sub yamlasjson
 {
     my $self = shift ;
-    # state $css ;
     my ( $tag, $content, $params, $cachedir ) = @_ ;
 
     # make sure we have an extra linefeed at the end to make sure
     # YAML is correct
     $content .= "\n\n" ;
 
-    $content =~ s/~~~~\{\.yaml\}//gsm ;
-    $content =~ s/~~~~//gsm ;
+    # $content =~ s/~~~~\{\.yaml\}//gsm ;
+    # $content =~ s/~~~~//gsm ;
 
     my $data = Load($content) ;
     my $str = "" ;
-#     if( !$css) {
-#         $str .= "
-# <style type='text/css'>
-# #sourceCode #json pre {
-#  white-space: pre-wrap;       /* css-3 */
-#  white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */
-#  white-space: -pre-wrap;      /* Opera 4-6 */
-#  white-space: -o-pre-wrap;    /* Opera 7 */
-#  word-wrap: break-word;       /* Internet Explorer 5.5+ */
-# }
-# </style>" ;
-#         $css = 1 ;
-#     }
     if( $data) {
         $data = _make_numbers( $data) ;
         my $json = JSON::MaybeXS->new( utf8 => 1, pretty => 1 ) ;
-        $str .= "\n\n~~~~{.json wrap=72}\n" . $json->encode($data) . "\n~~~~\n\n</div>\n" ;
-    } 
+        $str .= "\n\n~~~~{.json wrap='72'}\n" . $json->encode($data) . "\n~~~~\n\n" ;
+    }
 
     return $str ;
 }
+
+
+# ----------------------------------------------------------------------------
+
+=item yamlasxml
+
+Convert a YAML block into an XML block
+
+ parameters
+
+=cut
+
+sub yamlasxml
+{
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
+
+    # make sure we have an extra linefeed at the end to make sure
+    # YAML is correct
+    $content .= "\n\n" ;
+
+    # $content =~ s/~~~~\{\.xml\}//gsm ;
+    # $content =~ s/~~~~//gsm ;
+
+    my $data = Load($content) ;
+    my $str = "" ;
+    if( $data) {
+        $data = _make_numbers( $data) ;
+        my $xml = XMLout( $data, RootName => "", NoAttr=> 1) ;
+        $str .= "\n\n~~~~{.xml wrap='72'}\n$xml\n~~~~\n\n\n" ;
+    }
+
+    return $str ;
+}
+
+
 
 # ----------------------------------------------------------------------------
 
@@ -337,11 +362,11 @@ Split a section into multiple columns
  parameters
     count   - number of columns to split into, defaults to 2
     lines   - number of lines the section should hold, defaults to 20
-    ruler   - show a line between the columns, defaults to no, 
+    ruler   - show a line between the columns, defaults to no,
               options are 1, true or yes to show it
     width   - how wide should it be, defaults to 100%
 
-    ~~~~{.columns count=2 lines=5} 
+    ~~~~{.columns count=2 lines=5}
     some text
     more text
     even more text
@@ -410,7 +435,7 @@ sub columns
         -moz-column-rule: $rule;
         -moz-column-gap: 2em;
 
-        display: block;       
+        display: block;
     }
 </style>\n" ;
 
@@ -429,11 +454,12 @@ sub columns
 =item ~~~~{.links }
 
 create a list of website links
-links are one per line and the link name is separated from the link with a 
+links are one per line and the link name is separated from the link with a
 pipe '|' symbol
 
  parameters
     class   - name of class for the list, defaults to weblinks
+    table   - create a table rather than a list
 
 =cut
 
@@ -451,6 +477,8 @@ sub links
     my $ul         = "<ul class='$params->{class}'>\n" ;
     my %refs       = () ;
     my %uls        = () ;
+
+    $ul = "<table class='$params->{class}'><tr><th>Reference</th><th>Link</th></tr>\n" if( $params->{table}) ;
 
     foreach my $line ( split( /\n/, $content ) ) {
         my ( $ref, $link ) = split( /\|/, $line ) ;
@@ -470,15 +498,17 @@ sub links
         # links that reference inside the document do not get added to the
         # list of weblinks
         if ( $link !~ /^#/ ) {
-            $uls{ lc($ref) }
-                = "<li><a href='$link'>$ref</a><ul><li>$link</li></ul></li>\n"
-                ;
+            if( $params->{table}) {
+                $uls{ lc($ref) } = "<tr><td class='reference'><a href='$link'>$ref</a></td><td class='link'>$link</td></tr>\n" ;
+            } else {
+                $uls{ lc($ref) } = "<li><a href='$link'>$ref</a><ul><li>$link</li></ul></li>\n" ;
+                }
         }
     }
 
     # make them nice and sorted
     map { $ul .= $uls{$_} } sort keys %uls ;
-    $ul .= "</ul>\n" ;
+    $ul .= "</ul>\n" if( !$params->{table});
 
     return "\n" . $references . "\n" . $ul . "\n" ;
 }
@@ -487,16 +517,16 @@ sub links
 
 =item ~~~~{.tree }
 
-Draw a bulleted list as a directory tree, bullets are expected to be indented 
+Draw a bulleted list as a directory tree, bullets are expected to be indented
 by 4 spaces, we will only process bullets that are * +  or -
 
-    ~~~~{.tree} 
+    ~~~~{.tree}
     * one
         * 1.1
     * two
         * two point 1
         * 2.2
-    * three 
+    * three
         * 3.1
         * 3.2
         * three point 3
@@ -510,7 +540,7 @@ which are not displaying
     color   - the foreground color of the tree items, default black
 
 @todo try this: find . -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g'
-or 
+or
 tree -C -L 2 -T "Ice's webpage" -H "http://mama.indstate.edu/users/ice" --charset=utf8 -o 00Tree.html
 
 =cut
@@ -635,9 +665,10 @@ Y2hgQIf/GbAAAKCTBYBUjWvCAAAAAElFTkSuQmCC
 
 # ----------------------------------------------------------------------------
 
-=item box
+=item box | note
 
-create a box around some text
+create a box around some text, if note is used and there is no title, then 'Note'
+will be added as a default
 
     hashref params of
         class   - HTML/CSS class name
@@ -655,6 +686,8 @@ sub box
     #  defaults
     $params->{width} ||= '98%' ;
     $params->{class} ||= "box" ;
+    # notes may get a default title if its missing
+    $params->{title} = 'Note' if( $tag eq 'note' && ! defined $params->{title}) ;
 
     my $out = "<div " ;
     $out .= "class='$params->{class}' " if ( $params->{class} ) ;
@@ -663,13 +696,18 @@ sub box
     $out .= "class='$params->{style}' " if ( $params->{style} ) ;
     $out .= ">\n" ;
     $out .= "<p class='box_header'>$params->{title}</p>" if( $params->{title}) ;
-    
+
     # convert any content to HTML from Markdown
     $out .= markdown($content) ;
-    $out .= "</div>\n" ;
+    $out .= "</div><br/>\n" ;
     return $out ;
 }
 
+sub note
+{
+    my $self = shift ;
+    return $self->box( @_)
+}
 
 # ----------------------------------------------------------------------------
 # decide which simple handler should process this request
