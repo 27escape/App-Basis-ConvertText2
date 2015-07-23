@@ -25,16 +25,12 @@ basic config and the initial templates
     [options]
         -h, -?, --help        Show help
         -c, --clean           Clean up the cache before use
-        -e, --embed           Embed images into HTML, do not use this if
-            converting to doc/odt
         -o, --output          Filename to store the output as, extension will
             control conversion
-        -p, --prince          Convert to PDF using princexml, can handle
-            embedded images
+        -p, --prince          Convert to PDF using princexml
         -t, --template        name of template to use
         -v, --verbose         verbose mode
-        -w, --wkhtmltopdf     Convert to PDF using wkhtmltopdf, can handle
-            embedded images
+        -w, --wkhtmltopdf     Convert to PDF using wkhtmltopdf
         -m, --commonmark      use CommonMark rather than pandoc for markdown processing
 
 =head1 AUTHOR
@@ -205,19 +201,17 @@ my %opt = init_app(
     help_cmdline => "filename",
     options      => {
         'clean|c' => 'Clean up the cache before use',
-        'embed|e' =>
-            'Embed images into HTML, do not use this if converting to doc/odt',
         'output|o=s' => {
             desc =>
                 'Filename to store the output as, extension will control conversion',
             default => "",
         },
         'prince|p' =>
-            'Convert to PDF using princexml, can handle embedded images',
+            'Convert to PDF using princexml',
         'template|t=s' => 'name of template to use',
         'templates'    => 'list available templates',
         'wkhtmltopdf|w' =>
-            'Convert to PDF using wkhtmltopdf, can handle embedded images',
+            'Convert to PDF using wkhtmltopdf',
         'verbose|v' => 'verbose mode',
         'commonmark|m' =>
             'use commonMark instead of pandoc for markdown processing',
@@ -305,7 +299,6 @@ my $format = App::Basis::ConvertText2->new(
     template  => $settings->{template},
     replace   => $replace,
     verbose   => $opt{verbose},
-    embed     => $opt{embed},
 ) ;
 $format->clean_cache() if ( $opt{clean} ) ;
 

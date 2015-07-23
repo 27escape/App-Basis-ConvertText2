@@ -1326,10 +1326,10 @@ Bullet text can include a color override
 
 ~~~~{.buffer to='mindmap'}
 * base thought
-  + (force shape as ellipse)
-      + what about **bold**
-  + another thought :comment to ignore
-      + make this thing red #red
+  + (force ellipse)
+      + in **bold**
+  + another thing : ignore this
+      + color red #red
   * put this\none\non a few\nlines
 ~~~~
 
@@ -2433,22 +2433,18 @@ Here is the help
     [options]
         -h, -?, --help        Show help
         -c, --clean           Clean up the cache before use
-        -e, --embed           Embed images into HTML, do not use this if
         converting to doc/odt
         -o, --output          Filename to store the output as, extension will
         control conversion
-        -p, --prince          Convert to PDF using princexml, can handle
-        embedded images
+        -p, --prince          Convert to PDF using princexml
         --templates           list available templates
         -t, --template        name of template to use
         -v, --verbose         verbose mode
-        -w, --wkhtmltopdf     Convert to PDF using wkhtmltopdf, can handle
-        embedded images
+        -w, --wkhtmltopdf     Convert to PDF using wkhtmltopdf
 
-On the first time you run **ct2** a default template will be created in **~/.ct2/templates/default/template.html**, a config file to accompany this will be created in *~/.ct2/templates/default/template.html**
+On the first time you run **ct2** a default template will be created in **~/.ct2/templates/default/template.html**, a config file to accompany this will be created in **~/.ct2/templates/default/template.html**
 
 Create new templates in *~/.ct2/templates*, one directory for each template, follow the example in the default directory.
-If you are creating HTML documents to send out in emails or share in other ways, and use locally referenced images, then it is best to make use of the **--embed** option to pack these images into the HTML file.
 
-If you are using [PrinceXML] remember that it is only free for non-commercial use, it also adds a purple **P** to the top right of the first page of your document, though this does not appear when you print out the document.
+If you are using [PrinceXML], remember that it is only free for non-commercial use, it also adds a purple **P** to the top right of the first page of your document, though this does not appear when you print out the document.
 

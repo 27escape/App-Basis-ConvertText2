@@ -73,9 +73,6 @@ use Encode qw(encode_utf8) ;
 # use Text::MultiMarkdown qw(markdown) ;
 # use CommonMark ;
 use Text::Markdown qw(markdown) ;
-# use GD ;
-use MIME::Base64 ;
-# use Furl ;
 use Module::Pluggable
     require          => 1,
     on_require_error => sub {
@@ -253,11 +250,6 @@ has '_md5id' => (
     init_arg => 0
 ) ;
 
-has 'embed' => (
-    is      => 'ro',
-    default => sub {0},
-) ;
-
 # ----------------------------------------------------------------------------
 
 =item new
@@ -272,7 +264,6 @@ B<Parameters>  passed in a HASH
     template    - HTML template to use, must contain %_CONTENTS_%
     replace     - hashref of extra keywords to use as replaceable variables
     verbose     - be verbose
-    embed       - embed images, do not create links to them
 
 =cut
 
@@ -718,106 +709,6 @@ sub _parse_lines
     } ;
 }
 
-# # ----------------------------------------------------------------------------
-# # fetch any img references and copy into the cache, if the image is already
-# # in the cache then nothing will happen, will rewrite other img uri's
-# sub _rewrite_imgsrc
-# {
-#     my $self = shift ;
-#     my ( $pre, $img, $post, $want_size ) = @_ ;
-#     my $ext = "default" ;
-#     if ( $img =~ /\.(\w+)$/ ) {
-#         $ext = $1 ;
-#     }
-
-#     # potentially image is already an embedded image or SVG
-#     if ( $img !~ /base64,/ && $img !~ /\.svg$/i ) {
-
-#         # if its an image we have generated then it may already be here
-#         # check to see if we have this in the cache
-#         my $cachefile = cachefile( $self->cache_dir, $img ) ;
-#         $cachefile =~ s/\n//g ;
-#         if ( !-f $cachefile ) {
-#             my $id = md5_hex($img) ;
-#             $id .= ".$ext" ;
-
-#             # this is what it will be named in the cache
-#             $cachefile = cachefile( $self->cache_dir, $id ) ;
-
-#         # not in the cache so we must fetch it and store it local to the cache
-#         # if we are a local file
-#             if ( $img !~ m|^\w+://| || $img =~ m|^file://| ) {
-#                 $img =~ s|^file://|| ;
-#                 $img = fix_filename($img) ;
-
-#                 if ( $img !~ m|/| ) {
-
-#                     # if file is relative, then we need to add the basedir
-#                     $img = $self->basedir . "/$img" ;
-#                 }
-
-#                 # copy it to the cache location
-#                 try {
-#                     path($img)->copy($cachefile) ;
-#                 }
-#                 catch {
-#                     debug( "ERROR", "failed to copy $img to $cachefile" ) ;
-#                 } ;
-
-#                 $img = $cachefile if ( -f $cachefile ) ;
-#             } else {
-#                 if ( $img =~ m|^(\w+)://(.*)| ) {
-
-#                     my $furl = Furl->new(
-#                         agent   => get_program(),
-#                         timeout => 0.2,
-#                     ) ;
-
-#                     my $res = $furl->get($img) ;
-#                     if ( $res->is_success ) {
-#                         path($cachefile)->spew_raw( $res->content ) ;
-#                         $img = $cachefile ;
-#                     } else {
-#                         debug( "ERROR", "unknown could not fetch $img" ) ;
-#                     }
-#                 } else {
-#                     debug( "ERROR", "unknown protocol for $img" ) ;
-#                 }
-#             }
-#         } else {
-#             $img = $cachefile ;
-#         }
-
-#         # make sure we add the image size if its not already there
-#         if (   $want_size
-#             && $pre !~ /width=|height=/i
-#             && $post !~ /width=|height=/i ) {
-#             my $image = GD::Image->new($img) ;
-#             if ($image) {
-#                 $post =~ s/\/?>$// ;
-#                 $post
-#                     .= " height='"
-#                     . $image->height()
-#                     . "' width='"
-#                     . $image->width()
-#                     . "' />" ;
-#             }
-#         }
-
-#  # do we need to embed the images, if we do this then libreoffice may be pants
-#  # however 'prince' is happy
-#         if ( $self->embed() ) {
-
-# # we encode the image as base64 so that the HTML document can be moved with all images
-# # intact
-#             my $base64 = MIME::Base64::encode( path($img)->slurp_raw ) ;
-#             $img = "data:image/$ext;base64,$base64" ;
-#         }
-#     }
-#     return $pre . $img . $post ;
-# }
-
-
 # ----------------------------------------------------------------------------
 # fetch any img references and copy into the cache, if the image is already
 # in the cache then nothing will happen, will rewrite other img uri's
@@ -1171,8 +1062,10 @@ sub parse
         $self->_parse_lines( \@lines ) ;
 
         # store the markdown before parsing
+        # $self->_store_cache( $self->cache_dir() . "/$id.md",
+        #     encode_utf8( $self->{output} ), 1 ) ;
         $self->_store_cache( $self->cache_dir() . "/$id.md",
-            encode_utf8( $self->{output} ), 1 ) ;
+            $self->{output} , 1 ) ;
 
         # we have a special replace for '---' alone on a line which is used to
         # signifiy a page break
@@ -1303,7 +1196,8 @@ sub save_to_file
         }
 
         # either update the cache, or create temp file
-        path($cf)->spew_utf8( encode_utf8( $self->{output} ) ) ;
+        # path($cf)->spew_utf8( encode_utf8( $self->{output} ) ) ;
+        path($cf)->spew_utf8( $self->{output} ) ;
     }
 
     my $outfile = $cf ;
