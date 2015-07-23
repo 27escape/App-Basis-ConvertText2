@@ -172,3 +172,22 @@ image: |.2 .img300x200 | [upload] \n [delete]
 
 ~~~~
 
+
+
+## javascript charting
+
+* http://www.sitepoint.com/15-best-javascript-charting-libraries/
+* http://techslides.com/50-javascript-charting-and-graphics-libraries
+* https://en.m.wikipedia.org/wiki/Comparison_of_JavaScript_charting_frameworks
+* http://modeling-languages.com/javascript-drawing-libraries-diagrams/
+* http://code.shutterstock.com/rickshaw/examples/
+* http://www.omnipotent.net/jquery.sparkline/#s-about
+* http://metricsgraphicsjs.org/examples.htm
+
+* ### gantt
+
+* http://knsv.github.io/mermaid/index.html
+
+### pay for
+
+* http://gojs.net/latest/index.html?gclid=CPPInOyoqcYCFZMZtAodWEwA8A
