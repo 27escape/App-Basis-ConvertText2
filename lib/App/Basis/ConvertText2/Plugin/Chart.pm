@@ -144,7 +144,7 @@ sub process {
     return "" if ( !$content );
 
     my $sig = create_sig( $content, $params );
-    my $filename = cachefile( $cachedir, "$sig.png" );
+    my $filename = cachefile( $cachedir, "$tag.$sig.png" );
     if ( !-f $filename ) {
 
         # open the csv file, read contents, calc max, add into data array

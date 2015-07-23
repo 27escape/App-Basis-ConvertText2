@@ -36,6 +36,30 @@ has handles => (
     default  => sub { [qw{polaroid}] }
 );
 
+my $default_css =<<END_CSS;
+    /* -------------- Polaroid.pm css -------------- */
+
+    .polaroid {
+        background-color: grey;
+        width: 4in;
+        height: 6in;
+        max-width: 4in ;
+        hax-height: 6in;
+        margin-bottom: 75px;
+        padding-bottom: 75px;
+        background-color: white;
+        border: 1px solid black;
+        z-index: -100;
+    }
+    .polaroid img {
+        width: 4in;
+        height: 6in;
+        max-width: 4in ;
+        max-height: 6in;
+    }
+
+END_CSS
+
 # -----------------------------------------------------------------------------
 
 =item polaroid
@@ -49,6 +73,7 @@ Image may be automatically rotated depending upon the exif information
         src   - filename to convert to a polaroid
         title - optional title for the photo
         date  - optional date for the photo
+        class - optional
 
 =cut
 
@@ -56,21 +81,13 @@ sub polaroid
 {
     my $self = shift;
     my ( $tag, $content, $params, $cachedir ) = @_;
-    # return "" if ( !$content );
-
-    # we can use the cache or process everything ourselves
-    # my $sig = create_sig( $content, $params );
-    # my $ext = $params->{src} ;
-    # $ext =~ s/.*\.(jp?eg|png)$//i ;
-    # my $filename = cachefile( $cachedir, "$sig.$ext" );
-
-    # path($filename)->spew_raw( $gd_venn->png() );
+    $params->{title} ||= "" ;
+    $params->{class} ||= "" ;
 
     my $out;
-    # if ( -f $filename ) {
 
     # create something suitable for the HTML
-    $out = "<div class='polaroid'>" . create_img_src( $params->{src});
+    $out = "<div class='polaroid $params->{class}'>" . create_img_src( $params->{src});
     if ( $params->{title} || $params->{date} ) {
         $out .= "\n<p>&nbsp;&nbsp;";
         $out .= "$params->{title} " if ( $params->{title} );
@@ -79,7 +96,6 @@ sub polaroid
     }
 
     $out .= "</div>";
-    # }
     return $out;
 
 }
@@ -91,6 +107,13 @@ sub process
 {
     my $self = shift;
     my ( $tag, $content, $params, $cachedir ) = @_;
+
+    state $css = 0 ;
+
+    if( !$css) {
+        add_css( $default_css) ;
+        $css++ ;
+    }
 
     if ( $self->can($tag) ) {
         return $self->$tag(@_);

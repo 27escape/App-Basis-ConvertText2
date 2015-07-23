@@ -67,9 +67,12 @@ SKIP: {
 }
 
 $data = $format->parse( "----");
-ok( $data !~ '---', 'page break replaced') ;
+say ( $data) ;
+ok( $data !~ 'body.*?>.*?---', '---- removed from body') ;
+# ok( $data =~ 'body.*?>.*?<div style="page-break-before: always;">', 'page break replaced') ;
 
 $data = $format->parse( "<3");
+say ( $data) ;
 ok( $data !~ '<3', 'smily replaced') ;
 
 $format->clean_cache();

@@ -1,20 +1,32 @@
-
-0.5
+0.6
+    * remove embed option from ct2, embed all the time, use pandoc --self-contained
+    * Support.pm now holds the blocks to process, allows the plugins to call other plugins
+    * Support.pm has functions for javascript and css storage and retrival
+        * will allow plugins to specify their own css and not have it in the base template
+    * base template modified to allow %CSS% and %JAVASCRIPT% 
+    * phantomjs added to Support.pm, allows calling javascrip like googlecharts
+    * GoogleCharts plugin added
+    * updated documentation
+    * add mindmap to graphviz
+    * new plugin Blockdiag
+    * toc_skip now ignored as there is a bug handling it
     * version in Text Plugin, now expects indented data
-    * columns, box and tree in Text Plugin
+    * add columns, box, tree, note and quote to Text Plugin
     * umltree in Uml Plugin
     * TOC items now can be skipped if 'skip_toc' exists as part of an attribute a header element
-    * toc now includes level 4 headers (h4 or ####)
+    * toc now includes level 4-6 headers (h4 or #### etc)
     * can handle htm output filenames
     * if output file not specified or is a directory, version number will be added to generated output filename
     * output filename stripped of any wrapping quotes
     * ct2 script
-        * now puls in any subtitle from the template config
+        * now pulls in any subtitle from the template config
         * change to use standard App::Basis debug
+        * cache is now $HOME/.cache/ct2
     * use JSON::MaybeXS
     * yamlasjon now forces things that look like numbers to be numbers
     * Switched to use Text::MultiMarkdown when pandoc is not available
     * fixed sub item TOC indenting
+0.5 not released
     * added short block commands '{{.tag}}'
     * short tags can be used in output of other code blocks and will get a 2nd processing
     * date document yaml header can now contain %DATE%, other option take date field out of yaml!

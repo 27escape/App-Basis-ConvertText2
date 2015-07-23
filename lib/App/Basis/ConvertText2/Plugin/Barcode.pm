@@ -72,17 +72,18 @@ sub process {
 
     # we have a special tag handler for qrcodes
     if ( $tag eq 'qrcode' ) {
-        $params->{type} = 'QRcode';
+        $params->{type} = 'qrcode';
         $qrcode->{Version} = $params->{version} || 2 ;
         $qrcode->{ModuleSize} = $params->{pixels} || 2 ;
     }
 
     # strip any ending linefeed
     chomp $content;
-    return "" if ( !$content );
+    return "" if ( !$content || !$params->{type});
 
+    $params->{type} = lc($params->{type}) ;
     # get the type as BG::Barcode understands it    
-    my $type = $valid_barcodes{ lc($params->{type}) } ;
+    my $type = $valid_barcodes{ $params->{type} } ;
     # check if we can process this barcode
     if ( !$type ) {
 
@@ -94,7 +95,7 @@ sub process {
 
     # we can use the cache or process everything ourselves
     my $sig = create_sig( $content, $params );
-    my $filename = cachefile( $cachedir, "$sig.png" );
+    my $filename = cachefile( $cachedir, "$tag.$sig.png" );
     if ( !-f $filename ) {
         my $gdb ;
         # sometimes it throws out some warnings, lets hide them

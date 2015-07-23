@@ -23,122 +23,69 @@ App::Basis::ConvertText2::Plugin::Ditaa
  
 =head1 DESCRIPTION
 
-convert a ditaa text string into a PNG, requires ditaa program from http://ditaa.sourceforge.net/
+convert a ditaa text string into a PNG, 
+requires Uml Plugin
+
+This has been changed from using the ditaa program to reduce the dependency
+on installed software
 
 =cut
 
 # ----------------------------------------------------------------------------
 
-package App::Basis::ConvertText2::Plugin::Ditaa;
+package App::Basis::ConvertText2::Plugin::Ditaa ;
 
-use 5.10.0;
-use strict;
-use warnings;
-use Path::Tiny;
-use App::Basis;
-use Moo;
-use App::Basis;
-use App::Basis::ConvertText2::Support;
-use namespace::autoclean;
+use 5.10.0 ;
+use strict ;
+use warnings ;
+use Path::Tiny ;
+use App::Basis ;
+use Moo ;
+use App::Basis ;
+use App::Basis::ConvertText2::Support ;
+use namespace::autoclean ;
 
 has handles => (
     is       => 'ro',
     init_arg => undef,
     default  => sub { [qw{ditaa}] }
-);
+) ;
 
-use constant DITAA => 'ditaa';
+
+# ----------------------------------------------------------------------------
 
 # ----------------------------------------------------------------------------
 
 =item ditaa
 
-create a simple ditaa image
+generate a ditaa chart using platuml
 
- parameters
-    data   - ditaa text      
-    filename - filename to save the created image as 
+there does not seem to be a way to drop the spaces and shadows
 
- hashref params of
-        size    - size of image, widthxheight - optional
-        shadow  - have shadow, default true
-        alias   - apply aliasing, default true
-        round   - round edges, default false
-        separation - default false
+    ~~~~{.ditaa} 
+    
+      +-----+    +-----+
+      | box |    |     |
+      |     +--->|thing|
+      +-----+    +-----+
+
+    ~~~~
 
 =cut
 
-sub process {
-    my $self = shift;
-    my ( $tag, $content, $params, $cachedir ) = @_;
-    $params->{size}   ||= "";
-    $params->{shadow} ||= 'true';
-    $params->{separation} ||= 'false';
-    $params->{alias} ||= 'false';
-    $params->{round} ||= 'false';
+sub process
+{
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
 
-    my ( $x, $y ) = ( $params->{size} =~ /^\s*(\d+)\s*x\s*(\d+)\s*$/ );
-    my $args    = "";
-    # say STDERR "params " .Data::Printer::p( $params) ;
-    my %allowed = (
-        shadow     => { false  => '--no-shadows ' },
-        alias      => { false  => '--no-antialias ' },
-        round      => { true  => '--round-corners ' },
-        separation => { false => '--no-separation ' }
-    );
+    # make sure we have no tabs
+    $content =~ s/\t/    /gsm ;
+    $content = "ditaa\n$content" ;
 
-    foreach my $p (qw( shadow round separation)) {
-        next if( !$params->{$p}) ;
-        if ( $params->{$p} =~ /^true$|^1$|^yes$/i ) {
-            $args .= ( $allowed{$p}->{true} || '' );
-        }
-        else {
-            $args .= ( $allowed{$p}->{false} || '' );
-        }
-    }
-
-    # strip any ending linefeed
-    chomp $content;
-    return "" if ( !$content );
-
-    # we can use the cache or process everything ourselves
-    my $sig = create_sig( $content, $params );
-    my $filename = cachefile( $cachedir, "$sig.png" );
-    if ( !-f $filename ) {
-
-        my $ditaafile = Path::Tiny->tempfile("ditaa.XXXX");
-
-        path($ditaafile)->spew_utf8($content);
-
-        my $cmd = DITAA . " $args -o $ditaafile $filename";
-        # say STDERR $cmd ;
-        my ( $exit, $stdout, $stderr ) = run_cmd($cmd);
-        if ($exit) {
-            warn "Could not run script " . DITAA . " get it from http://ditaa.sourceforge.net/";
-        }
-
-        # if we want to force the size of the graph
-        if ( -f $filename && $x && $y ) {
-            my $image = Image::Resize->new($filename);
-            my $gd = $image->resize( $x, $y );
-
-            # overwrite original file with resized version
-            if ($gd) {
-                path($filename)->spew_raw( $gd->png );
-            }
-        }
-    }
-
-    my $out;
-    if ( -f $filename ) {
-
-        # create something suitable for the HTML
-        $out = create_img_src( $filename, $params->{title} );
-    }
-    return $out;
-
+    # and process with the normal uml command
+    $params->{png} = 1 ;
+    return run_block( 'uml', $content, $params, $cachedir ) ;
 }
-
 # ----------------------------------------------------------------------------
 
-1;
+1 ;

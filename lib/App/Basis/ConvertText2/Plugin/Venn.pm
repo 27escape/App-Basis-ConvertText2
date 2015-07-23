@@ -95,7 +95,7 @@ sub process {
 
     # we can use the cache or process everything ourselves
     my $sig = create_sig( $content, $params );
-    my $filename = cachefile( $cachedir, "$sig.png" );
+    my $filename = cachefile( $cachedir, "$tag.$sig.png" );
 
     # we will not check for the cachefile as we need to create the venn object
     # each time to get the explaination text, besides not many people will

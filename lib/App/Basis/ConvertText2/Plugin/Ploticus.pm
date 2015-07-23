@@ -41,24 +41,24 @@ convert a ploticus text string into a PNG, requires ploticus program from http:/
 
 # ----------------------------------------------------------------------------
 
-package App::Basis::ConvertText2::Plugin::Ploticus;
+package App::Basis::ConvertText2::Plugin::Ploticus ;
 
-use 5.10.0;
-use strict;
-use warnings;
-use Path::Tiny;
-use Moo;
-use App::Basis;
-use App::Basis::ConvertText2::Support;
-use namespace::autoclean;
+use 5.10.0 ;
+use strict ;
+use warnings ;
+use Path::Tiny ;
+use Moo ;
+use App::Basis ;
+use App::Basis::ConvertText2::Support ;
+use namespace::autoclean ;
 
 has handles => (
     is       => 'ro',
     init_arg => undef,
-    default  => sub {[qw{ploticus}]}
-);
+    default  => sub { [qw{ploticus}] }
+) ;
 
-use constant PLOTICUS => "ploticus";
+use constant PLOTICUS => "ploticus" ;
 
 # ----------------------------------------------------------------------------
 
@@ -72,49 +72,61 @@ create a simple ploticus image
 
  hashref params of
         size        - size of image, widthxheight - optional, default 720x512
+        width   - optional width
+        height  - optional
+        class   - optional
+        title   - optional set the alt text
 
 =cut
 
-sub process {
-    my $self = shift;
-    my ( $tag, $content, $params, $cachedir ) = @_;
-    # $params->{size} ||= "720x512";
-    # $params->{size} ||= "" ;
-    # my ( $x, $y ) = ( $params->{size} =~ /^\s*(\d+)\s*x\s*(\d+)\s*$/ );
+sub process
+{
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
+    $params->{size} ||= "" ;
+    my ( $x, $y ) = ( $params->{size} =~ /^\s*(\d+)\s*x\s*(\d+)\s*$/ ) ;
+    $x = $params->{width}  if ( $params->{width} ) ;
+    $y = $params->{height} if ( $params->{height} ) ;
+    $params->{title} ||= "" ;
+    $params->{class} ||= "" ;
 
     # strip any ending linefeed
-    chomp $content;
-    return "" if ( !$content );
+    chomp $content ;
+    return "" if ( !$content ) ;
 
     # we can use the cache or process everything ourselves
-    my $sig = create_sig( $content, $params );
-    my $filename = cachefile( $cachedir, "$sig.png" );
+    my $sig = create_sig( $content, $params ) ;
+    my $filename = cachefile( $cachedir, "$tag.$sig.svg" ) ;
     if ( !-f $filename ) {
 
-        # we are lucky that plantploticus can have image sizes
-        my $ploticusfile = Path::Tiny->tempfile("ploticusXXXXXXXX");
+        my $ploticusfile = Path::Tiny->tempfile("ploticusXXXXXXXX") ;
         # we control the page size
-        # $content =~ s/pagesize:.*?$//gsmi ;
-        path($ploticusfile)->spew_utf8($content);
+        path($ploticusfile)->spew_utf8($content) ;
 
         my $cmd = PLOTICUS ;
-        # $cmd .= " -pixsize $x,$y " if( $x && $y) ;
-        $cmd .= " -png $ploticusfile -o $filename";
-        my ( $exit, $stdout, $stderr ) = run_cmd($cmd);
-        if( $exit) {
-            warn "Could not run script " . PLOTICUS . " get it from http://ploticus.sourceforge.net/" ;
+        $cmd .= " -svg $ploticusfile -o $filename" ;
+        my ( $exit, $stdout, $stderr ) = run_cmd($cmd) ;
+        if ($exit) {
+            warn "Could not run script " . PLOTICUS
+                . " get it from http://ploticus.sourceforge.net/" ;
         }
     }
-    my $out;
+    my $out ;
     if ( -f $filename ) {
 
         # create something suitable for the HTML
-        $out = create_img_src( $filename, $params->{title} );
+        my $s = "" ;
+        $s .= " width='$x'"  if ($x) ;
+        $s .= " height='$y'" if ($y) ;
+
+        $out
+            = "<img src='$filename' class='$tag $params->{class}' alt='$params->{title}' $s />"
+            ;
     }
 
-    return $out;
+    return $out ;
 }
 
 # ----------------------------------------------------------------------------
 
-1;
+1 ;

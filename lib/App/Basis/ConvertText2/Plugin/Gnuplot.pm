@@ -35,26 +35,26 @@ convert a gnuplot text string into a PNG, requires gnuplot program http://gnuplo
 
 # ----------------------------------------------------------------------------
 
-package App::Basis::ConvertText2::Plugin::Gnuplot;
+package App::Basis::ConvertText2::Plugin::Gnuplot ;
 
-use 5.10.0;
-use strict;
-use warnings;
-use Path::Tiny;
-use Moo;
+use 5.10.0 ;
+use strict ;
+use warnings ;
+use Path::Tiny ;
+use Moo ;
 use Image::Resize ;
-use App::Basis;
-use App::Basis::ConvertText2::Support;
-use namespace::autoclean;
+use App::Basis ;
+use App::Basis::ConvertText2::Support ;
+use namespace::autoclean ;
 
 has handles => (
     is       => 'ro',
     init_arg => undef,
-    default  => sub {[qw{gnuplot}]}
-);
+    default  => sub { [qw{gnuplot}] }
+) ;
 
 # gnuplot is a script to run plantgnuplot basically does java -jar plantgnuplot.jar
-use constant GNUPLOT => "gnuplot";
+use constant GNUPLOT => "gnuplot" ;
 
 # ----------------------------------------------------------------------------
 
@@ -69,40 +69,46 @@ create a simple gnuplot image
  hashref params of
         title   - title to use for image alt attribute
         size    - size of image, widthxheight - optional, default 720x512
+        width   - optional width
+        height  - optional
 
 =cut
 
-sub process {
-    my $self = shift;
-    my ( $tag, $content, $params, $cachedir ) = @_;
-    $params->{size} ||= "720x512";
-    my ( $x, $y ) = ( $params->{size} =~ /^\s*(\d+)\s*x\s*(\d+)\s*$/ );
+sub process
+{
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
+    $params->{size} ||= "720x512" ;
+    my ( $x, $y ) = ( $params->{size} =~ /^\s*(\d+)\s*x\s*(\d+)\s*$/ ) ;
+    $x = $params->{width} if( $params->{width}) ;
+    $y = $params->{height} if( $params->{height}) ;
 
     # strip any ending linefeed
-    chomp $content;
-    return "" if ( !$content );
+    chomp $content ;
+    return "" if ( !$content ) ;
 
     # we can use the cache or process everything ourselves
-    my $sig = create_sig( $content, $params );
-    my $filename = cachefile( $cachedir, "$sig.png" );
+    my $sig = create_sig( $content, $params ) ;
+    my $filename = cachefile( $cachedir, "$tag.$sig.png" ) ;
     if ( !-f $filename ) {
-        my $gnuplotfile = Path::Tiny->tempfile("gnuplotXXXXXXXX");
+        my $gnuplotfile = Path::Tiny->tempfile("gnuplotXXXXXXXX") ;
 
         # make sure the output file is not theirs
         $content =~ s/set output.*$//gsmi ;
         # set out filename
         $content = "set output '$filename'\n$content" ;
-            # we want to set the size
-            # strip any size in the data
-            $content =~ s/set term png size.*$//gsmi ;
-            $content = "set term png size $x, $y\n$content" ;
+        # we want to set the size
+        # strip any size in the data
+        $content =~ s/set term png size.*$//gsmi ;
+        $content = "set term png size $x, $y\n$content" ;
 
-        path($gnuplotfile)->spew_utf8($content);
+        path($gnuplotfile)->spew_utf8($content) ;
 
-        my $cmd = GNUPLOT . " $gnuplotfile";
-        my ( $exit, $stdout, $stderr ) = run_cmd($cmd);
-        if( $exit) {
-            warn "Could not run script " . GNUPLOT . " get it from http://gnuplot.sourceforge.net/" ;
+        my $cmd = GNUPLOT . " $gnuplotfile" ;
+        my ( $exit, $stdout, $stderr ) = run_cmd($cmd) ;
+        if ($exit) {
+            warn "Could not run script " . GNUPLOT
+                . " get it from http://gnuplot.sourceforge.net/" ;
         }
         # if we want to force the size of the graph
         # if ( -f $filename && $x && $y ) {
@@ -115,16 +121,16 @@ sub process {
         #     }
         # }
     }
-    my $out;
+    my $out ;
     if ( -f $filename ) {
 
         # create something suitable for the HTML
-        $out = create_img_src( $filename, $params->{title} );
+        $out = create_img_src( $filename, $params->{title} ) ;
     }
 
-    return $out;
+    return $out ;
 }
 
 # ----------------------------------------------------------------------------
 
-1;
+1 ;

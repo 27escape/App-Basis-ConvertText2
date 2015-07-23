@@ -20,7 +20,7 @@ use warnings;
 use Path::Tiny;
 use Data::Printer;
 
-use Test::More tests => 31;
+use Test::More tests => 37;
 
 BEGIN {
     # the first set of tests either use other perl modules
@@ -31,18 +31,25 @@ BEGIN {
     use_ok('App::Basis::ConvertText2::Plugin::Venn');
     use_ok('App::Basis::ConvertText2::Plugin::Text');
     use_ok('App::Basis::ConvertText2::Plugin::Badge');
+    use_ok('App::Basis::ConvertText2::Plugin::Glossary');
+    use_ok('App::Basis::ConvertText2::Plugin::Badge');
+    use_ok('App::Basis::ConvertText2::Plugin::Polaroid');
+    use_ok('App::Basis::ConvertText2::Plugin::GoogleChart');
+    use_ok('App::Basis::ConvertText2::Plugin::Mermaid');
 
     # tests that require external programs can only be tested
     # by the author
 SKIP: {
         if ( $ENV{AUTHOR_TESTING} ) {
+            use_ok('App::Basis::ConvertText2::Plugin::Uml');
             use_ok('App::Basis::ConvertText2::Plugin::Ditaa');
             use_ok('App::Basis::ConvertText2::Plugin::Graphviz');
             use_ok('App::Basis::ConvertText2::Plugin::Mscgen');
-            use_ok('App::Basis::ConvertText2::Plugin::Uml');
             use_ok('App::Basis::ConvertText2::Plugin::Gle');
             use_ok('App::Basis::ConvertText2::Plugin::Gnuplot');
             use_ok('App::Basis::ConvertText2::Plugin::Ploticus');
+            use_ok('App::Basis::ConvertText2::Plugin::Blockdiag');
+            use_ok('App::Basis::ConvertText2::Plugin::Dataflow');
         }
         else {
             skip "Author external programs", 6;
@@ -192,20 +199,25 @@ $content = 'apples,bananas,cake,cabbage,edam,fromage,tomatoes,chips
 $params = undef;
 $obj    = App::Basis::ConvertText2::Plugin::Text->new();
 $out    = $obj->process( 'table', $content, $params, $TEST_DIR );
-ok( $out && $out =~ /<table.*?>\s?<tr><td>apples/sm, 'table created' );
+# print STDERR  "out is $out" ;
+ok( $out && $out =~ /<table.*?>\s?<tr.*?><td.*?>apples/sm, 'table created' );
 
 # version
-$content = '0.1 2014-04-12
+$content = '5 2015-04-12
   * removed ConvertFile.pm
   * using Path::Tiny rather than other things
   * changed to use pandoc fences ~~~~{.tag} rather than xml format <tag>
-0.006 2014-04-10
+4 2014-04-10
   * first release to github
 ';
 $params = undef;
 $obj    = App::Basis::ConvertText2::Plugin::Text->new();
 $out    = $obj->process( 'version', $content, $params, $TEST_DIR );
-ok( $out && $out =~ /<table.*?>\s?<tr><th.*?>Version/sm && $out =~ m|<tr><td.*?>0\.1</td><td.*?>2014?|sm, 'version created a table' );
+ok( $out && $out =~ /<table.*?>\s?<tr><th.*?>Version/sm && $out =~ m|<tr><td.*?>5</td><td.*?>2015?|sm, 'version created a table' );
+# limit to one row of version info
+$params = { items=>1 };
+$out    = $obj->process( 'version', $content, $params, $TEST_DIR );
+ok( $out && $out =~ /<table.*?>\s?<tr><th.*?>Version/sm && $out !~ m|<tr><td.*?>4</td><td.*?>2014?|sm, 'version created a limited table' );
 
 # badge
 $obj    = App::Basis::ConvertText2::Plugin::Badge->new();

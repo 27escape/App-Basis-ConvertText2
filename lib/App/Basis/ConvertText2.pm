@@ -42,7 +42,6 @@ for more information.
 
 Consider adding plugins for
 
-    * http://blockdiag.com/en/index.html,
     * https://metacpan.org/pod/Chart::Strip
     * https://metacpan.org/pod/Chart::Clicker
 
@@ -71,10 +70,12 @@ use Path::Tiny ;
 use Digest::MD5 qw(md5_hex) ;
 use Encode qw(encode_utf8) ;
 # use Text::Markdown qw(markdown) ;
-use Text::MultiMarkdown qw(markdown) ;
-use GD ;
+# use Text::MultiMarkdown qw(markdown) ;
+# use CommonMark ;
+use Text::Markdown qw(markdown) ;
+# use GD ;
 use MIME::Base64 ;
-use Furl ;
+# use Furl ;
 use Module::Pluggable
     require          => 1,
     on_require_error => sub {
@@ -84,6 +85,7 @@ use Module::Pluggable
 use App::Basis ;
 use App::Basis::ConvertText2::Support ;
 use App::Basis::ConvertText2::UtfTransform ;
+use utf8::all ;
 
 # ----------------------------------------------------------------------------
 # this contents string is to be replaced with the body of the markdown file
@@ -93,7 +95,91 @@ use constant PANDOC   => 'pandoc' ;
 use constant PRINCE   => 'prince' ;
 use constant WKHTML   => 'wkhtmltopdf' ;
 
-my %valid_tags ;
+# ----------------------------------------------------------------------------
+# we want some CSS
+my $default_css = <<END_CSS;
+    /* -------------- ConvertText2.pm css -------------- */
+
+    table { page-break-inside: auto ;}
+    tr    { page-break-inside:avoid; page-break-after:auto }
+    thead { display:table-header-group }
+    tfoot { display:table-footer-group }
+
+    /* toc */
+    #toc {
+        padding: 0.4em;
+        page-break-after: always;
+    }
+    #toc p {
+        font-weight: bold;
+        font-size: 32;
+    }
+    #toc h3 { text-align: center }
+    #toc ul {
+        columns: 1;
+    }
+    #toc ul, #toc li {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        padding-left: 10px ;
+    }
+    #toc a::after {
+        content: leader('.') target-counter(attr(href), page);
+        font-style: normal;
+    }
+    #toc a {
+        text-decoration: none ;
+        color: black;
+    }
+    table { page-break-inside: avoid ;}
+
+    /* nice markup for source code */
+    table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+        margin: 0; padding: 0; vertical-align: baseline; border: none;
+    }
+    table.sourceCode { width: 100%; line-height: 100%; }
+    td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+    td.sourceCode { padding-left: 5px; }
+    code > span.kw { color: #007020; font-weight: bold; }
+    code > span.dt { color: #902000; }
+    code > span.dv { color: #40a070; }
+    code > span.bn { color: #40a070; }
+    code > span.fl { color: #40a070; }
+    code > span.ch { color: #4070a0; }
+    code > span.st { color: #4070a0; }
+    code > span.co { color: #60a0b0; font-style: italic; }
+    code > span.ot { color: #007020; }
+    code > span.al { color: #ff0000; font-weight: bold; }
+    code > span.fu { color: #06287e; }
+    code > span.er { color: #ff0000; font-weight: bold; }
+
+    \@page landscape {
+        prince-rotate-body: 270deg;
+    }
+    .landscape {
+        page: landscape;
+    }
+
+    img { max-width: 100%; }
+    body {
+        font-family: 'Open Sans', sans-serif;
+    }
+    code {
+        font-family: 'Cousine', monospace;
+    }
+
+    /* we do not want these, headings start from h2 onwards */
+    h1 {
+        display: none;
+    }
+
+    li {
+        padding-left: 0px;
+        margin-left: -2em ;
+    }
+
+END_CSS
 
 # ----------------------------------------------------------------------------
 my $TITLE = "%TITLE%" ;
@@ -109,7 +195,8 @@ has 'cache_dir' => (
     is      => 'ro',
     default => sub {
         my $self = shift ;
-        return "/tmp/" . get_program() . "/cache/" ;
+        # return "/tmp/" . get_program() . "/cache/" ;
+        return "$ENV{HOME}/.cache/" ;
     },
     writer => "_set_cache_dir"
 ) ;
@@ -121,8 +208,10 @@ has 'template' => (
 <html>
     <head>
         <title>$TITLE</title>
+        %JAVASCRIPT%
         <style type='text/css'>
             \@page { size: A4 }
+            %CSS%
         </style>
     </head>
     <body>
@@ -231,19 +320,19 @@ sub BUILD
                     "Plugin $plug cannot provide a handler for $h, as this is already provided for internally"
                     ;
             }
-            if ( $valid_tags{$h} ) {
+            if ( has_block($h) ) {
                 die
-                    "Plugin $plug cannot provide a handler for $h, as this is already provided by $valid_tags{ $h }"
+                    "Plugin $plug cannot provide a handler for $h, as this has already been provided by another plugin"
                     ;
             }
 
             # all handlers are lower case
-            $valid_tags{$h} = $obj ;
+            add_block( $h, $obj ) ;
         }
     }
 
     # buffer is a special internal handler
-    $valid_tags{buffer} = 1 ;
+    add_block( 'buffer', 1 ) ;
 }
 
 # ----------------------------------------------------------------------------
@@ -262,7 +351,7 @@ sub _append_output
 sub _store_cache
 {
     my $self = shift ;
-    my ( $filename, $contents ) = @_ ;
+    my ( $filename, $contents, $utf8 ) = @_ ;
 
     # don't do any cleanup if we are not using a cache
     return if ( !$self->use_cache() ) ;
@@ -277,7 +366,11 @@ sub _store_cache
     if ( !$contents && -f $f ) {
         unlink($f) ;
     } else {
-        path($f)->spew_raw($contents) ;
+        if ($utf8) {
+            path($f)->spew_utf8($contents) ;
+        } else {
+            path($f)->spew_raw($contents) ;
+        }
     }
 }
 
@@ -286,7 +379,7 @@ sub _store_cache
 sub _get_cache
 {
     my $self = shift ;
-    my ($filename) = @_ ;
+    my ( $filename, $utf8 ) = @_ ;
 
     # don't do any cleanup if we are not using a cache
     return if ( !$self->use_cache() ) ;
@@ -295,7 +388,13 @@ sub _get_cache
     my $f = $self->cache_dir() . "/" . path($filename)->basename ;
 
     my $result ;
-    $result = path($f)->slurp_raw if ( -f $f ) ;
+    if ( -f $f ) {
+        if ($utf8) {
+            $result = path($f)->slurp_utf8 ;
+        } else {
+            $result = path($f)->slurp_raw ;
+        }
+    }
 
     return $result ;
 }
@@ -397,7 +496,7 @@ sub _call_function
     my ( $block, $params, $content, $linepos ) = @_ ;
     my $out ;
 
-    if ( !$valid_tags{$block} ) {
+    if ( !has_block($block) ) {
         debug( "ERROR:", "no valid handler for $block" ) ;
     } else {
         try {
@@ -412,6 +511,11 @@ sub _call_function
                 $content = $self->{replace}->{ uc($from) } ;
             }
 
+            # get the content from the args, useful for short blocks
+            if ( $params->{content} ) {
+                $content = $params->{content} ;
+            }
+
             my $to = $params->{to} || $params->{to_buffer} ;
 
             if ( $block eq 'buffer' ) {
@@ -423,8 +527,7 @@ sub _call_function
                 $content = $self->_do_replacements($content) ;
 
                 # run the plugin with the data we have
-                $out
-                    = $valid_tags{$block}->process( $block, $content, $params,
+                $out = run_block( $block, $content, $params,
                     $self->cache_dir() ) ;
 
                 if ( !$out ) {
@@ -464,18 +567,20 @@ sub _call_function
 # ----------------------------------------------------------------------------
 # handle any {{.tag args='11'}} type things in given text
 
-sub _rewrite_short_block {
+sub _rewrite_short_block
+{
     my $self = shift ;
-    my ( $block, $attributes) = @_ ;
+    my ( $block, $attributes ) = @_ ;
     my $out ;
     my $params = _extract_args($attributes) ;
 
-    if ( $block && $valid_tags{$block} ) {
-        return  $self->_call_function( $block, $params, $params->{content}, 0 ) ;
-        } else {
-            # build the short block back together, if we do not have a match
-            $out = "{{.block $attributes}}" ;
-        }
+    if ( has_block($block) ) {
+        return $self->_call_function( $block, $params, $params->{content},
+            0 ) ;
+    } else {
+        # build the short block back together, if we do not have a match
+        $out = "{{.block $attributes}}" ;
+    }
     return $out ;
 }
 
@@ -484,10 +589,10 @@ sub _rewrite_short_block {
 # parse the passed data
 sub _parse_lines
 {
-    my $self  = shift ;
-    my $lines = shift ;
-    my $count = 0 ;
-    my $curr_line ="" ;
+    my $self      = shift ;
+    my $lines     = shift ;
+    my $count     = 0 ;
+    my $curr_line = "" ;
 
     return if ( !$lines ) ;
 
@@ -500,18 +605,20 @@ sub _parse_lines
 
             # header lines may have been removed
             if ( !defined $line ) {
-                # we may want a blank line to space out things like indented blocks
+           # we may want a blank line to space out things like indented blocks
                 $self->_append_output("\n") ;
                 next ;
             }
 
-            # a short block is {{.tag arguments}}
-            # or {{.tag}}
-            # can have multiple ones on a single line like {{.tag1}} {{.tag_two}}
-            # short tags cannot have the form
-            # {{.class .tag args=123}}
-            # replace all tags on this line
-            $line =~ s/\{\{\.(\w+)(\b.*?)\}\}/$self->_rewrite_short_block( $1, $2)/egs ;
+         # a short block is {{.tag arguments}}
+         # or {{.tag}}
+         # can have multiple ones on a single line like {{.tag1}} {{.tag_two}}
+         # short tags cannot have the form
+         # {{.class .tag args=123}}
+         # replace all tags on this line
+            $line
+                =~ s/\{\{\.(\w+)(\b.*?)\}\}/$self->_rewrite_short_block( $1, $2)/egs
+                ;
 
             if ( defined $simple ) {
                 if ( $line =~ /^~{4,}\s?$/ ) {
@@ -524,7 +631,7 @@ sub _parse_lines
                 next ;
             }
 
-            # we may need to add successive lines together to get a completed fenced code block
+# we may need to add successive lines together to get a completed fenced code block
             if ( !$block && $buildline ) {
                 $buildline .= " $line" ;
                 if ( $line =~ /\}\s*$/ ) {
@@ -565,12 +672,13 @@ sub _parse_lines
                     my $params = _extract_args($attributes) ;
 
                     # must have reached the end of a block
-                    if ( $block && $valid_tags{$block} ) {
+                    if ( has_block($block) ) {
                         chomp $content if ($content) ;
-                        my $out = $self->_call_function( $block, $params, $content, $count ) ;
+                        my $out = $self->_call_function( $block, $params,
+                            $content, $count ) ;
                         # not all blocks output things, eg buffer operations
-                        if( $out) {
-                            # add extra line to make sure things are spaced away from other content
+                        if ($out) {
+       # add extra line to make sure things are spaced away from other content
                             $self->_append_output("$out\n\n") ;
                         }
                     } else {
@@ -578,7 +686,8 @@ sub _parse_lines
 
                             # put it back
                             $content ||= "" ;
-                            $self->_append_output("~~~~\n$content\n~~~~\n\n") ;
+                            $self->_append_output(
+                                "~~~~\n$content\n~~~~\n\n") ;
 
                         } else {
                             $content    ||= "" ;
@@ -609,100 +718,131 @@ sub _parse_lines
     } ;
 }
 
+# # ----------------------------------------------------------------------------
+# # fetch any img references and copy into the cache, if the image is already
+# # in the cache then nothing will happen, will rewrite other img uri's
+# sub _rewrite_imgsrc
+# {
+#     my $self = shift ;
+#     my ( $pre, $img, $post, $want_size ) = @_ ;
+#     my $ext = "default" ;
+#     if ( $img =~ /\.(\w+)$/ ) {
+#         $ext = $1 ;
+#     }
+
+#     # potentially image is already an embedded image or SVG
+#     if ( $img !~ /base64,/ && $img !~ /\.svg$/i ) {
+
+#         # if its an image we have generated then it may already be here
+#         # check to see if we have this in the cache
+#         my $cachefile = cachefile( $self->cache_dir, $img ) ;
+#         $cachefile =~ s/\n//g ;
+#         if ( !-f $cachefile ) {
+#             my $id = md5_hex($img) ;
+#             $id .= ".$ext" ;
+
+#             # this is what it will be named in the cache
+#             $cachefile = cachefile( $self->cache_dir, $id ) ;
+
+#         # not in the cache so we must fetch it and store it local to the cache
+#         # if we are a local file
+#             if ( $img !~ m|^\w+://| || $img =~ m|^file://| ) {
+#                 $img =~ s|^file://|| ;
+#                 $img = fix_filename($img) ;
+
+#                 if ( $img !~ m|/| ) {
+
+#                     # if file is relative, then we need to add the basedir
+#                     $img = $self->basedir . "/$img" ;
+#                 }
+
+#                 # copy it to the cache location
+#                 try {
+#                     path($img)->copy($cachefile) ;
+#                 }
+#                 catch {
+#                     debug( "ERROR", "failed to copy $img to $cachefile" ) ;
+#                 } ;
+
+#                 $img = $cachefile if ( -f $cachefile ) ;
+#             } else {
+#                 if ( $img =~ m|^(\w+)://(.*)| ) {
+
+#                     my $furl = Furl->new(
+#                         agent   => get_program(),
+#                         timeout => 0.2,
+#                     ) ;
+
+#                     my $res = $furl->get($img) ;
+#                     if ( $res->is_success ) {
+#                         path($cachefile)->spew_raw( $res->content ) ;
+#                         $img = $cachefile ;
+#                     } else {
+#                         debug( "ERROR", "unknown could not fetch $img" ) ;
+#                     }
+#                 } else {
+#                     debug( "ERROR", "unknown protocol for $img" ) ;
+#                 }
+#             }
+#         } else {
+#             $img = $cachefile ;
+#         }
+
+#         # make sure we add the image size if its not already there
+#         if (   $want_size
+#             && $pre !~ /width=|height=/i
+#             && $post !~ /width=|height=/i ) {
+#             my $image = GD::Image->new($img) ;
+#             if ($image) {
+#                 $post =~ s/\/?>$// ;
+#                 $post
+#                     .= " height='"
+#                     . $image->height()
+#                     . "' width='"
+#                     . $image->width()
+#                     . "' />" ;
+#             }
+#         }
+
+#  # do we need to embed the images, if we do this then libreoffice may be pants
+#  # however 'prince' is happy
+#         if ( $self->embed() ) {
+
+# # we encode the image as base64 so that the HTML document can be moved with all images
+# # intact
+#             my $base64 = MIME::Base64::encode( path($img)->slurp_raw ) ;
+#             $img = "data:image/$ext;base64,$base64" ;
+#         }
+#     }
+#     return $pre . $img . $post ;
+# }
+
+
 # ----------------------------------------------------------------------------
 # fetch any img references and copy into the cache, if the image is already
 # in the cache then nothing will happen, will rewrite other img uri's
-sub _rewrite_imgsrc
+sub _rewrite_imgsrc_local
 {
     my $self = shift ;
-    my ( $pre, $img, $post, $want_size ) = @_ ;
-    my $ext ;
+    my ( $pre, $img, $post ) = @_ ;
+    my $ext = "default" ;
     if ( $img =~ /\.(\w+)$/ ) {
         $ext = $1 ;
     }
 
-    # potentially image is already an embedded image
-    if ( $img !~ /base64,/ ) {
-
-        # if its an image we have generated then it may already be here
-        # check to see if we have this in the cache
-        my $cachefile = cachefile( $self->cache_dir, $img ) ;
-        $cachefile =~ s/\n//g ;
-        if ( !-f $cachefile ) {
-            my $id = md5_hex($img) ;
-            $id .= ".$ext" ;
-
-            # this is what it will be named in the cache
-            $cachefile = cachefile( $self->cache_dir, $id ) ;
-
-        # not in the cache so we must fetch it and store it local to the cache
+    # potentially image is already an embedded image or SVG
+    if ( $img !~ /base64,/ && $img !~ /\.svg$/i ) {
         # if we are a local file
-            if ( $img !~ m|^\w+://| || $img =~ m|^file://| ) {
-                $img =~ s|^file://|| ;
-                $img = fix_filename($img) ;
+        if ( $img !~ m|^\w+://| || $img =~ m|^file://| ) {
+            $img =~ s|^file://|| ;
+            $img = fix_filename($img) ;
 
-                if ( $img !~ m|/| ) {
-
-                    # if file is relative, then we need to add the basedir
-                    $img = $self->basedir . "/$img" ;
-                }
-
-                # copy it to the cache location
-                try {
-                    path($img)->copy($cachefile) ;
-                }
-                catch {
-                    debug( "ERROR", "failed to copy $img to $cachefile" ) ;
-                } ;
-
-                $img = $cachefile if ( -f $cachefile ) ;
-            } else {
-                if ( $img =~ m|^(\w+)://(.*)| ) {
-
-                    my $furl = Furl->new(
-                        agent   => get_program(),
-                        timeout => 0.2,
-                    ) ;
-
-                    my $res = $furl->get($img) ;
-                    if ( $res->is_success ) {
-                        path($cachefile)->spew_raw( $res->content ) ;
-                        $img = $cachefile ;
-                    } else {
-                        debug( "ERROR", "unknown could not fetch $img" ) ;
-                    }
-                } else {
-                    debug( "ERROR", "unknown protocol for $img" ) ;
-                }
+            if ( $img !~ m|/| ) {
+                # if file is relative, then we need to add the basedir
+                $img = $self->basedir . "/$img" ;
             }
-        } else {
-            $img = $cachefile ;
-        }
-
-        # make sure we add the image size if its not already there
-        if (   $want_size
-            && $pre !~ /width=|height=/i
-            && $post !~ /width=|height=/i ) {
-            my $image = GD::Image->new($img) ;
-            if ($image) {
-                $post =~ s/\/>$// ;
-                $post
-                    .= " height='"
-                    . $image->height()
-                    . "' width='"
-                    . $image->width()
-                    . "' />" ;
-            }
-        }
-
-         # do we need to embed the images, if we do this then libreoffice may be pants
-         # however 'prince' is happy
-        if ( $self->embed() ) {
-
-            # we encode the image as base64 so that the HTML document can be moved with all images
-            # intact
-            my $base64 = MIME::Base64::encode( path($img)->slurp_raw ) ;
-            $img = "data:image/$ext;base64,$base64" ;
+            # make sure its local then
+            $img = "file://$img" ;
         }
     }
     return $pre . $img . $post ;
@@ -716,25 +856,26 @@ sub _build_toc
     my $html = shift ;
 
 # find any header elements that do not have toc_skip in them
-#my @items = ( $html =~ m|<h[23].*?(?!toc_skip).*?><a name=['"](.*?)['"]>(.*?)</a></h[23]>|gsm );
-    my @items
-        = ( $html
-            =~ m|<h[23456](?!.*?toc_skip.*?).*?><a name=['"](.*?)['"]>(.*?)</a></h[23456]>|gsm
-        ) ;
+# removing toc_skip for now as it does not seem to work properly
+# $html =~ m|<h([23456])(?!.*?(toc_skip|skiptoc).*?).*?><a name=['"](.*?)['"]>(.*?)</a></h\1>|gsmi ;
+
+    # we grab 3 items per header
+    my @items = ( $html
+            =~ m|<h([23456]).*?><a name=['"](.*?)['"]>(.*?)</a></h\1>|gsmi ) ;
 
     my $toc = "<p>Contents</p>\n<ul>\n" ;
-    for ( my $i = 0; $i < scalar(@items); $i += 2 ) {
-        my $ref = $items[$i] ;
+    for ( my $i = 0; $i < scalar(@items); $i += 3 ) {
+        my $ref = $items[ $i + 1 ] ;
 
-        my $h = $items[ $i + 1 ] ;
+        my $h = $items[ $i + 2 ] ;
 
         # remove any href inside the header title
         $h =~ s/<\/?a.*?>//g ;
 
         if ( $h =~ /^(\d+\..*?) / ) {
             # indent depending on number of header
-            my @a = split( /\./, $1) ;
-            $h = ("&nbsp;&nbsp;&nbsp;" x scalar( @a)) . $h ;
+            my @a = split( /\./, $1 ) ;
+            $h = ( "&nbsp;&nbsp;&nbsp;" x scalar(@a) ) . $h ;
         }
 
         # make sure reference is in lower case
@@ -752,6 +893,7 @@ sub _rewrite_hdrs
 {
     state $counters = { 2 => 0, 3 => 0, 4 => 0, 5 => 0, 6 => 0 } ;
     state $last_lvl = 0 ;
+
     my ( $head, $txt, $tail ) = @_ ;
     my $pre ;
 
@@ -810,28 +952,51 @@ sub _rewrite_hdrs
 
 sub _pandoc_html
 {
-    my $input = shift ;
+    my ( $input, $commonmark ) = @_ ;
+
+    my $paninput  = Path::Tiny->tempfile("pandoc.in.XXXX") ;
+    my $panoutput = Path::Tiny->tempfile("pandoc.out.XXXX") ;
+    path($paninput)->spew_utf8($input) ;
+    # path( "/tmp/pandoc.md")->spew_utf8($input) ;
+
+    my $command
+        = PANDOC
+        . " --ascii --email-obfuscation=none -S -R --normalize -t html5 "
+        . " --highlight-style='kate' --self-contained "
+        . " '$paninput' -o '$panoutput'" ;
 
     my $resp = execute_cmd(
-        command => PANDOC
-            . " --email-obfuscation=none -S -R --normalize -t html5 --highlight-style='kate'",
-        timeout     => 30,
-        child_stdin => $input
+        command => $command,
+        timeout => 30,
     ) ;
 
     my $html ;
 
-    debug( "Pandoc: " . $resp->{stderr} ) if ( $resp->{stderr} ) ;
-    if ( !$resp->{exit_code} ) {
-        $html = $resp->{stdout} ;
-    } else {
-        debug( "ERROR", "Could not parse with pandoc, using markdown" ) ;
-        warn "Could not parse with pandoc, using markdown "
-            . $resp->{stderr} ;
+    if ( !$commonmark ) {
+        debug( "Pandoc: " . $resp->{stderr} ) if ( $resp->{stderr} ) ;
+        if ( !$resp->{exit_code} ) {
+            $html = path($panoutput)->slurp_utf8() ;
+
+            # path( "/tmp/pandoc.html")->spew_utf8($html) ;
+
+
+        } else {
+            my $err = $resp->{stderr} || "" ;
+            chomp $err ;
+            # debug( "INFO", "cmd [$command]") ;
+            debug( "ERROR",
+                "Could not parse with pandoc, using Markdown, $err" ) ;
+            warn "Could not parse with pandoc, using Markdown "
+                . $resp->{stderr} ;
+        }
+    }
+    if ( $commonmark || !$html ) {
         # markdown would prefer this for fenced code blocks
         $input =~ s/^~~~~.*$/\`\`\`\`/gm ;
 
-        $html = markdown($input) ;
+        $html = markdown( $input, { markdown => 1 } )
+            ;    # do markdown in HTML elements too
+                 # $html = CommonMark->markdown_to_html($input) ;
     }
 
     # strip out any HTML comments that may have come in from template
@@ -851,7 +1016,7 @@ sub _pandoc_format
 
     my $resp = execute_cmd(
 
-        command => PANDOC . " $input -o $output",
+        command => PANDOC . " '$input' -o '$output'",
         timeout => 30,
     ) ;
 
@@ -893,18 +1058,23 @@ sub _convert_file
 
         if ( $pdfconvertor =~ /^prince/i ) {
             $cmd = PRINCE
-                . " --javascript "
+                . " --javascript --input=html5 "
                 ;    # so we can do some clever things if needed
             $cmd .= "--pdf-title='$self->{replace}->{TITLE}' "
                 if ( $self->{replace}->{TITLE} ) ;
-            $cmd .= "--pdf-subject='$self->{replace}->{SUBJECT}' "
-                if ( $self->{replace}->{SUBJECT} ) ;
+            my $subj = $self->{replace}->{SUBJECT}
+                || $self->{replace}->{SUBTITLE} ;
+            $cmd .= "--pdf-subject='$subj' "
+                if ($subj) ;
             $cmd .= "--pdf-creator='" . get_program() . "' " ;
             $cmd .= "--pdf-author='$self->{replace}->{AUTHOR}' "
                 if ( $self->{replace}->{AUTHOR} ) ;
             $cmd .= "--pdf-keywords='$self->{replace}->{KEYWORDS}' "
                 if ( $self->{replace}->{KEYWORDS} ) ;
-            $cmd .= " --media=print $file -o $outfile" ;
+# seems to create smaller files if we embed fonts!
+# $cmd .= " --no-embed-fonts --no-subset-fonts --media=print $file -o $outfile" ;
+            $cmd .= "  --no-artificial-fonts --no-embed-fonts " ;
+            $cmd .= " --media=print '$file' -o '$outfile'" ;
         } elsif ( $pdfconvertor =~ /^wkhtmltopdf/i ) {
             $cmd = WKHTML . " -q --print-media-type " ;
             $cmd .= "--title '$self->{replace}->{TITLE}' "
@@ -913,7 +1083,7 @@ sub _convert_file
             # do we want to specify the size
             $cmd .= "--page-size $self->{replace}->{PAGE_SIZE} "
                 if ( $self->{replace}->{PAGE_SIZE} ) ;
-            $cmd .= "$file $outfile" ;
+            $cmd .= "'$file' '$outfile'" ;
         } else {
             warn "Unknown PDF converter ($pdfconvertor), using pandoc" ;
 
@@ -961,6 +1131,9 @@ sub parse
 
     die "Nothing to parse" if ( !$data ) ;
 
+    # add in our basic CSS
+    add_css($default_css) ;
+
     my $id = md5_hex( encode_utf8($data) ) ;
 
     # my $id = md5_hex( $data );
@@ -986,9 +1159,9 @@ sub parse
             my ( $k, $v ) = ( $lines[$i] =~ /^:?(\w+):?\s+(.*?)\s?$/ ) ;
             next if ( !$k ) ;
 
-            # date/DATE is a special one as it may be that they want to use the current date
-            # so we will ignore it
-            if( !($k eq 'date' && $v eq '%DATE%')) {
+# date/DATE is a special one as it may be that they want to use the current date
+# so we will ignore it
+            if ( !( $k eq 'date' && $v eq '%DATE%' ) ) {
                 $self->_add_replace( $k, $v ) ;
             }
             $lines[$i] = undef ;    # essentially remove the line
@@ -998,10 +1171,8 @@ sub parse
         $self->_parse_lines( \@lines ) ;
 
         # store the markdown before parsing
-        $self->_store_cache(
-            $self->cache_dir() . "/$id.md",
-            encode_utf8( $self->{output} )
-        ) ;
+        $self->_store_cache( $self->cache_dir() . "/$id.md",
+            encode_utf8( $self->{output} ), 1 ) ;
 
         # we have a special replace for '---' alone on a line which is used to
         # signifiy a page break
@@ -1034,7 +1205,7 @@ sub parse
             my (@h1) = ( $html =~ m|<h1.*?>(.*?)</h1>|gsmi ) ;
 
             # find the first header that does not contain %TITLE%
-            # I failed to get the zero width look-behind wotking
+            # I failed to get the zero width look-behind working
             # my ($h) = ( $html =~ m|<h1.*?>.*?(?<!%TITLE%)(.*?)</h1>|gsmi );
             foreach my $h (@h1) {
                 if ( $h !~ /%TITLE/ ) {
@@ -1047,23 +1218,28 @@ sub parse
         # do we need to add a table of contents
         if ( $html =~ /%TOC%/ ) {
             $html
-                =~ s|(<h[23456].*?>)(.*?)(</h[23456]>)|_rewrite_hdrs( $1, $2, $3)|egsi
+                =~ s|(<h([23456]).*?>)(.*?)(</h\2>)|_rewrite_hdrs( $1, $3, $4)|egsi
                 ;
             $self->{replace}->{TOC} = _build_toc($html) ;
         }
 
+        $self->{replace}->{CSS}        = get_css() ;
+        $self->{replace}->{JAVASCRIPT} = get_javascript() ;
+
         # replace things we have saved
         $html = $self->_do_replacements($html) ;
 
-        # this allows us to put short blocks as output of other blocks or inline
-        # with things that might otherwise not allow them
-        # we use the single line parse version too
-        # short tags cannot have the form
-        # {{.class .tag args=123}}
+      # this allows us to put short blocks as output of other blocks or inline
+      # with things that might otherwise not allow them
+      # we use the single line parse version too
+      # short tags cannot have the form
+      # {{.class .tag args=123}}
 
-        $html =~ s/\{\{\.(\w+)(\b.*?)\}\}/$self->_rewrite_short_block( $1, $2)/egs ;
-        # and without arguments
-        # $html =~ s/\{\{\.(\w+)\s?\}\}/$self->_rewrite_short_block( '', $1, {})/egs ;
+        $html
+            =~ s/\{\{\.(\w+)(\b.*?)\}\}/$self->_rewrite_short_block( $1, $2)/egs
+            ;
+# and without arguments
+# $html =~ s/\{\{\.(\w+)\s?\}\}/$self->_rewrite_short_block( '', $1, {})/egs ;
 
         # and remove any uppercased %word% things that are not processed
         $html =~ s/(?<!_)%[A-Z-_]+\%//gsm ;
@@ -1071,19 +1247,19 @@ sub parse
 
       # fetch any images and store to the cache, make sure they have sizes too
         $html
-            =~ s/(<img.*?src=['"])(.*?)(['"].*?>)/$self->_rewrite_imgsrc( $1, $2, $3, 1)/egs
+            =~ s/(<img.*?src=['"])(.*?)(['"].*?>)/$self->_rewrite_imgsrc_local( $1, $2, $3)/egs
             ;
 
         # write any css url images and store to the cache
         $html
-            =~ s/(url\s*\(['"]?)(.*?)(['"]?\))/$self->_rewrite_imgsrc( $1, $2, $3, 0)/egs
+            =~ s/(url\s*\(['"]?)(.*?)(['"]?\))/$self->_rewrite_imgsrc_local( $1, $2, $3)/egs
             ;
 
-        # replace any escaped \{ braces when needing to explain short code blocks in examples
+# replace any escaped \{ braces when needing to explain short code blocks in examples
         $html =~ s/\\\{/{/gsm ;
 
         $self->{output} = $html ;
-        $self->_store_cache( $cachefile, $html ) ;
+        $self->_store_cache( $cachefile, $html, 1 ) ;
     }
     return $self->{output} ;
 }

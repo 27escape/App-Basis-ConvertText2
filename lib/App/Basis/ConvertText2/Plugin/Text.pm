@@ -75,8 +75,118 @@ use feature 'state' ;
 has handles => (
     is       => 'ro',
     init_arg => undef,
-    default  => sub { [qw{yamlasjson yamlasxml table version page columns links tree box note}] }
+    default  => sub {
+        [   qw{yamlasjson yamlasxml table version page
+                columns links tree box note quote
+                appendix
+            }
+        ] ;
+    }
 ) ;
+
+my $default_css =<<END_CSS;
+    /* Text.pm css */
+
+    /* zebra tables */
+    tr.odd { background: white;}
+    tr.even {background: whitesmoke;}
+
+    /* style for boxes/notes */
+    div.box, div.note {
+        background-color: #eeeeee;
+        margin: 0 auto ;
+    }
+    div.box p, div.note p {
+        width: 100% ;
+        padding: 5px;
+        margin: 0 auto ;
+        background-color: #eeeeee;
+    }
+    div.box p.box_header, div.note p.box_header  {
+        background-color: teal;
+        font-weight: bold;
+        margin-top: 0px ;
+    }
+
+    span.glossary {
+      display: inline-block;
+      position: relative;
+      color: green ;
+    }
+    span.glossary:before {
+      content: "~~~~~~~~~~~~";
+      font-size: 0.6em;
+      font-weight: 700;
+      font-family: Times New Roman, Serif;
+      color: green;
+      width: 100%;
+      position: absolute;
+      top: 12px;
+      left: -1px;
+      overflow: hidden;
+    }
+    table.glossary td.key {
+      font-weight: bold;
+      color: gree;
+    }
+
+    blockquote {
+        font-family: helvetica;
+        font-style: italic;
+        font-size: 14px;
+        margin: 1em 3em;
+        padding: .5em 1em;
+        border-left: 5px solid #666666;
+        background-color: #eeeeee;
+    }
+
+    blockquote p {
+        margin: 0;
+    }
+
+    blockquote.quote {
+        font-family: helvetica;
+        font-style: italic;
+        font-size: 14px;
+        margin: 1em 3em;
+        padding: .5em 1em;
+        border-left: 5px solid #fce27c;
+        border-right: 5px solid #fce27c;
+        background-color: #f6ebc1;
+    }
+
+    blockquote.quote p {
+        margin: 0;
+    }
+
+    blockquote.quote:before, blockquote:after {
+        color: red;
+        display: block;
+        font-size: 400%;
+    }
+
+    blockquote.quote:before {
+        content: open-quote;
+    }
+
+    blockquote.quote:after {
+        content: close-quote;
+
+    }
+
+    div.quote {
+        background-color: blue;
+        margin-left: auto ;
+        margin-right: auto ;
+        width: 50%;
+    }
+    div.quote > p {
+        text-align: center;
+        font-size: 130%;
+        color: white;
+    }
+
+END_CSS
 
 
 # ----------------------------------------------------------------------------
@@ -97,7 +207,7 @@ sub _make_numbers
         for ( my $i = 0; $i < scalar( @{$item} ); $i++ ) {
             ${$item}[$i] = _make_numbers( ${$item}[$i] ) ;
         }
-    } elsif ( ref( $item) eq '' || ref($item) eq 'SCALAR') {
+    } elsif ( ref($item) eq '' || ref($item) eq 'SCALAR' ) {
         if ( $item =~ /^\d+(\.\d+)?$/ ) {
             # force numbers to be numbers
             $item += 0 ;
@@ -130,11 +240,14 @@ sub yamlasjson
     # $content =~ s/~~~~//gsm ;
 
     my $data = Load($content) ;
-    my $str = "" ;
-    if( $data) {
-        $data = _make_numbers( $data) ;
+    my $str  = "" ;
+    if ($data) {
+        $data = _make_numbers($data) ;
         my $json = JSON::MaybeXS->new( utf8 => 1, pretty => 1 ) ;
-        $str .= "\n\n~~~~{.json wrap='72'}\n" . $json->encode($data) . "\n~~~~\n\n" ;
+        $str
+            .= "\n\n~~~~{.json wrap='72'}\n"
+            . $json->encode($data)
+            . "\n~~~~\n\n" ;
     }
 
     return $str ;
@@ -164,10 +277,10 @@ sub yamlasxml
     # $content =~ s/~~~~//gsm ;
 
     my $data = Load($content) ;
-    my $str = "" ;
-    if( $data) {
-        $data = _make_numbers( $data) ;
-        my $xml = XMLout( $data, RootName => "", NoAttr=> 1) ;
+    my $str  = "" ;
+    if ($data) {
+        $data = _make_numbers($data) ;
+        my $xml = XMLout( $data, RootName => "", NoAttr => 1 ) ;
         $str .= "\n\n~~~~{.xml wrap='72'}\n$xml\n~~~~\n\n\n" ;
     }
 
@@ -219,6 +332,7 @@ create a basic html table
         style   - style the table if not doing anything else
         legends - flag to indicate that the top row is the legends
         separator - characters to be used to separate the fields
+        zebra   - apply odd/even classes to table rows, default 0 OFF
 
 =cut
 
@@ -227,8 +341,10 @@ sub table
     my $self = shift ;
     my ( $tag, $content, $params, $cachedir ) = @_ ;
 
-    $params->{title} ||= "" ;
+    return "" if ( !$content ) ;
 
+    $params->{title} ||= "" ;
+    $params->{class} ||= "" ;
     $content =~ s/^\n//gsm ;
     $content =~ s/\n$//gsm ;
 
@@ -236,18 +352,36 @@ sub table
     my @data = _split_csv_data( $content, $params->{separator} ) ;
 
     my $out = "<table " ;
-    $out .= "class='$params->{class}' " if ( $params->{class} ) ;
-    $out .= "id='$params->{id}' "       if ( $params->{id} ) ;
+    $out .= "class='$params->{class}' " ;
+    $out .= "id='$params->{id}' " if ( $params->{id} ) ;
     $out .= "width='$params->{width}' " if ( $params->{width} ) ;
-    $out .= "class='$params->{style}' " if ( $params->{style} ) ;
+    $out .= "style='$params->{style}' " if ( $params->{style} ) ;
     $out .= ">\n" ;
 
     for ( my $i = 0; $i < scalar(@data); $i++ ) {
-        $out .= "<tr>" ;
+        my @row   = @{ $data[$i] } ;
+        my $class = $params->{zebra} ? ($i & 1 ? 'odd' : 'even') : '' ;
+        my $style = "" ;
+        my $last  = pop @row ;
+
+        # allow {.classname} as a thing on the end of the row
+        if ( $last =~ s/\{\.(.*?)\}\s+$// ) {
+            $class .= " $1" ;
+        }
+        if ( $last =~ s/#((\w+)?\.?(\w+)?)// ) {
+            my ( $fg, $bg ) = ( $2, $3 ) ;
+            $style .= "color: " . to_hex_color($fg) . ";"            if ($fg) ;
+            $style .= "background-color: " . to_hex_color($bg) . ";" if ($bg) ;
+        }
+        push @row, $last ;
+        $out .= "<tr" ;
+        $out .= " class='$class'" if( $class) ;
+        $out .= " style='$style'" if( $style) ;
+        $out .= ">" ;
 
         # decide if the top row has the legends
         my $tag = ( !$i && $params->{legends} ) ? 'th' : 'td' ;
-        map { $out .= "<$tag>$_</$tag>" ; } @{ $data[$i] } ;
+        map { $out .= "<$tag>$_</$tag>" ; } @row ;
         $out .= "</tr>\n" ;
     }
 
@@ -275,6 +409,7 @@ create a version table
         title   - option title for the section, default 'Document Revision History'
         style   - style the table if not doing anything else
         separator - characters to be used to separate the fields
+        items   - only show top 'x' items
 
 =cut
 
@@ -282,19 +417,22 @@ sub version
 {
     my $self = shift ;
     my ( $tag, $content, $params, $cachedir ) = @_ ;
-    $params->{title} ||= 'Document Revision History' ;
+    # $params->{title} ||= 'Document Revision History' ;
+    my $item_count = 0 ;
 
     $content =~ s/^\n//gsm ;
     $content =~ s/\n$//gsm ;
+    $params->{class} ||= "" ;
 
-    $params->{class} ||= "version" ;
-
-    my $out = "<h2 class='toc_skip'>$params->{title}</h2>
-<table " ;
-    $out .= "class='$params->{class}' " if ( $params->{class} ) ;
-    $out .= "id='$params->{id}' "       if ( $params->{id} ) ;
+    my $out
+        = $params->{title}
+        ? "<h2 class='toc_skip'>$params->{title}</h2>"
+        : "" ;
+    $out .= "<table " ;
+    $out .= "class='$tag $params->{class}' " ;
+    $out .= "id='$params->{id}' " if ( $params->{id} ) ;
     $out .= "width='$params->{width}' " if ( $params->{width} ) ;
-    $out .= "class='$params->{style}' " if ( $params->{style} ) ;
+    $out .= "style='$params->{style}' " if ( $params->{style} ) ;
     $out .= ">\n" ;
 
     $out .= "<tr><th>Version</th><th>Date</th><th>Changes</th></tr>\n" ;
@@ -317,11 +455,16 @@ sub version
                 $i++ ;
             }
 
-            # convert any of the data with markdown
-            $out
-                .= "<tr><td valign='top'>$vers</td><td valign='top'>$date</td><td valign='top'>"
-                . markdown($c)
-                . "</td></tr>\n" ;
+            if ( !$params->{items} || int( $params->{items} ) > $item_count )
+            {
+
+                # convert any of the data with markdown
+                $out
+                    .= "<tr><td valign='top'>$vers</td><td valign='top'>$date</td><td valign='top'>"
+                    . markdown( $c, { markdown => 1 } )
+                    . "</td></tr>\n" ;
+            }
+            $item_count++ ;
 
  # adjust $i back so we are either at the end correctly or on the next section
             $i-- ;
@@ -365,6 +508,7 @@ Split a section into multiple columns
     ruler   - show a line between the columns, defaults to no,
               options are 1, true or yes to show it
     width   - how wide should it be, defaults to 100%
+    class
 
     ~~~~{.columns count=2 lines=5}
     some text
@@ -391,6 +535,7 @@ sub columns
     $params->{lines} ||= 20 ;
     $params->{ruler} ||= 'no' ;
     $params->{width} ||= '100%' ;
+    $params->{class} ||= "" ;
 
     # make sure its a string
     $params->{ruler} .= "" ;
@@ -411,13 +556,12 @@ sub columns
 
         # create a uniq name for this style
         $style_count++ ;
-        $idname = "text_column_id$style_count" ;
+        $idname = "column$style_count" ;
 
         # add in the webkit and mozilla styling for completeness
         # just in case someones browser is not up to date and we are
         # creating html only
-        $out = "<style type=\"text/css\">
-    .$idname {
+        my $css = "#$idname {
         max-height: $params->{lines} ;
         width: $params->{width};
         column-width: auto;
@@ -436,15 +580,17 @@ sub columns
         -moz-column-gap: 2em;
 
         display: block;
-    }
-</style>\n" ;
+    }\n" ;
+        add_css($css) ;
 
-        $style->{$sig} = { style => $out, name => $idname } ;
+        $style->{$sig} = $idname ;
     } else {
-        $idname = $style->{$sig}->{name} ;
+        $idname = $style->{$sig} ;
     }
 
-    $out .= "<div class='$idname'>\n$content\n</div>\n" ;
+    $out
+        .= "<div id='$idname' class='$tag $params->{class}'>\n$content\n</div>\n"
+        ;
 
     return $out ;
 }
@@ -458,7 +604,7 @@ links are one per line and the link name is separated from the link with a
 pipe '|' symbol
 
  parameters
-    class   - name of class for the list, defaults to weblinks
+    class   - name of class for the list
     table   - create a table rather than a list
 
 =cut
@@ -472,22 +618,24 @@ sub links
     chomp $content ;
     return "" if ( !$content ) ;
 
-    $params->{class} ||= "weblinks" ;
+    $params->{class} ||= "" ;
     my $references = "" ;
-    my $ul         = "<ul class='$params->{class}'>\n" ;
+    my $ul         = "<ul class='$tag $params->{class}'>\n" ;
     my %refs       = () ;
     my %uls        = () ;
 
-    $ul = "<table class='$params->{class}'><tr><th>Reference</th><th>Link</th></tr>\n" if( $params->{table}) ;
+    $ul
+        = "<table class='$params->{class} $tag'><tr><th>Reference</th><th>Link</th></tr>\n"
+        if ( $params->{table} ) ;
 
     foreach my $line ( split( /\n/, $content ) ) {
         my ( $ref, $link ) = split( /\|/, $line ) ;
         next if ( !$link ) ;
 
         # trim the items
-        $ref  =~ s/^\s+// ;
+        $ref =~ s/^\s+// ;
         $link =~ s/^\s+// ;
-        $ref  =~ s/\s+$// ;
+        $ref =~ s/\s+$// ;
         $link =~ s/\s+$// ;
 
         # if there is nothing to link to ignore this
@@ -496,19 +644,23 @@ sub links
         $references .= "[$ref]: $link\n" ;
 
         # links that reference inside the document do not get added to the
-        # list of weblinks
+        # list of links
         if ( $link !~ /^#/ ) {
-            if( $params->{table}) {
-                $uls{ lc($ref) } = "<tr><td class='reference'><a href='$link'>$ref</a></td><td class='link'>$link</td></tr>\n" ;
+            if ( $params->{table} ) {
+                $uls{ lc($ref) }
+                    = "<tr><td class='reference'><a href='$link'>$ref</a></td><td class='link'>$link</td></tr>\n"
+                    ;
             } else {
-                $uls{ lc($ref) } = "<li><a href='$link'>$ref</a><ul><li>$link</li></ul></li>\n" ;
-                }
+                $uls{ lc($ref) }
+                    = "<li><a href='$link'>$ref</a><ul><li>$link</li></ul></li>\n"
+                    ;
+            }
         }
     }
 
     # make them nice and sorted
     map { $ul .= $uls{$_} } sort keys %uls ;
-    $ul .= "</ul>\n" if( !$params->{table});
+    $ul .= "</ul>\n" if ( !$params->{table} ) ;
 
     return "\n" . $references . "\n" . $ul . "\n" ;
 }
@@ -537,8 +689,7 @@ or viewing HTML with a browser, not sure why, likely to be the embedded backgrou
 which are not displaying
 
  parameters
-    color   - the foreground color of the tree items, default black
-
+ 
 @todo try this: find . -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g'
 or
 tree -C -L 2 -T "Ice's webpage" -H "http://mama.indstate.edu/users/ice" --charset=utf8 -o 00Tree.html
@@ -552,17 +703,23 @@ sub tree
     state $style_count = 1 ;
     my ( $tag, $content, $params, $cachedir ) = @_ ;
     my $out = "" ;
-    my $class ;
 
+    $params->{class} ||= "" ;
     $params->{color} ||= 'black' ;
 
-    if ( !$style->{ $params->{color} } ) {
-        $class = "tree$style_count" ;
-        $style_count++ ;
+    # we create a sig based on the parameters and do not include the content
+    # as we can reuse the same layout for other elements
+    my $sig = create_sig( '', $params ) ;
+    my $idname ;
 
+    # we may have to add a new style section for this column layout
+    if ( !$style->{$sig} ) {
+
+        # create a uniq name for this style
+        $style_count++ ;
+        $idname = "column$style_count" ;
         # taken from http://odyniec.net/articles/turning-lists-into-trees/
-        $out .= "<style type=\"text/css\">
-ul.$class, ul.$class ul {
+        my $css .= "ul#$idname, ul#$idname ul {
     list-style-type: none;
     /* vline.png */
     background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAKAQMAAABPHKYJAAAAA1BMVEWIiIhYZW6zAAAACXBIWXMA
@@ -573,11 +730,11 @@ AElFTkSuQmCC
     padding: 0;
 }
 
-ul.$class ul {
+ul#$idname ul {
     margin-left: 10px;
 }
 
-ul.$class li {
+ul#$idname li {
     margin: 0;
     padding: 0 12px;
     line-height: 20px;
@@ -590,62 +747,27 @@ Y2hgQIf/GTDFGgDSkwqATqpCHAAAAABJRU5ErkJggg==
     font-weight: bold;
 }
 
-ul.$class li.last {
+ul#$idname li.last {
     /*lastnode.png*/
  background: #fff url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAUAQMAAACK1e4oAAAABlBMVEUAAwCIiIgd2JB2AAAAAXRS
 TlMAQObYZgAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9YIBhQIIhs+gc8AAAAQSURBVAjX
 Y2hgQIf/GbAAAKCTBYBUjWvCAAAAAElFTkSuQmCC
 ) no-repeat;
 }
-</style>\n" ;
-        $style->{ $params->{color} } = {
-            class => $class,
-            style => $out
-        } ;
+\n" ;
+        add_css($css) ;
+
+        $style->{$sig} = $idname ;
     } else {
-        $class = $style->{ $params->{color} }->{color} ;
+        $idname = $style->{$sig} ;
     }
 
     # we need to convert the bullet list into a HTML one
-    $content = markdown($content) ;
+    $content = markdown( $content, { markdown => 1 } )
+        ;    # do markdown in HTML elements too
 
     # make sure the first ul has class tree
-    $content =~ s/<ul>/<ul class='$class'>/ ;
-
-    # last nodes before the end of list need marking up
-
-    # <ul class='tree1'>
-    #     <li>one
-    #         <ul>
-    #             <li>1.1</li>
-    #         </ul>
-    #     </li>
-    #     <li>two
-    #         <ul>
-    #             <li>two point 1</li>
-    #             <li>2.2</li>
-    #         </ul>
-    #     </li>
-    #     <li>three
-    #         <ul>
-    #             <li>3.1</li>
-    #             <li>3.2</li>
-    #             <li>three point 3
-    #                 <ul>
-    #                     <li>four
-    #                         <ul>
-    #                             <li>five</li>
-    #                         </ul>
-    #                     </li>
-    #                     <li>six</li>
-    #                 </ul>
-    #             </li>
-    #             <li>3 . seven</li>
-    #         </ul>
-    #     </li>
-    # </ul>
-
-    # $content =~ s|<li>(.*?</li>\s*</ul>)|<li class='last'>$1|gsm;
+    $content =~ s/<ul>/<ul id='$idname' class='$tag $params->{class}'>/ ;
 
     my @lines = split( /\n/, $content ) ;
     for ( my $i = 0; $i < scalar(@lines); $i++ ) {
@@ -654,10 +776,6 @@ Y2hgQIf/GbAAAKCTBYBUjWvCAAAAAElFTkSuQmCC
         }
         $out .= "$lines[$i]\n" ;
     }
-
-    # $out .= "$content\n";
-
-    # say STDERR $out;
 
     return "$out<br>" ;
 }
@@ -685,29 +803,98 @@ sub box
     my ( $tag, $content, $params, $cachedir ) = @_ ;
     #  defaults
     $params->{width} ||= '98%' ;
-    $params->{class} ||= "box" ;
+    $params->{class} ||= "" ;
     # notes may get a default title if its missing
-    $params->{title} = 'Note' if( $tag eq 'note' && ! defined $params->{title}) ;
+    $params->{title} = 'Note'
+        if ( $tag eq 'note' && !defined $params->{title} ) ;
 
     my $out = "<div " ;
-    $out .= "class='$params->{class}' " if ( $params->{class} ) ;
-    $out .= "id='$params->{id}' "       if ( $params->{id} ) ;
+    $out .= "class='$params->{class} $tag' " ;
+    $out .= "id='$params->{id}' " if ( $params->{id} ) ;
     $out .= "width='$params->{width}' " if ( $params->{width} ) ;
-    $out .= "class='$params->{style}' " if ( $params->{style} ) ;
-    $out .= ">\n" ;
-    $out .= "<p class='box_header'>$params->{title}</p>" if( $params->{title}) ;
+    $out .= "style='$params->{style}' " if ( $params->{style} ) ;
+    $out .= ">" ;
+    $out .= "<p class='box_header'>$params->{title}</p>"
+        if ( $params->{title} ) ;
 
     # convert any content to HTML from Markdown
-    $out .= markdown($content) ;
-    $out .= "</div><br/>\n" ;
+    $out .= markdown( $content, { markdown => 1 } )
+        ;    # do markdown in HTML elements too
+    $out .= "</div>\n" ;
     return $out ;
 }
 
 sub note
 {
     my $self = shift ;
-    return $self->box( @_)
+    return $self->box(@_) ;
 }
+
+# ----------------------------------------------------------------------------
+
+=item quote
+
+create a quoted area around some text, slightly different to the usual blockquote
+as you can provide a title for the quote
+
+    hashref params of
+        class   - HTML/CSS class name
+        id      - HTML/CSS id
+        title   - optional title to display above the quote
+        width
+
+=cut
+
+sub quote
+{
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
+    #  defaults
+    $params->{class} ||= "" ;
+    my $w = $params->{width} ? "style='width:$params->{width};' " : "" ;
+
+    my $out = "<div class='$tag $params->{class}' $w>" ;
+    $out .= "<p>$params->{title}</p>" if ( $params->{title} ) ;
+    $out .= "<blockquote " ;
+    $out .= "class='$tag $params->{class}' " ;
+    $out .= "id='$params->{id}' "     if ( $params->{id} ) ;
+    $out .= ">\n" ;
+
+    # convert any content to HTML from Markdown
+    # lets keep any line spacing
+    $content =~ s/\n\n/<br><br>/gsm ;
+    $out .= markdown( $content, { markdown => 1 } ) ;
+
+    $out .= "</blockquote></div><br/>\n" ;
+    return $out ;
+}
+
+# ----------------------------------------------------------------------------
+
+=item appendix
+
+return the next appendix value 'Appendix A' 'Appendix B'
+
+ parameters
+
+=cut
+
+sub appendix
+{
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
+    state $count = 0 ;
+    my $str = "Appendix " . chr( 65 + $count);
+    if( $count > 26) {
+        # gives AA, AB, AC etc
+        $str = "Appendix " . chr( 65 + int($count / 26)) . chr( 65 + $count % 26);
+    }
+
+    $count++ ;
+
+    return $str ;
+}
+
 
 # ----------------------------------------------------------------------------
 # decide which simple handler should process this request
@@ -716,6 +903,12 @@ sub process
 {
     my $self = shift ;
     my ( $tag, $content, $params, $cachedir ) = @_ ;
+    state $css = 0 ;
+
+    if( !$css) {
+        add_css( $default_css) ;
+        $css++ ;
+    }
 
     if ( $self->can($tag) ) {
         return $self->$tag(@_) ;

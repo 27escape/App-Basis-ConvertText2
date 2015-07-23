@@ -28,25 +28,25 @@ from https://github.com/27escape/bin/blob/master/uml and http://plantuml.sourcef
 
 # ----------------------------------------------------------------------------
 
-package App::Basis::ConvertText2::Plugin::Uml;
+package App::Basis::ConvertText2::Plugin::Uml ;
 
-use 5.10.0;
-use strict;
-use warnings;
-use Path::Tiny;
-use Moo;
-use App::Basis;
-use App::Basis::ConvertText2::Support;
-use namespace::autoclean;
+use 5.10.0 ;
+use strict ;
+use warnings ;
+use Path::Tiny ;
+use Moo ;
+use App::Basis ;
+use App::Basis::ConvertText2::Support ;
+use namespace::autoclean ;
 
 has handles => (
     is       => 'ro',
     init_arg => undef,
-    default  => sub { [qw{plantuml uml umltree}] }
-);
+    default  => sub { [qw{plantuml uml umltree }] }
+) ;
 
 # uml is a script to run plantuml basically does java -jar plantuml.jar
-use constant UML => "uml";
+use constant UML => "uml" ;
 
 # ----------------------------------------------------------------------------
 
@@ -60,49 +60,77 @@ create a simple uml image
 
  hashref params of
         size    - size of image, widthxheight - optional
+        width   - optional width
+        height  - optional
+        class   - optional
+        title   - optional set the alt text
+        png     - optional, force output to be png rather than svg
 
 =cut
 
-sub uml {
-    my $self = shift;
-    my ( $tag, $content, $params, $cachedir ) = @_;
-    $params->{size} ||= "";
-    my ( $x, $y ) = ( $params->{size} =~ /^\s*(\d+)\s*x\s*(\d+)\s*$/ );
+sub uml
+{
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
+    $params->{size} ||= "" ;
+    my ( $x, $y ) = ( $params->{size} =~ /^\s*(\d+)\s*x\s*(\d+)\s*$/ ) ;
+    $x = $params->{width}  if ( $params->{width} ) ;
+    $y = $params->{height} if ( $params->{height} ) ;
+    $params->{title} ||= "" ;
+    $params->{class} ||= "" ;
 
     # strip any ending linefeed
-    chomp $content;
-    return "" if ( !$content );
+    chomp $content ;
+    return "" if ( !$content ) ;
 
+    # sudoku outputs an image
+    $params->{png} = 1 if ( $content =~ /^sudoku(\s?\w+)?$/ism ) ;
+
+    my $ext = "svg" ;
+    my $svg = "-s" ;
+    if ( $params->{png} ) {
+        $ext = "png" ;
+        $svg = "" ;
+    }
     # we can use the cache or process everything ourselves
-    my $sig = create_sig( $content, $params );
-    my $filename = cachefile( $cachedir, "$sig.png" );
+    my $sig = create_sig( $content, $params ) ;
+    my $filename = cachefile( $cachedir, "$tag.$sig.$ext" ) ;
     if ( !-f $filename ) {
 
-        $content = "\@startuml\n$content" if ( $content !~ /\@startuml/ );
-        $content .= "\n\@enduml" if ( $content !~ /\@enduml/ );
+        $content = "\@startuml\n$content" if ( $content !~ /\@startuml/ ) ;
+        $content .= "\n\@enduml" if ( $content !~ /\@enduml/ ) ;
 
-        # we are lucky that plantuml can have image sizes
-        if ( $x && $y ) {
-            $content =~ s/\@startuml/\@startuml\nscale $x*$y\n/;
-        }
-        my $umlfile = Path::Tiny->tempfile("umlXXXXXXXX");
+        # # we are lucky that plantuml can have image sizes
+        # if ( $x && $y ) {
+        #     $content =~ s/\@startuml/\@startuml\nscale $x*$y\n/;
+        # }
+        my $umlfile = Path::Tiny->tempfile("umlXXXXXXXX") ;
 
-        path($umlfile)->spew_utf8($content);
+        path($umlfile)->spew_utf8($content) ;
 
-        my $cmd = UML . " $umlfile $filename";
-        my ( $exit, $stdout, $stderr ) = run_cmd($cmd);
+        my $cmd = UML . " $svg $umlfile $filename" ;
+        my ( $exit, $stdout, $stderr ) = run_cmd($cmd) ;
         if ($exit) {
-            warn "Could not run script " . UML . " get it from https://github.com/27escape/bin/blob/master/uml";
+            warn "Could not run script "
+                . UML
+                . " get it from https://github.com/27escape/bin/blob/master/uml"
+                ;
         }
     }
-    my $out;
+    my $out ;
     if ( -f $filename ) {
 
         # create something suitable for the HTML
-        $out = create_img_src( $filename, $params->{title} );
+        my $s = "" ;
+        $s .= " width='$x'"  if ($x) ;
+        $s .= " height='$y'" if ($y) ;
+
+        $out
+            = "<img src='$filename' class='$tag $params->{class}' alt='$params->{title}' $s />"
+            ;
     }
 
-    return $out;
+    return $out ;
 }
 
 # ----------------------------------------------------------------------------
@@ -128,15 +156,22 @@ by 4 spaces, we will only process bullets that are * +  or -
 
 =cut
 
-sub umltree {
-    my $self = shift;
-    my ( $tag, $content, $params, $cachedir ) = @_;
+sub umltree
+{
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
+
+    my @lines = split( /\*/, $content ) ;
+
+    if ( !$params->{size} && !$params->{height} ) {
+        $params->{height} = (scalar(@lines) * 20) . "px"  ;
+    }
 
     # make sure we have no tabs
-    $content =~ s/\t/    /gsm;
+    $content =~ s/\t/    /gsm ;
 
     # make bullet points all the same
-    #     $content =~ s/(^\s+)[\+-]/$1*/gsm ;
+    $content =~ s/(^\s+)[\+-]/$1*/gsm ;
     #     $content =~ s/^\*/+/gsm ;
     # say "content1\n$content"     ;
     #     $content =~ s/^    /+/gsm ;
@@ -144,14 +179,14 @@ sub umltree {
     # say "content2\n$content"     ;
     #     $content =~ s/\*//gsm ;
 
-    $content =~ s/\*/+/gsm;
+    $content =~ s/\*/+/gsm ;
 
     # $content =~ s/^/ /gsm ;
 
-    $content =~ s/    /+/gsm;
+    $content =~ s/    /+/gsm ;
 
     # $content =~ s/^ \+/+/gsm ;
-    $content =~ s/^\+/ ++/gsm;
+    $content =~ s/^\+/ ++/gsm ;
 
     my $out = "
 \@startsalt
@@ -162,27 +197,28 @@ $content
 }
 }
 \@endsalt
-";
+" ;
 
     # and process with the normal uml command
-    return $self->uml( 'uml', $out, $params, $cachedir );
+    return $self->uml( $tag, $out, $params, $cachedir ) ;
 }
 
 # ----------------------------------------------------------------------------
 # decide which simple hanlder should process this request
 
-sub process {
-    my $self = shift;
-    my ( $tag, $content, $params, $cachedir ) = @_;
+sub process
+{
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
 
-    $tag = 'uml' if ( $tag eq 'plantuml' );
+    $tag = 'uml' if ( $tag eq 'plantuml' ) ;
 
     if ( $self->can($tag) ) {
-        return $self->$tag(@_);
+        return $self->$tag(@_) ;
     }
-    return undef;
+    return undef ;
 }
 
 # ----------------------------------------------------------------------------
 
-1;
+1 ;

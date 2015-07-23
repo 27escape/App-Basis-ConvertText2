@@ -1,13 +1,17 @@
 title: App::Basis::ConvertText2
 format: pdf
-date: 2015-02-06
+date: 2015-05-07
 author: Kevin Mulholland
 keywords: perl, readme
 template: coverpage
-version: 6
+version: 7
 
-This document may not be easily readable in this form, try [pdf](docs/README.pdf) or
-[HTML](docs/README.html) as alternatives. These have been generated from this file and the software provided by this distribution.
+%TOC%
+
+## Introduction
+
+If you are reading this document as a markdown document you may want to try [README PDF] as an alternative.
+This have been generated from this file and the software provided by this distribution.
 
 This is a perl module and a script that makes use of %TITLE%
 
@@ -43,12 +47,16 @@ You will then be able to use the [ct2](#using-ct2-script-to-process-files) scrip
 
 If you are reading this document in PDF form, then note that all the images are created by the various plugins and included in the output, there is no store of pre-built images. That you can read this proves the plugins all work!
 
+Most of the chapters are based around the various plugins that are available and the commands that they expose.
+
 ## Document header and variables
 
 If you are just creating simple things, then you do not need a document header, but to make full use of the templating system, having header information is vital.
 
-**Example**
-
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
     title: App::Basis::ConvertText2
     format: pdf
     date: 2014-05-12
@@ -56,6 +64,7 @@ If you are just creating simple things, then you do not need a document header, 
     keywords: perl, readme
     template: coverpage
     version: 5
+</td></tr></table>
 
 As you can see, we use a series of key value pairs separated with a colon. The keys may be anything you like, except for the following which have special significance.
 
@@ -64,42 +73,62 @@ As you can see, we use a series of key value pairs separated with a colon. The k
 
 The keys may be used as variables in your document or in the template, by upper-casing and prefixing and postfixing percent symbols '%'
 
-**Example**
-
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
     version as a variable _%VERSION%
+</td></tr></table>
 
 If you want to display the name of a variable without it being interpreted, prefix it
 with an underscore '_', this underscore will be removed in the final document.
 
-**Example**
-
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr><td>
     _%TITLE%
-
-**Output**
-
+</td>
+<td><br>
 %TITLE%
+</td></tr></table>
+
+### Gotchas about variables
+
+* Variables used within the content area of a code-block will be evaluated before processing that block, if a variable has not yet been defined or saved to a buffer then it will only be evaluated at the end of document processing, so output may not be as expected.
+* Variables used in markdown tables may not do what you expect if the variable is multi-line.
+
 
 ## Table of contents
 
-As documents are processed, the HTML headers (H2..H3) are collected together to make a table of contents. This can be used either in your template or document using the TOC variable.
+As documents are processed, the HTML headers (H2..H6) are collected together to make a table of contents. This can be used either in your template or document using the TOC variable.
 
-**Example**
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
+    _%TOdC%
+</td></tr></table>
 
-    _%TOC% will show
-
-%TOC%
+The built table of contents is at the top of this document.
 
 Note that if using a TOC, then the HTML headers are changed to have a number prefixed to them, this helps ensure that all the TOC references are unique.
 
 ### Skipping header {.toc_skip}
 
-If you do not want an item added to the toc add the class 'toc_skip' to the header
+If you do not want an item added to the toc add the class 'toc_skip' to the header (or skiptoc)
 
-**Example**
-
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
     ### Skipping header {.toc_skip}
+</td></tr></table>
 
 Hopefully you can see that the header for this section is not in the TOC
+
+~~~~{.note}
+This feature is disabled at the moment while bugs are fixed.
+~~~~
 
 ## Fenced code-blocks
 
@@ -107,11 +136,17 @@ A fenced code-block is a way of showing that some text needs to be handled diffe
 
 code-blocks take the form
 
-**Example**
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
 
     ~~~~{.tag argument1='fred' arg2=3}
     contents ...
     ~~~~
+</td>
+</tr>
+</table>
 
 code-blocks **ALWAYS** start at the start of a line without any preceding whitespace.
 The 'top' line of the code-block can wrap onto subsequent lines, this line is considered complete when the final '}' is seen. There should be only whitespace after the closing '}' symbol before the next line.
@@ -121,6 +156,49 @@ We use this construct to create our own handlers to generate HTML or markdown.
 Note that only code-blocks described in this documentation have special handlers and
 can make use of extra features such as buffering.
 
+If using [pandoc] then you can take advantage of the code blocks for code syntax highlighting
+
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
+
+    ~~~~{.perl}
+    sub process
+    {
+        my $self = shift ;
+        my ( $tag, $content, $params, $cachedir ) = @_ ;
+
+        # make sure we have no tabs
+        $content =~ s/\t/    /gsm ;
+        $content = "ditaa\n$content" ;
+
+        # and process with the normal uml command
+        $params->{png} = 1 ;
+        return run_block( 'uml', $content, $params, $cachedir ) ;
+    }
+    ~~~~
+</td>
+</tr>
+<tr><th>Output</th></tr>
+<tr><td>
+~~~~{.perl}
+sub process
+{
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
+
+    # make sure we have no tabs
+    $content =~ s/\t/    /gsm ;
+    $content = "ditaa\n$content" ;
+
+    # and process with the normal uml command
+    $params->{png} = 1 ;
+    return run_block( 'uml', $content, $params, $cachedir ) ;
+}
+~~~~
+</table>
+
 ### Code-block short cuts
 
 Sometimes using a fenced code-block is overkill, especially if the command to be executed does not have any content. So there is a shortcut to this. Additionally this will allow you to use multiple commands on a single line, this may be important in some instances.
@@ -129,68 +207,600 @@ Finally note that the shortcut must completely reside on a single line, it canno
 
 We wrap the command and its arguments with double braces.
 
-**Example**
-
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
     \{\{.tag argument1='fred' arg2=3}}
+</td></tr></table>
 
 Its is possible to add content that would normally be in the fenced code-block, if there is not too much information, by adding it to a *content* attribute.
 
 We can see this in action below and in the barcode examples later on.
 
-**Example**
-
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
     \{\{.tag argument1='fred' arg2=3 content='some text'}}
+</td></tr></table>
 
-
-## Buffering data for later use
+## Buffers
 
 Sometimes you may either want to repeatedly use the same information or may want to use the output from one of the fenced code-blocks .
 
 To store data we use the **to_buffer** argument to any code-block.
 
-**Example**
-
 ~~~~{.buffer to_buffer='spark_data'}
 1,4,5,20,4,5,3,1
 ~~~~
 
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
+
     ~~~~{.buffer to_buffer='spark_data'}
     1,4,5,20,4,5,3,1
     ~~~~
+</td></tr></table>
 
 If the code-block would normally produce some output that we do not want displayed at the current location then we would need to use the **no_output** argument.
-
-**Example**
 
 ~~~~{.sparkline title='green sparkline' scheme='green'
     from_buffer='spark_data' to_buffer='greenspark' no_output=1}
 ~~~~
 
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
+
     ~~~~{.sparkline title='green sparkline' scheme='green'
         from_buffer='spark_data' to_buffer='greenspark' no_output=1}
     ~~~~
+</td></tr></table>
 
 We can also have the content of a code-block replaced with content from a buffer by using the **from_buffer** argument. This is also displayed in the example above.
 
 To use the contents (or output of a buffered code-block) we wrap the name of the buffer
 once again with percent '%' symbols, once again we force upper case.
 
-**Example**
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
 
     _%SPARK_DATA% has content %SPARK_DATA%
     _%GREENSPARK% has a generated image %GREENSPARK%
+</td></tr></table>
 
 Buffering also allows us to add content into markdown constructs like bullets.
 
-**Example**
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
 
     * _%SPARK_DATA%
     * _%GREENSPARK%
-
-**Output**
-
+</td><td>
 * %SPARK_DATA%
 * %GREENSPARK%
+</td></tr></table>
+
+## Text
+
+The text plugin has lots of simple handlers, they all output text/HTML.
+
+### Yamlasjson
+
+Software engineers often use [JSON] to transfer data between systems, this often is not nice to create for documentation. [YAML] which is a superset of [JSON] is much cleaner
+so we have a
+
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
+
+    ~~~~{.yamlasjson }
+    list:
+      - array: [1,2,3,7]
+        channel: BBC3
+        date: 2013-10-20
+        time: 20:30
+      - array: [1,2,3,9]
+        channel: BBC4
+        date: 2013-11-20
+        time: 21:00
+</td>
+<td>
+~~~~{.yamlasjson }
+list:
+  - array: [1,2,3,7]
+    channel: BBC3
+    date: 2013-10-20
+    time: 20:30
+  - array: [1,2,3,9]
+    channel: BBC4
+    date: 2013-11-20
+    time: 21:00
+~~~~
+</td></tr></table>
+
+### Yamlasxml
+
+Software engineers often use [XML] to transfer data between systems, this often is not nice to create for documentation. We cam create basic XML, we do not allow element attributes. If you want real XML layout use *.xml* in a fenced code block.
+
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
+
+    ~~~~{.yamlasxml }
+    list:
+      - array: [1,2,3,7]
+        channel: BBC3
+        date: 2013-10-20
+        time: 20:30
+      - array: [1,2,3,9]
+        channel: BBC4
+        date: 2013-11-20
+        time: 21:00
+    ~~~~
+</td><td>
+~~~~{.yamlasxml }
+list:
+  - array: [1,2,3,7]
+    channel: BBC3
+    date: 2013-10-20
+    time: 20:30
+  - array: [1,2,3,9]
+    channel: BBC4
+    date: 2013-11-20
+    time: 21:00
+~~~~
+</td></tr></table>
+
+### Table
+
+Create a simple table using CSV style data
+
+* class
+    * HTML/CSS class name
+* id
+    * HTML/CSS class
+* width
+    * width of the table
+* style
+    * style the table if not doing anything else
+* legends
+    * if true first line csv as headings for table, these correspond to the data sets
+* separator
+    * what should be used to separate cells, defaults to ','
+
+~~~~{.buffer to_buffer=table_data}
+Date,Item,Cost
+2015-06-25, Tree, 23.99
+2015-04-20, Shed, 400
+2015-03-02, Lawn mower, 69.95
+2014-12-12, Gnome, 7.95
+~~~~
+
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
+
+    ~~~~{.table separator=',' width='100%' legends=1}
+    %TABLE_DATA%
+    ~~~~
+</td></tr>
+<tr><th>Output</th></tr>
+<tr><td>
+
+~~~~{.table separator=',' width='100%' legends=1 from_buffer='table_data'}
+~~~~
+</td></tr></table>
+
+### Links
+
+With one code-block we can create a list of links
+
+The code-block contents comprises a number of lines with a reference and a URL.
+The reference comes first, then a '|' to separate it from the URL.
+
+The reference may then be used elsewhere in your document if you enclose it with square ([]) brackets
+
+There is only one argument
+
+* class
+    * CSS class to style the list
+
+These links used in this example are the ones used in this document.
+
+~~~~{.buffer to_buffer=weblinks}
+pandoc      | http://johnmacfarlane.net/pandoc
+PrinceXML   | http://www.princexml.com
+markdown    | http://daringfireball.net/projects/markdown
+msc         | http://www.mcternan.me.uk/mscgen/
+ditaa       | http://ditaa.sourceforge.net
+PlantUML    | http://plantuml.sourceforge.net
+Salt        | http://plantuml.sourceforge.net/salt.html
+graphviz    | http://graphviz.org
+JSON        | https://en.wikipedia.org/wiki/Json
+YAML        | https://en.wikipedia.org/wiki/Yaml
+wkhtmltopdf | http://wkhtmltopdf.org/
+My Github   | https://github.com/27escape/App-Basis-ConvertText2/tree/master/scripts
+Brewer      | http://www.graphviz.org/content/color-names#brewer
+README PDF  | https://github.com/27escape/App-Basis-ConvertText2/blob/master/docs/README.pdf
+~~~~
+
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
+
+    ~~~~{.links class='weblinks' }
+    %WEBLINKS%
+    ~~~~
+</td></tr>
+<tr><th>Output</th></tr>
+<tr><td>
+~~~~{.links class='weblinks' from_buffer=weblinks}
+~~~~
+</td></tr></table>
+
+### Version
+
+Documents often need revision history. I use this code-block to create a nice
+version table of this history.
+
+The content for this code-block comprises a number of sections, each section then makes a row in the generated table.
+
+    version YYYY-MM-DD
+       indented change text
+       more changes
+
+The version may be any string, YYYY-MM-DD shows the date the change took place.
+Alternate date formats is DD-MM-YYYY and '/' may also be used as a field separator.
+
+So give proper formatting to the content in the changes column you should indent
+text after the version/date line with 4 spaces, not a tab character.
+
+* class
+    * HTML/CSS class name
+* id
+    * HTML/CSS class
+* width
+    * width of the table
+* style
+    * style the table if not doing anything else
+- title
+    * create a title for the version table
+
+~~~~{.buffer to_buffer=versiontable}
+0.1 2014-04-12
+  * removed ConvertFile.pm
+  * using Path::Tiny
+0.006 2014-04-10
+  * first release to github
+~~~~
+
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
+
+    ~~~~{.version}
+    %VERSIONTABLE%
+    ~~~~
+</td>
+<td>
+~~~~{.version  width='45%' from_buffer=versiontable}
+~~~~
+</td>
+</tr>
+</table>
+
+### Page
+
+There are 2 ways for force the start of a new page, using the **.page** fenced code block or by having 4 '-' signs next to each other, i.e. '----' on a line on their own
+
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
+  This is start a new page, again using short block form.
+
+    \{\{.page}}
+
+    as will this
+
+    ----
+</td></tr>
+<tr><th>Output</th></tr>
+<tr><td> will not be shown as it will mess up the document!
+</td></tr></table>
+
+### Columns
+
+Create a columner layout, like a newspaper. The full text in the content is split into columns, the height of the section is determined by the volume of the text.
+
+The optional arguments are
+
+* count
+    * number of columns to split into, defaults to 2
+* lines
+    * number of lines the section should hold, defaults to 20
+* ruler
+    * show a line between the columns, defaults to no,
+      options are 1, true or yes to show it
+* width
+    * how wide should the column area be, defaults to 100%
+
+~~~~{.buffer to_buffer=columns}
+Flexitarian lo-fi occupy, Echo Park yr chia keffiyeh iPhone pug kale chips
+fashion axe PBR&amp;B 90's readymade beard.
+
+McSweeney's Tumblr semiotics
+beard, flexitarian artisan bitters twee small batch next level PBR mustache
+post-ironic stumptown.
+
+Umami Pinterest mixtape Truffaut, Blue Bottle ugh
+artisan whatever blog street art Odd Future crucifix tomato shore invisible
+spelling.
+~~~~
+
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
+
+    ~~~~{.columns count=3 ruler=yes width='95%'}
+    %COLUMNS%
+    ~~~~
+</td>
+</tr>
+<tr><th width='100%'>Output</th></tr>
+<tr><td>
+~~~~{.columns from_buffer=columns count=3 ruler=yes width='95%'}
+~~~~
+</td>
+</tr>
+</table>
+
+### Tree
+
+Draw a bulleted list as a directory tree. Bullets are expected to be indented
+by 4 spaces, we will only process bullets that are * +  or -.
+
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
+
+    ~~~~{.tree}
+    * one
+        * 1.1
+    * two
+        * two point 1
+        * 2.2
+    * three
+        * 3.1
+        * 3.2
+        * three point 3
+            * four
+                * five
+            * six
+        * 3 . seven
+    ~~~~
+</td>
+<td><br>
+~~~~{.tree}
+* one
+    * 1.1
+* two
+    * two point 1
+    * 2.2
+* three
+    * 3.1
+    * 3.2
+    * three point 3
+        * four
+            * five
+        * six
+    * 3 . seven
+~~~~
+</td></tr></table>
+
+### Badges
+
+Badges (or shields) are a way to display information, often used to show status of an operation on websites such as github.
+
+Examples of shields can be seen at [sheilds.io](http://shields.io/)
+
+The badges are placed inline, so you can insert text around the fenced codeblock.
+
+Depending on your template the color of the text and the color for the status portion may clash, so take care!
+
+The required argument are
+
+* subject
+    + text saying what the button is
+* status
+    + text status to put at the end of the button
+
+The optional arguments are
+
+* color
+    + over ridge default color goldenrod
+* size
+    + the width of the button
+
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>A basic badge
+
+    ~~~~{.badge subject='test run' status='completed' color='green'}
+    ~~~~
+
+Badges / shields work well as short blocks
+
+    \{\{.shield subject='test run' status='pending' size='150'}}
+</td></tr>
+<tr><th>Output</th></tr>
+<tr><td>
+{{.badge subject='test run' status='completed' color='green'}}
+
+Badges / shields work well as short blocks
+
+{{.shield subject='test run' status='pending' size='150'}}
+
+</td></tr></table>
+
+### Box
+
+Show that something is important by putting it in a box
+
+The optional arguments are
+
+* class
+    * HTML/CSS class name
+* id
+    * HTML/CSS class
+* width
+    * width of the box (default 98%)
+* title
+    * optional title for the section
+* style
+    * style the box if not doing anything else
+
+~~~~{.buffer to_buffer=box}
+Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+Pellentesque sit amet accumsan est. Nulla facilisi.
+Nulla lacus augue, gravida sit amet laoreet id,
+commodo vitae velit. Fusce in nisi mi. Nulla congue
+nulla ac bibendum semper. In rutrum sem eget purus
+auctor porttitor. Mauris vel pellentesque lorem.
+Vestibulum consectetur massa non fermentum dignissim.
+~~~~~~~~
+
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
+
+    ~~~~{.box from_buffer=box
+      title='Important Notice'
+      width='80%'}
+    ~~~~
+</td>
+<td><br>
+~~~~{.box from_buffer=box title='Important Notice' width='80%'}
+~~~~
+<br>
+</td></tr></table>
+
+### Glossary
+
+Build a glossary of terms or abbreviations as you progress with your document. Show them later on, there is no way (currently) to place the glossary ahead of any definitions.
+
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
+    This is a \{\{.gloss abbr='SMPL' def='short spelling of SAMPLE'}}
+    There are other things we can do
+    \{\{.glossary abbr='test' define='Test long form and arguments'}}
+
+    Optionally if there is a link to a item e.g. [Links](#links)
+    \{\{.gloss abbr='msc' define='Message Sequence Charts' link=1}}
+    then this can link to the relevant website, the following link
+    has not been added to
+    \{\{.gloss abbr='JSON' define='JavaScript Object Notation'}},
+    so no link to the website.
+
+    Now finally, show the results
+    \{\{.gloss show=1}}
+</td></tr>
+<tr><th>Output</th></tr>
+<tr><td>
+This is a {{.gloss abbr='SMPL' def='short spelling of SAMPLE'}}
+There are other things we can do {{.glossary abbr='test' define='Test long form and arguments'}}
+
+Optionally if there is a link to a item in [Links](#links) {{.gloss abbr='msc' define='Message Sequence Charts' link=1}} then this can link to the relevant website, the following link has not been added to {{.gloss abbr='JSON' define='JavaScript Object Notation'}}, so no link to the website.
+
+Now finally, show the results
+{{.gloss show=1}}
+</td></tr></table>
+
+### Quote
+
+Pandoc provides for blockquotes, these are often like
+
+    > a standard quote
+    > another line of the block
+    >
+    > And a final one
+
+as
+
+> a standard quote
+> another line of the block
+>
+> And a final one
+
+We want something that can be styled differently and can have a title
+
+The optional arguments are
+
+* class
+    * HTML/CSS class name
+* id
+    * HTML/CSS class
+* title
+    * optional title for the section
+
+~~~~{.buffer to_buffer=quote}
+Start by doing what's necessary;
+
+then do what's possible;
+
+and suddenly you are doing the
+impossible.
+
+~ Francis of Assisi
+~~~~
+
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
+
+    ~~~~{.quote title='Title'
+      width=100%}
+    %QUOTE%
+    ~~~~
+</td>
+<td><br>
+{{.quote from_buffer=quote title='Title' width=100%}}
+</td>
+</tr>
+<tr>
+<td>
+Or without the title
+
+    ~~~~{.quote title='Title'
+      width=350px}
+    %QUOTE%
+    ~~~~
+</td>
+<td><br>
+
+{{.quote from_buffer=quote width=350px}}
+</td></tr></table>
 
 ## Sparklines
 
@@ -198,7 +808,7 @@ Sparklines are simple horizontal charts to give an indication of things, sometim
 
 The only valid contents of the code-block is a single line of comma separated numbers.
 
-The full set of optional arguments is
+The optional arguments are
 
 * title
     * used as the generated images 'alt' argument
@@ -209,162 +819,153 @@ The full set of optional arguments is
 * color
     * area under the line, in hex (abcdef)
 * scheme
-    * color scheme, only things in red blue green orange mono are valid
+    * color scheme
+      * options: red blue green orange mono
 * size
     * size of image, default 80x20, widthxheight
-
-**Example**
-
-    ~~~~{.buffer to_buffer='spark_data'}
-    1,4,5,20,4,5,3,1
-    ~~~~
-
-    here is a standard sparkline
-
-    ~~~~{.sparkline title='basic sparkline' }
-    1,4,5,20,4,5,3,1
-    ~~~~
-
-    or we can draw the sparkline using buffered data
-
-    ~~~~{.sparkline title='blue sparkline' scheme='blue' from_buffer='spark_data'}
-    ~~~~
-
-**Output**
 
 ~~~~{.buffer to_buffer='spark_data'}
 1,4,5,20,4,5,3,1
 ~~~~
 
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
+
+    ~~~~{.buffer
+      to_buffer='spark_data'}
+    %SPARK_DATA%
+    ~~~~
+
 here is a standard sparkline
 
-~~~~{.sparkline title='basic sparkline' }
-1,4,5,20,4,5,3,1
+    ~~~~{.sparkline
+      title='basic sparkline'}
+    %SPARK_DATA%
+    ~~~~
+</td>
+<td>
+
+~~~~{.sparkline title='basic sparkline' from_buffer='spark_data'}
 ~~~~
+</td></tr>
+<tr><td>
+Draw the sparkline using buffered data
 
-or we can draw the sparkline using buffered data
-
+    ~~~~{.sparkline
+      title='blue sparkline'
+      scheme='blue'
+      from_buffer='spark_data'}
+    ~~~~
+</td>
+<td>
 ~~~~{.sparkline title='blue sparkline' scheme='blue' from_buffer='spark_data'}
 ~~~~
+</td>
+</tr></table>
 
 ## Charts
 
 Displaying charts is very important when creating reports, so we have a simple **chart** code-block.
 
-The various arguments to the code-block are shown in the examples below, hopefully they are self explanatory.
-
 ~~~~{.buffer to='chart_data'}
-apples,bananas,cake,cabbage,edam,fromage,tomatoes,chips
+A,B,C,D,E,F,G,H
 1,2,3,5,11,22,33,55
 1,2,3,5,11,22,33,55
 1,2,3,5,11,22,33,55
 1,2,3,5,11,22,33,55
 ~~~~
 
-We will buffer some data to start
-
-**Example**
-
-    ~~~~{.buffer to='chart_data'}
-    apples,bananas,cake,cabbage,edam,fromage,tomatoes,chips
-    1,2,3,5,11,22,33,55
-    1,2,3,5,11,22,33,55
-    1,2,3,5,11,22,33,55
-    1,2,3,5,11,22,33,55
-    ~~~~
-
-The content comprises a number of lines of comma separated data items.
-The first line of the content is the legends, the subsequent lines are numbers relating
+We will buffer some data to start. The content comprises lines of comma separated data.
+The first line of the content is the legends; subsequent lines relate
 to each of these legends.
 
-### Pie chart
-
-**Example**
-
-    ~~~~{.chart format='pie' title='chart1' from_buffer='chart_data'
-        size='400x400' xaxis='things xways' yaxis='Vertical things'
-        legends='a,b,c,d,e,f,g,h' }
+    ~~~~{.buffer to='chart_data'}
+    A,B,C,D,E,F,G,H
+    1,2,3,5,11,22,33,55
+    1,2,3,5,11,22,33,55
+    1,2,3,5,11,22,33,55
+    1,2,3,5,11,22,33,55
     ~~~~
 
-**Output**
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
+Pie Chart
 
-~~~~{.chart format='pie' title='chart1' from_buffer='chart_data'
-    size='400x400' xaxis='things xways' yaxis='Vertical things'
-    legends='a,b,c,d,e,f,g,h' }
-~~~~
-
-### Bar chart
-
-**Example**
-
-    ~~~~{.chart format='bars' title='chart1' from_buffer='chart_data'
-        size='600x400' xaxis='things ways' yaxis='Vertical things'
-        legends='a,b,c,d,e,f,g,h' }
+    ~~~~{.chart format='pie'
+      title='Pie'
+      from_buffer='chart_data'
+      size='300x300'}
     ~~~~
 
-**Output**
-
-~~~~{.chart format='bars' title='chart1' from_buffer='chart_data'
-    size='600x400' xaxis='things ways' yaxis='Vertical things'
-    legends='a,b,c,d,e,f,g,h' }
+</td><td>
+~~~~{.chart format='pie' title='Pie' from_buffer='chart_data'
+    size='300x300'  }
 ~~~~
+</td></tr>
+<tr><td>
+Bar Chart
 
-### Mixed chart
-
-**Example**
-
-    ~~~~{.chart format='mixed' title='chart1' from_buffer='chart_data'
-      size='600x400' xaxis='things xways' axis='Vertical things'
-      legends='a,b,c,d,e,f,g,h' types='lines linepoints lines bars' }
+    ~~~~{.chart format='bars'
+      title='Bars'
+      from_buffer='chart_data'
+      size='300x300'
+      xaxis='things ways'
+      yaxis='Vertical things'
+      legends='A,B,C,D,E,F,G,H' }
     ~~~~
-
-**Output**
-
-~~~~{.chart format='mixed' title='chart1' from_buffer='chart_data'
-  size='600x400' xaxis='things xways' axis='Vertical things'
-  legends='a,b,c,d,e,f,g,h' types='lines linepoints lines bars' }
+</td><td>
+~~~~{.chart format='bars' title='Bars' from_buffer='chart_data'
+    size='300x300' xaxis='things ways' yaxis='Vertical things'
+    legends='A,B,C,D,E,F,G,H' }
 ~~~~
+</td>
+<tr><td>
+Mixed Chart
 
-## Message Sequence Charts - mscgen
+    ~~~~{.chart format='mixed'
+      title='Mixed'
+      from_buffer='chart_data'
+      size='300x300'
+      xaxis='things xways'
+      axis='Vertical things'
+      legends='A,B,C,D,E,F,G,H' }
+      types='lines linepoints lines
+        bars' }
+    ~~~~
+</td><td>
+~~~~{.chart format='mixed' title='Mixed' from_buffer='chart_data'
+  size='300x300' xaxis='things xways' axis='Vertical things'
+  legends='A,B,C,D,E,F,G,H' }
+ types='lines linepoints lines bars' }
+~~~~
+</td></tr></table>
+
+## mscgen
+
+*Message Sequence Charts*
 
 Software (or process) engineers often want to be able to show the sequence in which a number of events take place. We use the [msc] program for this. This program needs to be installed onto your system to allow this to work
 
 The content for this code-block is EXACTLY the same that you would use as input to [msc]
 
-There are only optional 2 arguments
+The optional arguments are
 
 * title
     * used as the generated images 'alt' argument
 * size
     * size of image, widthxheight
+* width
+    - just constrain the width
+* height
+    - just constrain the height
++ class
+    - add this class to the image
 
-**Example**
-
-    ~~~~{.mscgen  title="mscgen1" size="600x400}
-    # MSC for some fictional process
-    msc {
-      a,b,c;
-
-      a->b [ label = "ab()" ] ;
-      b->c [ label = "bc(TRUE)"];
-      c=>c [ label = "process(1)" ];
-      c=>c [ label = "process(2)" ];
-      ...;
-      c=>c [ label = "process(n)" ];
-      c=>c [ label = "process(END)" ];
-      a<<=c [ label = "callback()"];
-      ---  [ label = "If more to run", ID="*" ];
-      a->a [ label = "next()"];
-      a->c [ label = "ac1()\nac2()"];
-      b<-c [ label = "cb(TRUE)"];
-      b->b [ label = "stalled(...)"];
-      a<-b [ label = "ab() = FALSE"];
-    }
-    ~~~~
-
-**Output**
-
-~~~~{.mscgen  title="mscgen1" size="600x400}
+~~~~{.buffer to_buffer=mscgen}
 # MSC for some fictional process
 msc {
   a,b,c;
@@ -377,7 +978,7 @@ msc {
   c=>c [ label = "process(n)" ];
   c=>c [ label = "process(END)" ];
   a<<=c [ label = "callback()"];
-  ---  [ label = "If more to run", ID="*" ];
+  ---  [ label = "If more to run" ];
   a->a [ label = "next()"];
   a->c [ label = "ac1()\nac2()"];
   b<-c [ label = "cb(TRUE)"];
@@ -386,176 +987,74 @@ msc {
 }
 ~~~~
 
-## Diagrams Through Ascii Art - ditaa
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
 
-This is a special system to turn ASCII art into pretty pictures, nice to render diagrams.
-You do need to make sure that you are using a proper monospaced font with your editor otherwise things will go awry with spaces. See [ditaa] for reference.
-
-The content for this code-block must be the same that you would use to with the [ditaa] software
-
-* title
-    * used as the generated images 'alt' argument
-* size
-    * size of image, default 80x20, widthxheight
-    * shadow  - have shadow, default true
-    * alias   - apply aliasing, default true
-    * round   - round edges, default false
-    * separation - default false
-
-**Example**
-
-    ~~~~{.ditaa }
-    Full example
-    +--------+   +-------+    +-------+
-    |        +-->| ditaa +--->|       |
-    |  Text  |   +-------+    |diagram|
-    |Document|   |!magic!|    |       |
-    |     {d}|   |       |    |cBLU   |
-    +---+----+   +-------+    +-------+
-        :                         ^
-        |       Lots of work      |
-        \-------------------------+
+    ~~~~{.mscgen  title="mscgen1"
+      width=350}
+    %MSCGEN%
     ~~~~
-
-**Output**
-
-~~~~{.ditaa }
-Full example
-+--------+   +-------+    +-------+
-|        +-->| ditaa +--->|       |
-|  Text  |   +-------+    |diagram|
-|Document|   |!magic!|    |       |
-|     {d}|   |       |    |cBLU   |
-+---+----+   +-------+    +-------+
-    :                         ^
-    |       Lots of work      |
-    \-------------------------+
+</td>
+<td>
+<br>
+~~~~{.mscgen  title="mscgen1" width=350 from_buffer=mscgen}
 ~~~~
+</td></tr></table>
 
 ## UML Diagrams
 
 Software engineers love to draw diagrams, [PlantUML] is a java component to make this simple.
 
-You will need to have a script on your system called 'uml' that calls java with the component.
-
-Here is mine, it is also available in the scripts directory in the
-
-~~~~{ .shell}
-#!/bin/bash
-# run plantuml
-# moodfarm@cpan.org
-
-# we assume that the plantuml.jar file is in the same directory as this executable
-EXEC_DIR=`dirname $0`
-PLANTUML="$EXEC_DIR/plantuml.jar"
-
-INPUT=$1
-OUPUT=$2
-function show_usage  {
-    arg=$1
-    err=$2
-    if [ "$err" == "" ] ; then
-        err=1
-    fi
-      "Create a UML diagram from an input text file
-(see http://plantuml.sourceforge.net/ for reference)
-    usage: $0 inputfile outputfile.png
-"
-    if [ "$arg" != "" ] ; then
-        echo "$arg
-"
-    fi
-    exit $err
-}
-if [ "$INPUT" == "-help" ] ; then
-    show_usage "" 0
-fi
-if [ ! -f "$INPUT" ] ; then
-    show_usage "ERROR: Could not find input file $1"
-fi
-if [ "$OUPUT" == "" ] ; then
-    show_usage "ERROR: No output file specified"
-fi
-# we use the pipe option to control output into the file we want
-cat "$INPUT" | java -jar $PLANTUML -nbthread auto -pipe >$OUPUT
-# exit 0
-~~~~
+You will need to have a script on your system called 'uml' that calls java with the plantuml component.
+Mine is available from [My Github] repo.
 
 The content for this code-block must be the same that you would use to with the [PlantUML] software
 
-The arguments allowed are
+The optional arguments are
 
 * title
     * used as the generated images 'alt' argument
 * size
-    * size of image, default 80x20, widthxheight
+    * size of image, widthxheight
+* width
+    - just constrain the width
+* height
+    - just constrain the height
++ class
+    - add this class to the image
 
-**Example**
-
-    ~~~~{.uml }
-    ' this is a comment on one line
+~~~~{.buffer to_buffer=uml}
+' this is a comment on one line
     /' this is a
     multi-line
     comment'/
-    Alice -> Bob: Authentication Request
-    Bob --> Alice: Authentication Response
+    Alice -> Bob: Auth Request
+    Bob --> Alice: Auth Response
 
-    Alice -> Bob: Another authentication Request
-    Alice <-- Bob: another authentication Response
-    ~~~~
-
-**Output**
-
-~~~~{.uml }
-' this is a comment on one line
-/' this is a
-multi-line
-comment'/
-Alice -> Bob: Authentication Request
-Bob --> Alice: Authentication Response
-
-Alice -> Bob: Another authentication Request
-Alice <-- Bob: another authentication Response
+    Alice -> Bob: Auth Request 2
+    Alice <-- Bob: Auth Response 2
 ~~~~
 
-[PlantUML] can also create simple application interfaces [See Salt]
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
 
-**Example**
-
-    ~~~~{.uml }
-    @startuml
-    salt
-    {
-      Just plain text
-      [This is my button]
-      ()  Unchecked radio
-      (X) Checked radio
-      []  Unchecked box
-      [X] Checked box
-      "Enter text here   "
-      ^This is a droplist^
-
-      {T
-       + World
-       ++ America
-       +++ Canada
-       +++ **USA**
-       ++++ __New York__
-       ++++ Boston
-       +++ Mexico
-       ++ Europe
-       +++ Italy
-       +++ Germany
-       ++++ Berlin
-       ++ Africa
-      }
-    }
-    @enduml
+    ~~~~{.uml width=350}
+    %UML%
     ~~~~
+</td><td>
+~~~~{.uml from_buffer=uml width=350}
+~~~~
+</td></tr></table>
 
-**Output**
+### Salt
 
-~~~~{.uml }
+[PlantUML] can also create simple application interfaces See [Salt]
+
+~~~~{.buffer to_buffer=salt}
 @startuml
 salt
 {
@@ -586,32 +1085,49 @@ salt
 @enduml
 ~~~~
 
-## Umltree
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
+
+    ~~~~{.uml width=350}
+    %SALT%
+    ~~~~
+</td><td>
+~~~~{.uml from_buffer=salt width=350}
+~~~~
+</td></tr></table>
+
+### Sudocku
+
+Plantuml can generate random sudocku patterns
+
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
+
+    ~~~~{.uml width=350}
+    sudoku
+    ~~~~
+</td><td>
+~~~~{.uml width=350}
+sudoku
+~~~~
+</td></tr></table>
+
+To always generate the same pattern, append a seed value after 'sudoku'
+
+    ~~~~{.uml}
+    sudoku 45azkdf4sqq
+    ~~~~
+
+### Umltree
 
 Draw a bulleted list as a tree using the plantuml salt GUI layout tool.
 Bullets are expected to be indented by 4 spaces, we will only process bullets that are * +  or -.
 
-**Example**
-
-    ~~~~{.umltree}
-    * one
-        * 1.1
-    * two
-        * two point 1
-        * 2.2
-    * three
-        * 3.1
-        * 3.2
-        * three point 3
-            * four
-                * five
-            * six
-        * 3 . seven
-    ~~~~
-
-**Output**
-
-~~~~{.umltree}
+~~~~{.buffer to_buffer=umltree}
 * one
     * 1.1
 * two
@@ -627,6 +1143,69 @@ Bullets are expected to be indented by 4 spaces, we will only process bullets th
     * 3 . seven
 ~~~~
 
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
+
+    ~~~~{.umltree width=350}
+    %UMLTREE%
+    ~~~~
+</td><td>
+~~~~{.umltree from_buffer=umltree width=350}
+~~~~
+</td></tr></table>
+
+### Ditaa
+
+*Diagrams Through Ascii Art*
+
+This is a special system to turn ASCII art into pretty pictures, nice to render diagrams.
+You do need to make sure that you are using a proper monospaced font with your editor otherwise things will go awry with spaces.
+
+Rather than use the [ditaa] application and to reduce the number of applications that need to be installed on the system, we use the ditaa component of plantuml. This does have some limitations, for example there is no way to switch spaces or shadows off. However this is a useful tradeoff
+
+The content for this code-block must be the same that you would use to with the ditaa software.
+
+The optional arguments are
+
+* title
+    * used as the generated images 'alt' argument
+* size
+    * size of image, widthxheight
+* width
+    - just constrain the width
+* height
+    - just constrain the height
++ class
+    - add this class to the image
+
+~~~~{.buffer to_buffer=ditaa}
+Full example
++--------+   +-------+   +-----+
+|        +-->| ditaa +-->|     |
+|  Text  |   +-------+   |image|
+|Document|   |!magic!|   |     |
+|     {d}|   |       |   |cBLU |
++---+----+   +-------+   +-----+
+    :                       ^
+    |       Lots of work    |
+    \-----------------------+
+           To do by hand
+~~~~
+
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
+
+    ~~~~{.ditaa width=350}
+    %DITAA%
+    ~~~~
+</td><td>
+~~~~{.ditaa from_buffer=ditaa width=350}
+~~~~
+</td></tr></table>
 
 ## Graphviz
 
@@ -634,48 +1213,23 @@ Bullets are expected to be indented by 4 spaces, we will only process bullets th
 
 The content for this code-block must be the same that you would use to with the [graphviz] software
 
-The arguments allowed are
+The optional arguments are
 
 * title
     * used as the generated images 'alt' argument
 * size
-    * size of image, default 80x20, widthxheight
+    * size of image, widthxheight
+* width
+    - just constrain the width
+* height
+    - just constrain the height
++ class
+    - add this class to the image
+* command
+    * command used to draw the graph, defaults to dot
+      - options are dot, neato, twopi, fdp, sfdp, circo, osage
 
-**Example**
-
-    ~~~~{.graphviz  title="graphviz1" size='600x600'}
-    digraph G {
-
-      subgraph cluster_0 {
-        style=filled;
-        color=lightgrey;
-        node [style=filled,color=white];
-        a0 -> a1 -> a2 -> a3;
-        label = "process #1";
-      }
-
-      subgraph cluster_1 {
-        node [style=filled];
-        b0 -> b1 -> b2 -> b3;
-        label = "process #2";
-        color=blue
-      }
-      start -> a0;
-      start -> b0;
-      a1 -> b3;
-      b2 -> a3;
-      a3 -> a0;
-      a3 -> end;
-      b3 -> end;
-
-      start [shape=Mdiamond];
-      end [shape=Msquare];
-    }
-    ~~~~
-
-**Output**
-
-~~~~{.graphviz  title="graphviz1" size='600x600'}
+~~~~{.buffer to_buffer=graphviz}
 digraph G {
 
   subgraph cluster_0 {
@@ -705,11 +1259,117 @@ digraph G {
 }
 ~~~~
 
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
+
+    ~~~~{.graphviz  title="graphviz1"
+      size=width=350}
+      %GRAPHVIZ%
+    ~~~~
+</td><td>
+~~~~{.graphviz  title="graphviz1" width=350 from_buffer=graphviz}
+~~~~
+</td></tr></table>
+
+### Mindmap
+
+There is no nice way to convert plain text to mindmaps, the only way normally would be to use graphviz or something similar.
+
+However, converting a bulleted list into a simple mindmap would be ideal!
+
+Each bulleted item would be a node in the mindmap.
+
+Bullets can be '*', '+' or '-' and should be indented 4 spaces to indicate a child. Poor indenting can be managed to a degree.
+
+There should be a single top level bullet, which is used as the root of the map, see the example below. Multiple top level bullets will result in a badly organised mindmap.
+
+Markdown style bold and italics markers can be used, as can '\n' to start a new line in a node.
+
+Comments can be added and will be ignored when rendering the mindmap, anything following ' :' will be considered as a comment.
+
+The optional arguments are
+
+* title
+    * used as the generated images 'alt' argument
+* size
+    * size of image, widthxheight
+* width
+    - just constrain the width
+* height
+    - just constrain the height
++ class
+    - add this class to the image
+* command
+    * command used to draw the graph, defaults to dot
+        - options are dot neato twopi fdp sfdp circo osage
+- scheme  - color scheme to use - optional
+    - default pastel28, schemes taken from [Brewer]
+    - blue purple green grey mono orange red brown  are shortcuts
+- shapes  - list of shapes to use - optional
+    + default box ellipse hexagon octagon
+
+Bullet text can override some shapes
+
++ wrap in the following to get the required shape
+  + [] shape=box
+  + () shape=ellipse
+  + &lt;&gt; shape=diamond
+  + {} shape=octagon
++ include a shape=
+    + shape=box3d
+
+Bullet text can include a color override
+
+* \#red or  \#123456 or \#ff00ff
+
+~~~~{.buffer to='mindmap'}
+* base thought
+  + (force shape as ellipse)
+      + what about **bold**
+  + another thought :comment to ignore
+      + make this thing red #red
+  * put this\none\non a few\nlines
+~~~~
+
+<table class='box' width=95%>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
+
+    ~~~~{.mindmap size=350x250}
+    %MINDMAP%
+    ~~~~
+</td>
+<td>
+{{.mindmap from_buffer='mindmap' size='350x250'}}
+</td>
+</tr>
+<tr>
+<td>
+Change the node style and the color scheme.
+
+    ~~~~{.mindmap shapes='box'
+      scheme=green size=350x250}
+    %MINDMAP%
+    ~~~~
+</td>
+<td>
+<br>
+
+{{.mindmap shapes='box' scheme=green from_buffer='mindmap' size=350x250}}</td>
+</tr>
+</table>
+
 ## Venn diagram
 
 Creating venn diagrams may sometimes be useful, though to be honest this implementation is not great, if I could find a better way to do this then I would!
 
-**Example**
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
 
     ~~~~{.venn  title="sample venn diagram"
         legends="team1 team2 team3" scheme="rgb" explain='1'}
@@ -717,14 +1377,15 @@ Creating venn diagrams may sometimes be useful, though to be honest this impleme
     edward isabel antonio delta albert kevin jake
     gerald jake kevin lucia john edward
     ~~~~
-
-**Output**
-
+</td></tr>
+<tr><th>Output</th></tr>
+<tr><td>
 ~~~~{.venn  title="sample venn diagram" legends="team1 team2 team3" scheme="rgb" explain='1'}
 abel edward momo albert jack julien chris
 edward isabel antonio delta albert kevin jake
 gerald jake kevin lucia john edward
 ~~~~
+</td></tr></table>
 
 ## Barcodes
 
@@ -745,132 +1406,52 @@ The arguments allowed are
     * version of qrcode, defaults to '2'
 * pixels
     * number of pixels that is a 'bit' in a qrcode, defaults to '2'
+* type
+    + the type of the barcode
+    + code39
+    + coop2of5
+    + ean8 - 8 characters allowed in content
+    + ean13 - 13 characters allowed in content
+    + iata20f5
+    + industrial20f5
+    + itf
+    + matrix2of5
+    + nw7
+    + qrcode
 
-### Code39
+<table class='box' width=95%>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
+Code 39
 
-**Example**
-
-    \{\{.barcode type='code39' content=123456789}}
-
-**Output**
-
-{{.barcode type='code39' content=123456789}}
-
-### EAN8
-
-Only allows 8 characters
-
-**Example**
+    ~~~~{.barcode type='code39'}
+    123456789}
+    ~~~~
+</td>
+<td><br> {{.barcode type='code39' content=123456789}}</td>
+</tr>
+<tr>
+<td>
+EAN8
 
     ~~~~{.barcode type='ean8'}
     12345678
     ~~~~
-
-**Output**
-
-~~~~{.barcode type='ean8'}
-12345678
-~~~~
-
-### EAN13
-
-Only allows 13 characters
-
-**Example**
-
-    ~~~~{.barcode type='EAN13'}
-    1234567890123
-    ~~~~
-
-**Output**
-
-~~~~{.barcode type='EAN13'}
-1234567890123
-~~~~
-
-### COOP2of5
-
-**Example**
-
-    ~~~~{.barcode type='COOP2of5'}
-    12345678
-    ~~~~
-
-**Output**
-
-~~~~{.barcode type='COOP2of5'}
-12345678
-~~~~
-
-### IATA2of5
-
-**Example**
+</td>
+<td><br>{{.barcode type='ean8' content='12345678'}}</td>
+</tr>
+<tr>
+<td>
+IATA2of5
 
     ~~~~{.barcode type='IATA2of5'}
     12345678
     ~~~~
-
-**Output**
-
-~~~~{.barcode type='IATA2of5'}
-12345678
-~~~~
-
-### Industrial2of5
-
-**Example**
-
-    ~~~~{.barcode type='Industrial2of5'}
-    12345678
-    ~~~~
-
-**Output**
-
-~~~~{.barcode type='Industrial2of5'}
-12345678
-~~~~
-
-### ITF
-
-**Example**
-
-    ~~~~{.barcode type='ITF'}
-    12345678
-    ~~~~
-
-**Output**
-
-~~~~{.barcode type='ITF'}
-12345678
-~~~~
-
-### Matrix2of5
-
-**Example**
-
-    ~~~~{.barcode type='Matrix2of5'}
-    12345678
-    ~~~~
-
-**Output**
-
-~~~~{.barcode type='Matrix2of5'}
-12345678
-~~~~
-
-### NW7
-
-**Example**
-
-    ~~~~{.barcode type='NW7'}
-    12345678
-    ~~~~
-
-**Output**
-
-~~~~{.barcode type='NW7'}
-12345678
-~~~~
+</td>
+<td><br>{{.barcode type='IATA2of5' content='12345678'}}</td>
+</tr>
+</table>
 
 ### QR code
 
@@ -878,427 +1459,91 @@ As qrcodes are now quite so prevalent, they have their own code-block type.
 
 We can do qr codes, just put in anything you like, this is a URL for bbc news
 
-**Example**
-
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
     ~~~~{.qrcode }
     http://news.bbc.co.uk
     ~~~~
+</td>
+<td>
+~~~~{.qrcode }
+http://news.bbc.co.uk
+~~~~
+</td>
+</tr>
 
-    To change the size of the barcode
+<tr>
+<td>
+To change the size of the barcode
 
     ~~~~{.qrcode height='80'}
     http://news.bbc.co.uk
     ~~~~
-
-    To use version 1
-
-    Version 1 only allows 15 characters
-
-    ~~~~{.qrcode height=60 version=1}
-    smaller text..
-    ~~~~
-
-    To change pixel size
-
-    ~~~~{.qrcode pixels=5}
-    smaller text..
-    ~~~~
-
-**Output**
-
-~~~~{.qrcode }
-http://news.bbc.co.uk
-~~~~
-
-To change the size of the barcode
-
+</td>
+<td>
 ~~~~{.qrcode height='80'}
 http://news.bbc.co.uk
 ~~~~
+</td>
+</tr>
 
+<tr>
+<td>
 To use version 1
 
 Version 1 only allows 15 characters
 
+    ~~~~{.qrcode height=60 version=1}
+    smaller text..
+    ~~~~
+</td>
+<td>
 ~~~~{.qrcode height=60 version=1}
 smaller text..
 ~~~~
+</td>
+</tr>
 
+<tr>
+<td>
 To change pixel size
 
+    ~~~~{.qrcode pixels=5}
+    smaller text..
+    ~~~~
+</td>
+<td>
 ~~~~{.qrcode pixels=5}
 smaller text..
 ~~~~
-
-## YAML convert to JSON
-
-Software engineers often use [JSON] to transfer data between systems, this often is not nice to create for documentation. [YAML] which is a superset of [JSON] is much cleaner
-so we have a
-
-**Example**
-
-    ~~~~{.yamlasjson }
-    list:
-      - array: [1,2,3,7]
-        channel: BBC3
-        date: 2013-10-20
-        time: 20:30
-      - array: [1,2,3,9]
-        channel: BBC4
-        date: 2013-11-20
-        time: 21:00
-
-    ~~~~
-
-**Output**
-
-~~~~{.yamlasjson }
-list:
-  - array: [1,2,3,7]
-    channel: BBC3
-    date: 2013-10-20
-    time: 20:30
-  - array: [1,2,3,9]
-    channel: BBC4
-    date: 2013-11-20
-    time: 21:00
-
-~~~~
-
-## YAML convert to XML
-
-Software engineers often use [XML] to transfer data between systems, this often is not nice to create for documentation. We cam create basic XML, we do not allow element attributes. If you want real XML layout use *.xml* in a fenced code block.
-
-**Example**
-
-    ~~~~{.yamlasxml }
-    list:
-      - array: [1,2,3,7]
-        channel: BBC3
-        date: 2013-10-20
-        time: 20:30
-      - array: [1,2,3,9]
-        channel: BBC4
-        date: 2013-11-20
-        time: 21:00
-
-    ~~~~
-
-**Output**
-
-~~~~{.yamlasxml }
-list:
-  - array: [1,2,3,7]
-    channel: BBC3
-    date: 2013-10-20
-    time: 20:30
-  - array: [1,2,3,9]
-    channel: BBC4
-    date: 2013-11-20
-    time: 21:00
-
-~~~~
-
-
-## Table
-
-Create a simple table using CSV style data
-
-* class
-    * HTML/CSS class name
-* id
-    * HTML/CSS class
-* width
-    * width of the table
-* style
-    * style the table if not doing anything else
-* legends
-    * csv of headings for table, these correspond to the data sets
-* separator
-    * what should be used to separate cells, defaults to ','
-
-**Example**
-
-    ~~~~{.table separator=',' width='100%' legends=1
-        from_buffer='chart_data'}
-    ~~~~
-
-**Output**
-
-~~~~{.table separator=',' width='100%' legends=1
-    from_buffer='chart_data'}
-~~~~
-
-## Links
-
-With one code-block we can create a list of links
-
-The code-block contents comprises a number of lines with a reference and a URL.
-The reference comes first, then a '|' to separate it from the URL.
-
-The reference may then be used elsewhere in your document if you enclose it with square ([]) brackets
-
-There is only one argument
-
-* class
-    * CSS class to style the list
-
-**Example**
-
-    ~~~~{.links class='weblinks' }
-    pandoc      | http://johnmacfarlane.net/pandoc
-    PrinceXML   | http://www.princexml.com
-    markdown    | http://daringfireball.net/projects/markdown
-    msc         | http://www.mcternan.me.uk/mscgen/
-    ditaa       | http://ditaa.sourceforge.net
-    PlantUML    | http://plantuml.sourceforge.net
-    See Salt    | http://plantuml.sourceforge.net/salt.html
-    graphviz    | http://graphviz.org
-    JSON        | https://en.wikipedia.org/wiki/Json
-    YAML        | https://en.wikipedia.org/wiki/Yaml
-    wkhtmltopdf | http://wkhtmltopdf.org/
-    ~~~~
-
-**Output**
-
-~~~~{.links class='weblinks' }
-pandoc      | http://johnmacfarlane.net/pandoc
-PrinceXML   | http://www.princexml.com
-markdown    | http://daringfireball.net/projects/markdown
-msc         | http://www.mcternan.me.uk/mscgen/
-ditaa       | http://ditaa.sourceforge.net
-PlantUML    | http://plantuml.sourceforge.net
-See Salt    | http://plantuml.sourceforge.net/salt.html
-graphviz    | http://graphviz.org
-JSON        | https://en.wikipedia.org/wiki/Json
-YAML        | https://en.wikipedia.org/wiki/Yaml
-wkhtmltopdf | http://wkhtmltopdf.org/
-~~~~
-
-## Version table
-
-Documents often need revision history. I use this code-block to create a nice
-table of this history.
-
-The content for this code-block comprises a number of sections, each section then makes a row in the generated table.
-
-    version YYYY-MM-DD
-       indented change text
-       more changes
-
-The version may be any string, YYYY-MM-DD shows the date the change took place.
-Alternate date formats is DD-MM-YYYY and '/' may also be used as a field separator.
-
-So give proper formatting to the content in the changes column you should indent
-text after the version/date line with 4 spaces, not a tab character.
-
-* class
-    * HTML/CSS class name
-* id
-    * HTML/CSS class
-* width
-    * width of the table
-* style
-    * style the table if not doing anything else
-
-**Example**
-
-    ~~~~{.version class='versiontable' width='100%'}
-    0.1 2014-04-12
-        * removed ConvertFile.pm
-        * using Path::Tiny rather than other things
-        * changed to use pandoc fences
-       ~~~~{.tag} rather than xml format <tag>
-    0.006 2014-04-10
-        * first release to github
-    ~~~~
-
-**Output**
-
-~~~~{.version class='versiontable' width='100%'}
-0.1 2014-04-12
-  * removed ConvertFile.pm
-  * using Path::Tiny rather than other things
-0.006 2014-04-10
-  * first release to github
-~~~~
-
-## Start a new page - page
-
-There are 2 ways for force the start of a new page, using the **.page** fenced code block or by having 4 '-' signs next to each other, i.e. '----' on a line on their own
-
-**Example**
-
-  This is start a new page, again using short block form.
-
-    \{\{.page}}
-
-    as will this
-
-    ----
-
-**Output**
-
-I will not show the output as it will mess up the document!
-
-## Columns
-
-Create a columner layout, like a newspaper.
-
-The full set of optional arguments is
-
-* count
-    * number of columns to split into, defaults to 2
-* lines
-    * number of lines the section should hold, defaults to 20
-* ruler
-    * show a line between the columns, defaults to no,
-      options are 1, true or yes to show it
-* width
-    * how wide should the column area be, defaults to 100%
-
-**Example**
-
-    ~~~~{.columns count=3 ruler=yes width='75%'}
-    Flexitarian lo-fi occupy, Echo Park yr chia keffiyeh iPhone pug kale chips
-    fashion axe PBR&B 90's readymade beard.  McSweeney's Tumblr semiotics
-    beard, flexitarian artisan bitters twee small batch next level PBR mustache
-    post-ironic stumptown.  Umami Pinterest mixtape Truffaut, Blue Bottle ugh
-    artisan whatever blog street art Odd Future crucifix.  Slow-carb Tumblr
-    actually fashion axe, kitsch Williamsburg Austin bicycle rights forage
-    Carles occupy.  Aesthetic High Life cray seitan.  Mumblecore butcher
-    biodiesel mixtape Bushwick fanny pack.  Tofu twee typewriter Truffaut.
-
-    Leggings church-key ethical banjo twee.  Jean shorts messenger bag vinyl,
-    pork belly blog aesthetic Pinterest ennui mustache lo-fi hella.  Yr blog
-    hoodie, iPhone whatever twee deep v sriracha polaroid occupy pickled food
-    truck.  Letterpress Austin kale chips pop-up mixtape vinyl.  Drinking
-    vinegar slow-carb mlkshk chia sriracha, shabby chic pour-over.  Mlkshk
-    brunch bespoke Kickstarter fingerstache deep v.  Vegan letterpress
-    sustainable, squid quinoa organic asymmetrical XOXO.
-    ~~~~
-
----
-
-**Output**
-
-Before this section I forced a new page with
-
-    ---
-
-~~~~{.columns count=3 ruler=yes width='75%'}
-Flexitarian lo-fi occupy, Echo Park yr chia keffiyeh iPhone pug kale chips
-fashion axe PBR&B 90's readymade beard.  McSweeney's Tumblr semiotics
-beard, flexitarian artisan bitters twee small batch next level PBR mustache
-post-ironic stumptown.  Umami Pinterest mixtape Truffaut, Blue Bottle ugh
-artisan whatever blog street art Odd Future crucifix.  Slow-carb Tumblr
-actually fashion axe, kitsch Williamsburg Austin bicycle rights forage
-Carles occupy.  Aesthetic High Life cray seitan.  Mumblecore butcher
-biodiesel mixtape Bushwick fanny pack.  Tofu twee typewriter Truffaut
-
-Leggings church-key ethical banjo twee.  Jean shorts messenger bag vinyl,
-pork belly blog aesthetic Pinterest ennui mustache lo-fi hella.  Yr blog
-hoodie, iPhone whatever twee deep v sriracha polaroid occupy pickled food
-truck.  Letterpress Austin kale chips pop-up mixtape vinyl.  Drinking
-vinegar slow-carb mlkshk chia sriracha, shabby chic pour-over.  Mlkshk
-brunch bespoke Kickstarter fingerstache deep v.  Vegan letterpress
-sustainable, squid quinoa organic asymmetrical XOXO.
-~~~~
-
-## Tree
-
-Draw a bulleted list as a directory tree. Bullets are expected to be indented
-by 4 spaces, we will only process bullets that are * +  or -.
-
-**Example**
-
-    ~~~~{.tree}
-    * one
-        * 1.1
-    * two
-        * two point 1
-        * 2.2
-    * three
-        * 3.1
-        * 3.2
-        * three point 3
-            * four
-                * five
-            * six
-        * 3 . seven
-    ~~~~
-
-**Output**
-
-~~~~{.tree}
-* one
-    * 1.1
-* two
-    * two point 1
-    * 2.2
-* three
-    * 3.1
-    * 3.2
-    * three point 3
-        * four
-            * five
-        * six
-    * 3 . seven
-~~~~
-
+</td>
+</tr>
+</table>
 
 ## Gle / glx
 
 This is a complex graph/chart drawing package available from http://glx.sourceforge.net/
 
-The full set of optional arguments is
+The optional arguments are
 
 * title
     * used as the generated images 'alt' argument
 * size
     * size of image, default 720x512, widthxheight, size is approximate
+* width
+    - just constrain the width
+* height
+    - just constrain the height
++ class
+    - add this class to the image
+* title
+    * used as the generated images 'alt' argument
 * transparent
     * flag to use a transparent background
 
-**Example**
-
-    ~~~~{.gle}
-
-    set font texcmr hei 0.5 just tc
-
-    begin letz
-       data "saddle.z"
-       z = 3/2*(cos(3/5*(y-1))+5/4)/(1+(((x-4)/3)^2))
-       x from 0 to 20 step 0.5
-       y from 0 to 20 step 0.5
-    end letz
-
-    amove pagewidth()/2 pageheight()-0.1
-    write "Saddle Plot (3D)"
-
-    begin object saddle
-       begin surface
-          size 10 9
-          data "saddle.z"
-          xtitle "X-axis" hei 0.35 dist 0.7
-          ytitle "Y-axis" hei 0.35 dist 0.7
-          ztitle "Z-axis" hei 0.35 dist 0.9
-          top color blue
-          zaxis ticklen 0.1 min 0 hei 0.25
-          xaxis hei 0.25 dticks 4 nolast nofirst
-          yaxis hei 0.25 dticks 4
-       end surface
-    end object
-
-    amove pagewidth()/2 0.2
-    draw "saddle.bc"
-    ~~~~
-
-**Output**
-
-~~~~{.gle}
-size 10 9
-
+~~~~{.buffer to_buffer=gle}
 set font texcmr hei 0.5 just tc
 
 begin letz
@@ -1328,51 +1573,40 @@ end object
 amove pagewidth()/2 0.2
 draw "saddle.bc"
 ~~~~
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
+
+    ~~~~{.gle}
+    %GLE%
+    ~~~~
+</td></tr>
+<tr><th>Output</th></tr>
+<tr><td>
+~~~~{.gle from_buffer=gle}
+~~~~
+</td></tr></table>
 
 ## Gnuplot
 
 This is the granddaddy of charting/plotting programs, available from http://gnuplot.sourceforge.net/.
 
-The full set of optional arguments is
+The optional arguments are
 
 * title
     * used as the generated images 'alt' argument
 * size
     * size of image, default 720x512, widthxheight
 
-**Example**
-
-    ~~~~{.gnuplot}
-    # $Id: surface1.dem,v 1.11 2004/09/17 05:01:12 sfeam Exp $
-    #
-    set samples 21
-    set isosample 11
-    set xlabel "X axis" offset -3,-2
-    set ylabel "Y axis" offset 3,-2
-    set zlabel "Z axis" offset -5
-    set title "3D gnuplot demo"
-    set label 1 "This is the surface boundary" at -10,-5,150 center
-    set arrow 1 from -10,-5,120 to -10,0,0 nohead
-    set arrow 2 from -10,-5,120 to 10,0,0 nohead
-    set arrow 3 from -10,-5,120 to 0,10,0 nohead
-    set arrow 4 from -10,-5,120 to 0,-10,0 nohead
-    set xrange [-10:10]
-    set yrange [-10:10]
-    splot x*y
-    ~~~~
-
-**Output**
-
-~~~~{.gnuplot}
-# $Id: surface1.dem,v 1.11 2004/09/17 05:01:12 sfeam Exp $
-#
+~~~~{.buffer to_buffer=gnuplot}
 set samples 21
 set isosample 11
 set xlabel "X axis" offset -3,-2
 set ylabel "Y axis" offset 3,-2
 set zlabel "Z axis" offset -5
 set title "3D gnuplot demo"
-set label 1 "This is the surface boundary" at -10,-5,150 center
+set label 1 "surface boundary" at -10,-5,150 center
 set arrow 1 from -10,-5,120 to -10,0,0 nohead
 set arrow 2 from -10,-5,120 to 10,0,0 nohead
 set arrow 3 from -10,-5,120 to 0,10,0 nohead
@@ -1382,20 +1616,45 @@ set yrange [-10:10]
 splot x*y
 ~~~~
 
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
+
+    ~~~~{.gnuplot}
+    %GNUPLOT%
+    ~~~~
+</td></tr>
+<tr><th>Output</th></tr>
+<tr><td>
+{{.gnuplot from_buffer=gnuplot}}
+</td></tr></table>
+
 ## Ploticus
 
 This is a rather old school charting applitcation, though it can create some
 graphs and charts that the other plugins cannot, e.g. Timelines.
 
-The full set of optional arguments is
+The optional arguments are
 
 * title
     * used as the generated images 'alt' argument
+* size
+    * size of image, widthxheight
+* width
+    - just constrain the width
+* height
+    - just constrain the height
++ class
+    - add this class to the image
 
 Its best to let ploticus control the size of the generated images, you may need
 some trial and error with the ploticus 'pagesize:' directive.
 
-**Example**
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
 
     ~~~~{.ploticus}
     //  specify data using proc getdata
@@ -1423,8 +1682,9 @@ some trial and error with the ploticus 'pagesize:' directive.
     labelfarout: 1.3
     total: 256
     ~~~~
-
-**Output**
+</td></tr>
+<tr><th>Output</th></tr>
+<tr><td>
 
 ~~~~{.ploticus}
 //  specify data using proc getdata
@@ -1499,38 +1759,7 @@ data:
    longwayslabel: yes
    labeldetails: size=6
 ~~~~
-
-## Badges
-
-Badges (or shields) are a way to display information, often used to show status of an operation on websites such as github.
-
-Examples of shields can be seen at [sheilds.io](http://shields.io/)
-
-The badges are placed inline, so you can insert text around the fenced codeblock.
-
-Depending on your template the color of the text and the color for the status portion may clash, so take care!
-
-**Example**
-
-    First time
-    ~~~~{.badge subject='test run' status='completed' color='green'}
-    ~~~~
-     followed by \{\{.badge subject='test run' status='failed' color='red'}}
-
-    Finally, badges / shields work well as short blocks
-    \{\{.shield subject='test run' status='pending' size='150'}}
-    \{\{.shield subject='build' status='passing' color='#33aa00' size='75'}}
-
-**Output**
-
-First time
-~~~~{.badge subject='test run' status='completed' color='green'}
-~~~~
- followed by {{.badge subject='test run' status='failed' color='red'}}
-
-Finally, badges / shields work well as short blocks
-{{.shield subject='test run' status='pending' size='150'}}
-{{.shield subject='build' status='passing' color='#33aa00' size='75'}}
+</td></tr></table>
 
 ## Polaroid
 
@@ -1539,86 +1768,612 @@ Display an image with a bounding box so it looks like a polaroid snap.
 reate a polaroid style image with space underneath for writing on.
 Image may be automatically rotated depending upon the exif information
 
-The full set of optional arguments is
+The required arguments are
 
 * src
     * filename to convert to a polaroid
+
+The optional arguments are
+
 * title
-    * optional title for the photo
+    * title for the photo
 * date
     * optional date for the photo
 
-**Example**
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
 
-    ~~~~{.polaroid src='heartp.jpg' title='The heart of Paris' date='2015-02-06'}
+    ~~~~{.polaroid src='heartp.jpg'
+      title='The heart of Paris'
+      date='2015-02-06'}
     ~~~~
-
-
-**Output**
-
+</td>
+<td><br>
 ~~~~{.polaroid src='heartp.jpg' title='The heart of Paris' date='2015-02-06'}
 ~~~~
+</td></tr></table>
 
-## Box
+## Blockdiag
 
-Show that something is important by putting it in a box
+Blockdiag provides a number of ways to create nice diagrams. See <http://blockdiag.com/> for more information, how to install and examples.
 
-The full set of optional arguments is
+To keep things simple, we add the correct wrapper around the fenced codeblock, so that there is no need to add **blockdiag {** etc to the start and end of the blocks.
 
-* class
-    * HTML/CSS class name
-* id
-    * HTML/CSS class
-* width
-    * width of the box (default 98%)
+The optional arguments are
+
 * title
-    * optional title for the section
-* style
-    * style the box if not doing anything else
+    * used as the generated images 'alt' argument
+* size
+    * size of image, widthxheight
+* width
+    - just constrain the width
+* height
+    - just constrain the height
++ class
+    - add this class to the image
+* transparent
+    + should the background be transparent, default true
 
-**Example**
+### blockdiag
 
-    ~~~~{.box title='Lorem Ipsum - Important Notice' width='80%'}
-    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque sit amet accumsan est. Nulla facilisi. Nulla lacus augue, gravida sit amet laoreet id, commodo vitae velit. Fusce in nisi mi. Nulla congue nulla ac bibendum semper. In rutrum sem eget purus auctor porttitor. Mauris vel pellentesque lorem. Vestibulum consectetur massa non fermentum dignissim. Aliquam mauris erat, bibendum at mi imperdiet, molestie placerat sem. In fermentum sapien at vulputate mollis. Nulla nec ultrices nulla, ut scelerisque justo. Maecenas a nibh id ligula faucibus fringilla non in nisl.
-    ~~~~
+Similar to graphviz, layout is more grid based.
 
-**Output**
-
-~~~~{.box title='Lorem Ipsum - Important Notice' width='80%'}
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque sit amet accumsan est. Nulla facilisi. Nulla lacus augue, gravida sit amet laoreet id, commodo vitae velit. Fusce in nisi mi. Nulla congue nulla ac bibendum semper. In rutrum sem eget purus auctor porttitor. Mauris vel pellentesque lorem. Vestibulum consectetur massa non fermentum dignissim. Aliquam mauris erat, bibendum at mi imperdiet, molestie placerat sem. In fermentum sapien at vulputate mollis. Nulla nec ultrices nulla, ut scelerisque justo. Maecenas a nibh id ligula faucibus fringilla non in nisl.
+~~~~{.buffer to_buffer=blockdiag}
+note [shape = note];
+mail [shape = mail];
+cloud [shape = cloud];
+actor [shape = actor];
+note -> mail ;
+mail -> cloud ;
+mail -> thing ;
+note -> actor;
 ~~~~
 
-## Glossary
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
 
-Build a glossary of terms or abbreviations as you progress with your document. Show them later on, there is no way (currently) to place the glossary ahead of any definitions.
+    ~~~~{.blockdiag  width=350}
+    %BLOCKDIAG%
+    ~~~~
+</td><td><br>
+~~~~{.blockdiag from_buffer=blockdiag width=350}
+~~~~
+</td></tr></table>
 
-**Example**
+### nwdiag
 
-    This is a \{\{.gloss abbr='SMPL' def='short spelling of SAMPLE'}}
-    There are other things we can do
-    \{\{.glossary abbr='test' define='Test long form and arguments'}}
+One for the system administrators, draw your network nicely with the various networks and systems connected to them.
 
-    Optionally if there is a link to a item e.g. [Links](#links)
-    \{\{.gloss abbr='msc' define='Message Sequence Charts' link=1}}
-    then this can link to the relevant website, the following link
-    has not been added to
-    \{\{.gloss abbr='JSON' define='JavaScript Object Notation'}},
-    so no link to the website.
+~~~~{.buffer to_buffer=nwdiag }
+ network dmz {
+ address = "210.x.x.x/24"
 
-    Now finally, show the results
-    \{\{.gloss show=1}}
+ web01 [address = "210.x.x.1"];
+ web02 [address = "210.x.x.2"];
+}
+network internal {
+ address = "172.x.x.x/24";
 
-**Output**
+ web01 [address = "172.x.x.1"];
+ web02 [address = "172.x.x.2"];
+ db01;
+ db02;
+}
+~~~~
 
-This is a {{.gloss abbr='SMPL' def='short spelling of SAMPLE'}}
-There are other things we can do {{.glossary abbr='test' define='Test long form and arguments'}}
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
 
-Optionally if there is a link to a item in [Links](#links) {{.gloss abbr='msc' define='Message Sequence Charts' link=1}} then this can link to the relevant website, the following link has not been added to {{.gloss abbr='JSON' define='JavaScript Object Notation'}}, so no link to the website.
+    ~~~~{.nwdiag  width=350}
+    %NWDIAG%
+    ~~~~
+</td>
+<td>
+~~~~{.nwdiag from_buffer=nwdiag width=350 }
+~~~~
+</td></tr></table>
 
-Now finally, show the results
-{{.gloss show=1}}
+### packetdiag
+
+Useful to describe packets of data, e.g. binary data passed between networks or stored to files.
+
+~~~~{.buffer to_buffer=packetdiag}
+colwidth = 32
+node_height = 72
+
+0-15: Source Port
+16-31: Destination Port
+32-63: Sequence Number
+64-95: Acknowledgment Number
+96-99: Data Offset
+100-105: Reserved
+106: URG [rotate = 270]
+107: ACK [rotate = 270]
+108: PSH [rotate = 270]
+109: RST [rotate = 270]
+110: SYN [rotate = 270]
+111: FIN [rotate = 270]
+112-127: Window
+128-143: Checksum
+144-159: Urgent Pointer
+160-191: (Options and Padding)
+192-223: data [colheight = 3]
+~~~~
+
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
+
+    ~~~~{.packetdiag  width=350}
+    %PACKETDIAG%
+    ~~~~
+</td>
+<td><br>
+{{.packetdiag from_buffer=packetdiag width=350}}
+</td></tr></table>
+
+### rackdiag
+
+Useful for system administrators to keep track of their server rooms.
+
+~~~~{.buffer to_buffer=rackdiag}
+// define height of rack
+10U;
+
+// define rack items
+1: UPS [2U];
+3: DB Server
+4: Web Server
+5: Web Server
+6: Web Server
+7: Load Balancer
+8: L3 Switch
+~~~~
+
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
+
+    ~~~~{.rackdiag width=350}
+    %RACKDIAG%
+    ~~~~
+</td><td>
+~~~~{.rackdiag from_buffer=rackdiag width=350}
+~~~~
+</td></tr></table>
+
+### actdiag
+
+The classic swim lanes.
+
+~~~~{.buffer to_buffer=actdiag}
+write -> convert -> image
+
+lane user {
+   label = "User"
+   write [label = "request"];
+   image [label = "done"];
+}
+lane server {
+   label = "Server"
+   convert [label = "process"];
+}
+~~~~
+
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
+
+    ~~~~{.actdiag}
+    %ACTDIAG%
+    ~~~~
+</td><td>
+~~~~{.actdiag from_buffer=actdiag  width=350}
+~~~~
+</td></tr></table>
+
+### seqdiag
+
+Very similar to the output of mscgen and uml tags.
+
+~~~~{.buffer to_buffer=seqdiag}
+browser  -> webserver
+ [label = "GET /index.html"];
+
+browser <-- webserver;
+
+browser  -> webserver
+ [label = "POST /blog/comment"];
+
+webserver  -> database
+ [label = "INSERT comment"];
+
+webserver <-- database;
+browser <-- webserver;
+~~~~
+
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
+
+    ~~~~{.seqdiag}
+    %SEQDIAG%
+    ~~~~
+</td><td>
+~~~~{.seqdiag from_buffer=seqdiag width=350}
+~~~~
+</td></tr></table>
+
+## Dataflow
+
+Dataflow diagrams allow multiple outputs from a single workflow description.
+
+See <https://github.com/sonyxperiadev/dataflow/blob/master/USAGE.md> for more information, how to install and examples.
+
+The optional arguments are
+
+* title
+    * used as the generated images 'alt' argument
+* size
+    * size of image, widthxheight
+* width
+    - just constrain the width
+* height
+    - just constrain the height
++ class
+    - add this class to the image
+* format
+    - either dfd (default) or seq
+
+The example images are a bit compressed to fit in the table, normally they look a lot better than this!
+
+~~~~{.buffer to_buffer='dataflow'}
+diagram 'Webapp' {
+  boundary 'Browser' {
+    function client 'Client'
+  }
+  boundary 'Amazon AWS' {
+    function server 'Web Server'
+    database logs 'Logs'
+  }
+  io analytics 'Google<br/>Analytics'
+
+  client -> server 'Request /' ''
+  server -> logs 'Log' 'User IP'
+  server -> client 'Resp' 'Profile'
+  client -> analytics 'Log' 'Nav'
+}
+~~~~
+
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>Dataflow
+
+    ~~~~{.dataflow format=dfd}
+    %DATAFLOW%
+    ~~~~
+</td>
+<td><br>
+{{.dataflow format=dfd from_buffer=dataflow size=350x500}}
+</td>
+</tr>
+<tr>
+<td><br>
+    As a sequence diagram
+
+    ~~~~{.dataflow format=seq}
+    %DATAFLOW%
+    ~~~~
+</td>
+<td><br>
+{{.dataflow format=seq from_buffer=dataflow size=350x500}}
+</td></tr></table>
+
+## Google charts
+
+Some of the charts from https://developers.google.com/chart/ have been implemented.
+
+This plugin requires **phantomjs** to be installed on your system.
+
+All the charts have some optional arguments in common
+
+* size
+    - default 700x700
+* height
+    - height of the chart, defaults to 700
+* width
+    - width of the chart, defaults to 700
+* class
+    + add to the class that the chart generates
+    + initial class is named after the chart type (timeline, barchart, sankey etc)
+
+### Timeline chart
+
+Timeline charts are useful for project management, as an alternative to gantt charts
+
+The optional arguments are
+
+* title
+    * used as the generated images 'alt' argument
+* size
+    * size of image, widthxheight
+* width
+    - just constrain the width
+* height
+    - just constrain the height
++ class
+    - add this class to the image
+
+The timeline content consists of rows of lines with a task name, a task item, start and end times.
+Optionally a #color note at the end of the line (HTML color name or triplet) will set the color of the bar.
+
+Dates should be in yyyy-mm-dd format.
+
+~~~~{.buffer to_buffer=timeline}
+Task1, hello,   1989-03-29, 1997-02-03 #green
+Task1, sample,   1995-03-29, 2007-02-03   #663399
+Task1, goodbye,   2019-03-29, 2027-02-03 #plum
+Task2, eat and eat and eat and eat,  1997-02-03,  2001-02-03 #thistle
+Task2, drink,  1998-02-03,  2004-02-03 #grey
+Task3, shop,  2001-02-03,  2009-02-03 #red
+Task3, drop,  2001-02-03,  2019-02-03 #darkorange
+~~~~
+
+We will set some data into a buffer for ease of use
+
+    ~~~~{.buffer to_buffer=timeline}
+    Task1, hello,   1989-03-29, 1997-02-03 #green
+    Task1, sample,   1995-03-29, 2007-02-03   #663399
+    Task1, goodbye,   2019-03-29, 2027-02-03 #plum
+    Task2, eat and eat and eat and eat,  1997-02-03,  2001-02-03 #thistle
+    Task2, drink,  1998-02-03,  2004-02-03 #grey
+    Task3, shop,  2001-02-03,  2009-02-03 #red
+    Task3, drop,  2001-02-03,  2019-02-03 #darkorange
+    ~~~~
+
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>Default
+
+    ~~~~{.timeline
+      from_buffer=timeline
+      size=350x300}
+    ~~~~
+</td>
+<td><br>
+~~~~{.timeline from_buffer=timeline size=350x300}
+~~~~
+</td></tr>
+<td>Setting a background color
+
+Use the 'background' parameter to set a color, this can be a HTML color name or hex triplet,
+'none' or 'transparent' will remove the background.
+
+    ~~~~{.timeline from_buffer=timeline
+    background='GhostWhite'
+    size=350x300}
+    ~~~~
+</td>
+<td><br>
+~~~~{.timeline from_buffer=timeline background='honeydew' size=350x300}
+~~~~
+</td>
+<tr><td>Removing bar labels
+
+This is useful if you only really want to show an approximation of how long things will take without specifying which tasks are which.
+
+Set the 'labels' parameter to 'false' or 0.
+
+    ~~~~{.timeline from_buffer=timeline
+      background='none'
+      labels=false
+      size=350x300}
+    ~~~~
+</td>
+<td><br>
+~~~~{.timeline from_buffer=timeline background='none' labels=false size=350x300}
+~~~~
+</td></tr></table>
+
+### Sankey Chart
+
+*From google charts:*
+A sankey diagram is a visualization used to depict a flow from one set of values to another. The things being connected are called nodes and the connections are called links. Sankeys are best used when you want to show a many-to-many mapping between two domains (e.g., universities and majors) or multiple paths through a set of stages (for instance, Google Analytics uses sankeys to show how traffic flows from pages to other pages on your web site).
+
+For the curious, they're named after Captain Sankey, who created a diagram of steam engine efficiency that used arrows having widths proportional to heat loss.
+
+The optional arguments are
+
+* colors
+    - comma separated list of HTML color names (or triplets), to be used for the nodes and links
+* mode
+    - how the link color is chosen
+    + source - link color is the same as the source node
+    + target - link color is the same as the target node
+    + gradient - link color starts as node color and ends as target color
+
+~~~~{.buffer to_buffer=sankey_simple}
+A, X, 5
+A, Y, 7
+A, Z, 6
+B, X, 2
+B, Y, 9
+B, Z, 4
+~~~~
+
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>A Simple set
+
+    ~~~~{.sankey size=350x200
+      mode=target}
+    %SANKEY_SIMPLE%
+    ~~~~
+</td><td>
+<br>
+~~~~{.sankey from_buffer=sankey_simple size=350x200 mode=target}
+~~~~
+</td></tr>
+<tr>
+<td>A Complex set - only a small portion of the data is being shown
+
+    ~~~~{.sankey size=350x400
+      mode='source'
+      colors="#a6cee3, #b2df8a,
+        #fb9a99,#fdbf6f, #cab2d6,
+        #ffff99 #1f78b4"}}
+    Brazil, Portugal, 5 ,
+    Brazil, France, 1 ,
+    Brazil, Spain, 1 ,
+    Brazil, England, 1 ,
+    Canada, Portugal, 1 ,
+    Canada, France, 5 ,
+    Canada, England, 1 ,
+    Mexico, Portugal, 1 ,
+    Mexico, England, 1 ,
+    USA, Portugal, 1 ,
+    Portugal, Angola, 2 ,
+
+    ...
+    ~~~~
+</td>
+<td><br>
+~~~~{.sankey size=350x400 mode='source' colors="#a6cee3, #b2df8a, #fb9a99, #fdbf6f, #cab2d6, #ffff99 #1f78b4"}
+Brazil, Portugal, 5 ,
+Brazil, France, 1 ,
+Brazil, Spain, 1 ,
+Brazil, England, 1 ,
+Canada, Portugal, 1 ,
+Canada, France, 5 ,
+Canada, England, 1 ,
+Mexico, Portugal, 1 ,
+Mexico, France, 1 ,
+Mexico, Spain, 5 ,
+Mexico, England, 1 ,
+USA, Portugal, 1 ,
+USA, France, 1 ,
+USA, Spain, 1 ,
+USA, England, 5 ,
+Portugal, Angola, 2 ,
+Portugal, Senegal, 1 ,
+Portugal, Morocco, 1 ,
+Portugal, South Africa, 3 ,
+France, Angola, 1 ,
+France, Senegal, 3 ,
+France, Mali, 3 ,
+France, Morocco, 3 ,
+France, South Africa, 1 ,
+Spain, Senegal, 1 ,
+Spain, Morocco, 3 ,
+Spain, South Africa, 1 ,
+England, Angola, 1 ,
+England, Senegal, 1 ,
+England, Morocco, 2 ,
+England, South Africa, 7 ,
+South Africa, China, 5 ,
+South Africa, India, 1 ,
+South Africa, Japan, 3 ,
+Angola, China, 5 ,
+Angola, India, 1 ,
+Angola, Japan, 3 ,
+Senegal, China, 5 ,
+Senegal, India, 1 ,
+Senegal, Japan, 3 ,
+Mali, China, 5 ,
+Mali, India, 1 ,
+Mali, Japan, 3 ,
+Morocco, China, 5 ,
+Morocco, India, 1 ,
+Morocco, Japan, 3
+~~~~
+</td></tr></table>
+
+## Gantt
+
+~~~~{.buffer to_buffer=gantt}
+section A section
+Completed item           :done,    des1, 2015-05-26,2015-05-28
+Active item              :active,  des2, 2015-05-29, 3d
+item                     :         des3, after des2, 5d
+item2                    :         des4, after des3, 5d
+
+section Critical items
+Completed critical item  :crit, done, 2015-06-06,24h
+Implement gantt          :crit, done, after des1, 2d
+Create tests             :crit, active, 2015-06-26, 3d
+critical item            :crit, 5d
+renderer tests           : 2d
+Add to CT2               : 1d
+
+section Documentation
+Describe syntax          :active, a1, after des1, 3d
+Add to demo              : after a1  , 10d
+
+section Last section
+Describe  syntax         : after doc1, 3d
+Add gantt                : 1d
+Add another              : 2d
+~~~~
+
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
+
+    ~~~~{.gantt title=Demo}
+    %GANTT%
+    ~~~~
+</td>
+</tr>
+<tr><th width='100%'>Output</th></tr>
+<tr><td>
+
+~~~~{.gantt from_buffer=gantt title=Demo}
+~~~~
+
+timeline width same data
+
+~~~~{.timeline background='grey90' width=700 height=250}
+A section,Completed item, 2015-05-26,2015-05-28 #green
+A section,Active item, 2015-05-29, 2015-06-01   #darkorange
+A section,item, 2015-06-01, 2015-06-06 #grey
+A section,item2, 2015-06-06, 2015-06-11 #grey
+
+Critical items,Completed critical item, 2015-06-06,2015-06-07   #green
+Critical items,Implement gantt, 2015-05-28, 2015-05-30   #green
+Critical items,Create tests, 2015-06-26, 2015-06-29 #darkorange
+Critical items,critical item, 2015-06-29, 2015-07-05    #red
+Critical items,renderer tests, 2015-07-05, 2015-07-07 #grey
+Critical items,Add to CT2, 2015-07-07, 2015-07-08 #grey
+
+Documentation,Describe syntax, 2015-05-28, 2015-06-01   #darkorange
+Documentation,Add to demo, 2015-06-01  , 2015-06-11 #grey
+
+Last section,Describe  syntax, 2015-06-26, 2015-06-28 #grey
+Last section,Add gantt, 2015-06-28, 2015-06-29 #grey
+Last section,Add another, 2015-06-29, 2015-06-31 #grey
+~~~~
+
+</td>
+</tr></table>
+
 
 ## Smilies
+
+**THERE ARE ISSUES WITH THE SMILIES AT THE MOMENT!**
 
 Conversion of some smilies to unicode characters. This is tricky to show as however I change things the processor will make smilies of these   :) <3  ;) .
 
@@ -1655,11 +2410,6 @@ There are a range of smilies that are words pre/post fixed with a colon
 | :hourglass: | hourglass       |
 | :time:      | watch face      |
 | :sleep:     | sleep           |
-
-## Gotchas about variables
-
-* Variables used within the content area of a code-block will be evaluated before processing that block, if a variable has not yet been defined or saved to a buffer then it will only be evaluated at the end of document processing, so output may not be as expected.
-* Variables used in markdown tables may not do what you expect if the variable is multi-line.
 
 ----
 ## Using ct2 script to process files

@@ -19,22 +19,43 @@ Create a badge style image
 
 # ----------------------------------------------------------------------------
 
-package App::Basis::ConvertText2::Plugin::Badge;
+package App::Basis::ConvertText2::Plugin::Badge ;
 
-use 5.14.0;
-use strict;
-use warnings;
-use Path::Tiny;
-use Moo;
-use App::Basis::ConvertText2::Support;
-use feature 'state';
-use namespace::autoclean;
+use 5.14.0 ;
+use strict ;
+use warnings ;
+use Path::Tiny ;
+use Moo ;
+use App::Basis::ConvertText2::Support ;
+use feature 'state' ;
+use namespace::autoclean ;
 
 has handles => (
     is       => 'ro',
     init_arg => undef,
     default  => sub { [qw{badge shield}] }
-);
+) ;
+
+BEGIN {
+    add_css( "
+    /* -------------- Badge.pm css -------------- */
+
+    span.badge { vertical-align: center; text-align: center;}
+
+    span.badge span.subject { 
+        color: white; 
+        background-color: darkslategray;
+        border-top-left-radius: 3px;
+        border-bottom-left-radius: 3px;
+    }
+    span.badge span.status  { 
+        color: white; 
+        background-color: lightslategray;
+        border-top-right-radius: 3px;
+        border-bottom-right-radius: 3px;                                
+    }
+" ) ;
+}
 
 # -----------------------------------------------------------------------------
 
@@ -52,34 +73,48 @@ Create abadge/shield to show status of something
         color   - what color is the status part, defaults to goldenrod
         size    - change the font-size from the CSS one to this
 
-
 =cut
 
 sub badge
 {
-    my $self = shift;
-    my ( $tag, $content, $params, $cachedir ) = @_;
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
 
-    my $out;
+    my $fg ;
+    my $bg ;
+    if ( $params->{color} && $params->{color} =~ /#(\w+)?\.(\w+)/ ) {
+        ( $fg, $bg ) = ( $1, $2 ) ;
+        $fg = to_hex_color($fg) ;
+        $bg = to_hex_color($bg) ;
+    } else {
+        my $bg = $params->{color} ;
+    }
+
+    my $out ;
     $params->{color} //= 'goldenrod' ;
     my $subject_style = "" ;
-    my $status_style = "background-color: $params->{color}; "  ;
+    my $status_style = $bg ? "background-color: $bg; " : "" ;
+    $status_style .= "color: $fg; " if ($fg) ;
     $params->{subject} //= 'Missing subject' ;
-    $params->{status} //= 'Missing status' ;
+    $params->{status}  //= 'Missing status' ;
 
-    if( $params->{size}) {
+    if ( $params->{size} ) {
         $params->{size} =~ s/%//g ;
-        $status_style .= "font-size: $params->{size}%; " ;
+        $status_style  .= "font-size: $params->{size}%; " ;
         $subject_style .= "font-size: $params->{size}%; " ;
     }
 
     # create something suitable for the HTML, no spaces
-    $out = "<span class='badge'>" .
-        "<span class='subject' style='$subject_style'>&nbsp;&nbsp;" . $params->{subject} .
-        "&nbsp;</span><span class='status' style='$status_style'>&nbsp;" . $params->{status} . "&nbsp;&nbsp;</span>
-</span>";
+    $out
+        = "<span class='badge'>"
+        . "<span class='subject' style='$subject_style'>&nbsp;&nbsp;"
+        . $params->{subject}
+        . "&nbsp;</span><span class='status' style='$status_style'>&nbsp;"
+        . $params->{status}
+        . "&nbsp;&nbsp;</span>
+</span>" ;
 
-    return $out;
+    return $out ;
 }
 
 # ----------------------------------------------------------------------------
@@ -87,17 +122,17 @@ sub badge
 
 sub process
 {
-    my $self = shift;
-    my ( $tag, $content, $params, $cachedir ) = @_;
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
 
-    $tag = 'badge' if( $tag eq 'shield') ;
+    $tag = 'badge' if ( $tag eq 'shield' ) ;
     if ( $self->can($tag) ) {
-        return $self->$tag(@_);
+        return $self->$tag(@_) ;
     }
-    return undef;
+    return undef ;
 }
 # ----------------------------------------------------------------------------
 
-1;
+1 ;
 
 __END__

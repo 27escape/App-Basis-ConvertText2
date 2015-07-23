@@ -99,7 +99,7 @@ sub process {
 
     # we can use the cache or process everything ourselves
     my $sig = create_sig( $content, $params );
-    my $filename = cachefile( $cachedir, "$sig.png" );
+    my $filename = cachefile( $cachedir, "$tag.$sig.png" );
     if ( !-f $filename ) {
         $content =~ s/^\n*//gsm;    # remove any leading new lines
         if ( $content !~ /\n$/sm ) {    # make sure we have a trailing new line

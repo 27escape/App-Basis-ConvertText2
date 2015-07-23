@@ -47,7 +47,7 @@ has handles => (
 );
 
 use constant GLE => "gle";
-use constant RES => 28 ;
+use constant RES => 31 ;
 
 # ----------------------------------------------------------------------------
 
@@ -60,8 +60,11 @@ create a simple gle image
     filename - filename to save the created image as 
 
  hashref params of
-        title       - title to use for image alt attribute
-        size        - size of image, widthxheight - optional, default 720x512
+        size    - size of image, widthxheight - optional
+        width   - optional width
+        height  - optional
+        class   - optional
+        title   - optional set the alt text
         transparent - flag to set background transparent - optional
 
 =cut
@@ -70,7 +73,11 @@ sub process {
     my $self = shift;
     my ( $tag, $content, $params, $cachedir ) = @_;
     $params->{size} ||= "720x512";
-    my ( $x, $y ) = ( $params->{size} =~ /^\s*(\d+)\s*x\s*(\d+)\s*$/ );
+    my ( $x, $y ) = ( $params->{size} =~ /^\s*(\d+)\s*x\s*(\d+)\s*$/ ) ;
+    $x = $params->{width}  if ( $params->{width} ) ;
+    $y = $params->{height} if ( $params->{height} ) ;
+    $params->{title}       ||= "" ;
+    $params->{class}       ||= "" ;
 
     # strip any ending linefeed
     chomp $content;
@@ -78,7 +85,7 @@ sub process {
 
     # we can use the cache or process everything ourselves
     my $sig = create_sig( $content, $params );
-    my $filename = cachefile( $cachedir, "$sig.png" );
+    my $filename = cachefile( $cachedir, "$tag.$sig.svg" );
     if ( !-f $filename ) {
         my $glefile = Path::Tiny->tempfile("gleXXXXXXXX");
 
@@ -98,9 +105,14 @@ sub process {
     if ( -f $filename ) {
 
         # create something suitable for the HTML
-        $out = create_img_src( $filename, $params->{title} );
-    }
+        my $s = "" ;
+        $s .= " width='$x'"  if ($x) ;
+        $s .= " height='$y'" if ($y) ;
 
+        $out
+            = "<img src='$filename' class='$tag $params->{class}' alt='$params->{title}' $s />"
+            ;
+    }
     return $out;
 }
 

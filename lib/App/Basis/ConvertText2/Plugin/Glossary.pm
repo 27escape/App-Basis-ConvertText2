@@ -48,6 +48,31 @@ has handles => (
     default  => sub { [qw{gloss glossary}] }
 );
 
+my $default_css =<<END_CSS;
+    /* -------------- Glossary.pm css -------------- */
+    span.glossary {
+        display: inline-block;
+        position: relative;
+        color: green ;
+    }
+    span.glossary:before {
+        content: "~~~~~~~~~~~~";
+        font-size: 0.6em;
+        font-weight: 700;
+        font-family: Times New Roman, Serif;
+        color: green;
+        width: 100%;
+        position: absolute;
+        top: 12px;
+        left: -1px;
+        overflow: hidden;
+    }
+    table.glossary td.key {
+       font-weight: bold;
+       color: gree;
+    }
+END_CSS
+
 # -----------------------------------------------------------------------------
 
 =item glossary | gloss
@@ -105,6 +130,12 @@ sub process
 {
     my $self = shift;
     my ( $tag, $content, $params, $cachedir ) = @_;
+    state $css = 0 ;
+
+    if( !$css) {
+        add_css( $default_css) ;
+        $css++ ;
+    }
 
     # same things
     $tag = 'glossary' if( $tag eq 'gloss') ;
