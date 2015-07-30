@@ -1027,7 +1027,7 @@ sub _fontawesome
     my ( $demo, $icon, $class ) = @_ ;
     my $out ;
 
-    $icon =~ s/^fa-// if( $icon) ;
+    $icon =~ s/^fa-// if ($icon) ;
     if ( !$demo ) {
         my $style = "vertical-align:middle;" ;
         my @colors ;
@@ -1056,9 +1056,9 @@ sub _fontawesome
     } else {
         if ( $icon eq '\\' ) {
             ( $icon, $class ) = @_[ 2 .. 3 ] ;
-            $icon =~ s/^fa-// if( $icon) ;
+            $icon =~ s/^fa-// if ($icon) ;
         }
-        $class =~ s/^\[|\]$//g if( $class);
+        $class =~ s/^\[|\]$//g if ($class) ;
         $out = ":fa:$icon" ;
         $out .= ":[$class]" if ($class) ;
     }
@@ -1105,12 +1105,9 @@ sub parse
     } else {
         $self->{output} = "" ;        # blank the output
 
-# we have some special extensions that need to be handled first, as they generate
-# blocks
-# replace Admonition paragraphs with a proper block
-
+        # replace Admonition paragraphs with a proper block
         $data
-            =~ s/^(NOTE|TIP|IMPORTANT|CAUTION|WARNING|DANGER|TODO|ASIDE):(.*?)\n\n/_rewrite_admonitions( $1, $2)/egsmi
+            =~ s/^(NOTE|TIP|IMPORTANT|CAUTION|WARNING|DANGER|TODO|ASIDE):(.*?)\n\n/_rewrite_admonitions( $1, $2)/egsm
             ;
 
         my @lines = split( /\n/, $data ) ;
@@ -1125,8 +1122,8 @@ sub parse
             my ( $k, $v ) = ( $lines[$i] =~ /^:?(\w+):?\s+(.*?)\s?$/ ) ;
             next if ( !$k ) ;
 
-# date/DATE is a special one as it may be that they want to use the current date
-# so we will ignore it
+            # date/DATE is a special one as it may be that they want to use
+            # the current date so we will ignore it
             if ( !( $k eq 'date' && $v eq '%DATE%' ) ) {
                 $self->_add_replace( $k, $v ) ;
             }
