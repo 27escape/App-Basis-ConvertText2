@@ -97,7 +97,6 @@ with an underscore '_', this underscore will be removed in the final document.
 * Variables used within the content area of a code-block will be evaluated before processing that block, if a variable has not yet been defined or saved to a buffer then it will only be evaluated at the end of document processing, so output may not be as expected.
 * Variables used in markdown tables may not do what you expect if the variable is multi-line.
 
-
 ## Table of contents
 
 As documents are processed, the HTML headers (H2..H6) are collected together to make a table of contents. This can be used either in your template or document using the TOC variable.
@@ -129,6 +128,88 @@ Hopefully you can see that the header for this section is not in the TOC
 ~~~~{.note}
 This feature is disabled at the moment while bugs are fixed.
 ~~~~
+
+## Admonitions
+
+There are certain statements that you may want to draw attention to by taking them out of the content’s flow and labeling them with a priority. These are called admonitions. It’s rendered style is determined by the assigned label (i.e., value). We provide eight admonition style labels:
+
+* NOTE
+* TIP
+* IMPORTANT
+* CAUTION
+* WARNING
+* DANGER
+* TODO
+* ASIDE
+
+When you want to call attention to a single paragraph, start the first line of the paragraph with the label you want to use. The label must be uppercase and followed by a colon (:).
+
+    WARNING: Something could go wrong if you do not follow the rules
+
+* The label must be uppercase and immediately followed by a colon (:).
+* Separate the first line of the paragraph from the label by a single space.
+
+And here is the generated Admonition
+
+WARNING: Something could go wrong if you do not follow the rules
+
+All the Admonitions have associated icons.
+
+Normal Markup may be used in the paragraph.
+
+Admonitions are processed before the rest of the document, so you cannot put their contents into buffers and expect them to work correctly.
+
+Admonitions are a short cut to [Admonition Boxes](#admonition_boxes) which allow multiple paragraphs to be used.
+
+## Font Awesome
+
+Font Awesome provides many useful icons,see [Font Awesome Cheatsheet], however there is a lot of hassle to add them to your document, we of course offer a simple shortcut of the form
+
+    \:fa:font-name
+
+E.g.
+
+    \:fa:trash
+
+Will display a :fa:trash icon.
+
+NOTE: We do not use the preceding 'fa-' in the name as Font Awesome does.
+
+So 'trash' rather than 'fa-trash'.
+
+It is possible to scale the images, give them colors and apply CSS classes to them by adding this information in square brackets
+
+E.g.
+
+    \:fa:trash:[2x]
+
+The options are
+
+* size [lg], [2x], [3x], [4x], [5x]
+    * :fa:trash:[lg] :fa:trash:[2x], :fa:trash:[3x], :fa:trash:[4x], :fa:trash:[5x].
+* foreground color [#red]
+    * :fa:trash:[2x #red]
+* foreground and background color [#yellow.black]
+    * :fa:trash:[2x #yellow.black]
+* rotate [90], [180], [270]
+    * :fa:flask:[2x 90], :fa:flask:[2x 180], :fa:flask:[2x 270]
+* flip vertical [flipv]
+    * :fa:flask vs :fa:flask:[flipv]
+* flip horizontal [fliph]
+        * :fa:graduation-cap:[2x] vs :fa:graduation-cap:[2x fliph]
+* fixed width [fw]
+    * :fa:gamepad:[2x]. vs :fa:gamepad:[2x fw].
+    * note there is a bigger space before the '.' on the variable width font (left) than fixed width (right)
+* border [border]
+    * :fa:gear:[ border]
+
+Any thing remaining in the square brackets after handling the above options will be considered as a class to be applied to the icon.
+
+Of course multiple options may be combined
+
+    \:fa:trash:[2x 90 #red border]
+
+as :fa:trash:[2x 90 #red border]
 
 ## Fenced code-blocks
 
@@ -434,6 +515,7 @@ wkhtmltopdf | http://wkhtmltopdf.org/
 My Github   | https://github.com/27escape/App-Basis-ConvertText2/tree/master/scripts
 Brewer      | http://www.graphviz.org/content/color-names#brewer
 README PDF  | https://github.com/27escape/App-Basis-ConvertText2/blob/master/docs/README.pdf
+Font Awesome Cheatsheet | http://fontawesome.io/cheatsheet/
 ~~~~
 
 <table class='box' width='99%'>
@@ -702,6 +784,84 @@ Vestibulum consectetur massa non fermentum dignissim.
 ~~~~
 <br>
 </td></tr></table>
+
+### Admonition Boxes
+
+Show that something is important by putting it in a box with an icon
+
+This is the complete form of the [Admonitions](#admoniotions).
+
+There are eight types
+
+* note
+* tip
+* important
+* caution
+* warning
+* error
+* todo
+* aside
+
+The optional arguments are
+
+* class
+    * HTML/CSS class name
+* id
+    * HTML/CSS class
+* width
+    * width of the box (default 98%)
+* title
+    * optional title for the section
+* style
+    * style the box if not doing anything else
+* icon
+    * give the admonition an icon
+    * '1' uses the default, otherwise use a [Font Awesome](#font-awesome) named icon
+
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>
+    \{\{.note icon=1 content='sample text'}}
+</td>
+<td>{{.note icon=1 content='sample text'}}</td>
+</tr>
+<td>
+    \{\{.tip icon=1 content='sample text'}}
+</td>
+<td>{{.tip icon=1 content='sample text'}}</td>
+</tr>
+<td>
+    \{\{.important icon=1 content='sample text'}}
+</td>
+<td>{{.important icon=1 content='sample text'}}</td>
+</tr>
+<td>
+    \{\{.caution icon=1 content='sample text'}}
+</td>
+<td>{{.caution icon=1 content='sample text'}}</td>
+</tr>
+<td>
+    \{\{.warning icon=1 content='sample text'}}
+</td>
+<td>{{.warning icon=1 content='sample text'}}</td>
+</tr>
+<td>
+    \{\{.danger icon=1 content='sample text'}}
+</td>
+<td>{{.danger icon=1 content='sample text'}}</td>
+</tr>
+<td>
+    \{\{.todo icon=1 content='sample text'}}
+</td>
+<td>{{.todo icon=1 content='sample text'}}</td>
+</tr>
+<td>
+    \{\{.aside icon=1 content='sample text'}}
+</td>
+<td>{{.aside icon=1 content='sample text'}}</td>
+
+</tr></table>
 
 ### Glossary
 

@@ -77,36 +77,30 @@ has handles => (
     init_arg => undef,
     default  => sub {
         [   qw{yamlasjson yamlasxml table version page
-                columns links tree box note quote
+                columns links tree
+                box note tip important caution warning danger todo aside
+                quote
                 appendix
-            }
+                }
         ] ;
     }
 ) ;
 
-my $default_css =<<END_CSS;
+# ----------------------------------------------------------------------------
+# these things are the same as a box
+
+my %as_box
+    = map { $_ => 'box' }
+    qw (note tip important caution warning danger todo aside) ;
+
+# ----------------------------------------------------------------------------
+
+my $default_css = <<END_CSS;
     /* Text.pm css */
 
     /* zebra tables */
     tr.odd { background: white;}
     tr.even {background: whitesmoke;}
-
-    /* style for boxes/notes */
-    div.box, div.note {
-        background-color: #eeeeee;
-        margin: 0 auto ;
-    }
-    div.box p, div.note p {
-        width: 100% ;
-        padding: 5px;
-        margin: 0 auto ;
-        background-color: #eeeeee;
-    }
-    div.box p.box_header, div.note p.box_header  {
-        background-color: teal;
-        font-weight: bold;
-        margin-top: 0px ;
-    }
 
     span.glossary {
       display: inline-block;
@@ -188,7 +182,6 @@ my $default_css =<<END_CSS;
 
 END_CSS
 
-
 # ----------------------------------------------------------------------------
 # make numeric entries in a hash properly numbers so that when the hash is used
 # to generate JSON then the correct values will be displayed
@@ -252,7 +245,6 @@ sub yamlasjson
 
     return $str ;
 }
-
 
 # ----------------------------------------------------------------------------
 
@@ -360,7 +352,7 @@ sub table
 
     for ( my $i = 0; $i < scalar(@data); $i++ ) {
         my @row   = @{ $data[$i] } ;
-        my $class = $params->{zebra} ? ($i & 1 ? 'odd' : 'even') : '' ;
+        my $class = $params->{zebra} ? ( $i & 1 ? 'odd' : 'even' ) : '' ;
         my $style = "" ;
         my $last  = pop @row ;
 
@@ -370,18 +362,22 @@ sub table
         }
         if ( $last =~ s/#((\w+)?\.?(\w+)?)// ) {
             my ( $fg, $bg ) = ( $2, $3 ) ;
-            $style .= "color: " . to_hex_color($fg) . ";"            if ($fg) ;
-            $style .= "background-color: " . to_hex_color($bg) . ";" if ($bg) ;
+            $style .= "color: " . to_hex_color($fg) . ";" if ($fg) ;
+            $style .= "background-color: " . to_hex_color($bg) . ";"
+                if ($bg) ;
         }
         push @row, $last ;
         $out .= "<tr" ;
-        $out .= " class='$class'" if( $class) ;
-        $out .= " style='$style'" if( $style) ;
+        $out .= " class='$class'" if ($class) ;
+        $out .= " style='$style'" if ($style) ;
         $out .= ">" ;
 
         # decide if the top row has the legends
         my $tag = ( !$i && $params->{legends} ) ? 'th' : 'td' ;
-        map { $out .= "<$tag>$_</$tag>" ; } @row ;
+        map {
+            $_ ||= '' ;
+            $out .= "<$tag>$_</$tag>" ;
+        } @row ;
         $out .= "</tr>\n" ;
     }
 
@@ -780,10 +776,9 @@ Y2hgQIf/GbAAAKCTBYBUjWvCAAAAAElFTkSuQmCC
     return "$out<br>" ;
 }
 
-
 # ----------------------------------------------------------------------------
 
-=item box | note
+=item box | note | tip | important | caution | warning | danger | todo | aside
 
 create a box around some text, if note is used and there is no title, then 'Note'
 will be added as a default
@@ -794,40 +789,87 @@ will be added as a default
         width   - width of the box (default 98%)
         title   - optional title for the section
         style   - style the box if not doing anything else
+        icon    - add a fontawesome icon to match the tag
 
 =cut
+
+my %icons = (
+    note      => ':fa:asterisk',
+    tip       => ':fa:sun-o:[ #FFA000]',
+    important => ':fa:exclamation:[ #blue]',
+    caution   => ':fa:minus-circle:[ #crimson]',
+    warning   => ':fa:exclamation-triangle:[ #red]',
+    danger    => ':fa:bomb',
+    todo      => ':fa:crosshairs:[ #00695C]',
+    aside     => ':fa:angle-double-right:[ #teal]',
+) ;
 
 sub box
 {
     my $self = shift ;
     my ( $tag, $content, $params, $cachedir ) = @_ ;
     #  defaults
-    $params->{width} ||= '98%' ;
+    $params->{width} ||= '100%' ;
     $params->{class} ||= "" ;
     # notes may get a default title if its missing
-    $params->{title} = 'Note'
-        if ( $tag eq 'note' && !defined $params->{title} ) ;
+    $params->{title} = ucfirst($tag)
+        if ( !defined $params->{title} && $tag ne 'box' ) ;
+    my $out ;
 
-    my $out = "<div " ;
-    $out .= "class='$params->{class} $tag' " ;
-    $out .= "id='$params->{id}' " if ( $params->{id} ) ;
-    $out .= "width='$params->{width}' " if ( $params->{width} ) ;
-    $out .= "style='$params->{style}' " if ( $params->{style} ) ;
-    $out .= ">" ;
-    $out .= "<p class='box_header'>$params->{title}</p>"
+    $params->{class} .= " $tag" ;
+
+    my $icon ;
+    # boxes cannot have icons
+    if ( $tag ne 'box' && $params->{icon} ) {
+        # we can over-ride the icon with a string
+        $icon
+            = $params->{icon} eq "1"
+            ? ( $icons{$tag} || "" )
+            : $params->{icon} ;
+        # allow icon flame hourglass etc, we will fix it up right
+        if ( $icon !~ /^:fa:/ ) {
+            $icon = ":fa:$icon" ;
+        }
+        if ( $icon !~ /:\[.*?\]/ ) {
+            $icon .= ':[]' ;
+        }
+        # icons need to be at least 2x size to look good here
+        if ( $icon !~ /\[(.*?\blg\b|.*?\b\[2345]x\b).*?\]/ ) {
+            $icon =~ s/\]/ 2x]/ ;
+        }
+        # make them fixed width too
+        if ( $icon !~ /\[.*?\bfw\b.*?\]/ ) {
+            $icon =~ s/\]/ fw]/ ;
+        }
+
+        my $width = "width:$params->{width};" ;
+
+        $out
+            .= "<div class='$params->{class}' " ;
+        $out .= "id='$params->{id}' " if ( $params->{id} ) ;
+        $out .= "style='$params->{style}' " if ( $params->{style} ) ;
+        $out .= ">" ;
+        $out .= "<table width='100%' class='$params->{class}'><tr>"
+            . "<td class='$tag" . "_left'>$icon</td>\n"
+            . "<td class='$tag" . "_right'>" ;
+    } else {
+        $out .= "<div style='width:100%' " ;
+        $out .= "class='$params->{class}' " if ( !$icon ) ;
+        $out .= "id='$params->{id}' " if ( $params->{id} ) ;
+        $out .= "style='$params->{style}' " if ( $params->{style} ) ;
+        $out .= ">" ;
+    }
+    $out .= "<p class='$tag" . "_header'>$params->{title}</p>\n"
         if ( $params->{title} ) ;
 
     # convert any content to HTML from Markdown
-    $out .= markdown( $content, { markdown => 1 } )
-        ;    # do markdown in HTML elements too
-    $out .= "</div>\n" ;
-    return $out ;
-}
+    $out .= markdown( $content, { markdown => 1 } ) ;
+    if( $icon) {
+        $out .= "</td></tr></table></div>\n" if ($icon) ;
+    } else {
+        $out .= "</div>\n" ;}
 
-sub note
-{
-    my $self = shift ;
-    return $self->box(@_) ;
+    return $out ;
 }
 
 # ----------------------------------------------------------------------------
@@ -884,10 +926,13 @@ sub appendix
     my $self = shift ;
     my ( $tag, $content, $params, $cachedir ) = @_ ;
     state $count = 0 ;
-    my $str = "Appendix " . chr( 65 + $count);
-    if( $count > 26) {
+    my $str = "Appendix " . chr( 65 + $count ) ;
+    if ( $count > 26 ) {
         # gives AA, AB, AC etc
-        $str = "Appendix " . chr( 65 + int($count / 26)) . chr( 65 + $count % 26);
+        $str
+            = "Appendix "
+            . chr( 65 + int( $count / 26 ) )
+            . chr( 65 + $count % 26 ) ;
     }
 
     $count++ ;
@@ -895,6 +940,61 @@ sub appendix
     return $str ;
 }
 
+# ----------------------------------------------------------------------------
+# build the css for the different box types
+sub _admonition_css
+{
+    my $css = "    /* style for boxes/notes */\n" ;
+
+    $css .= "    " . join( ", ", map {"div.$_ "} keys %as_box ) ;
+    $css .= " {
+        margin-bottom: 1em;
+    }\n" ;
+
+    $css .= "    " . join( ", ", map { "table.$_ " } keys %as_box ) ;
+    $css .= " {
+        padding: 0px;
+        margin: 0px;
+        text-align: left;
+        border-collapse: collapse;
+    }\n" ;
+
+    $css .= "    " . join( ", ", map { "td.$_" . "_left" } keys %as_box ) ;
+    $css .= " {
+        padding: 0px;
+        margin: 0px;
+        text-align: center;
+        vertical-align: middle;
+        width:4%;
+        border: 0px;
+        border-right: 1px solid black ;
+    }\n" ;
+
+    $css .= "    " . join( ", ", map { "td.$_" . "_right" } keys %as_box ) ;
+    $css .= " {
+        padding: 0px;
+        margin: 0px;
+        text-align: left;
+        border: 0px;
+    }\n" ;
+
+    $css .= "    " . join( ", ", map { "p.$_" . "_header" } keys %as_box ) ;
+    $css .= " {
+        font-weight: bold;
+        padding-top: 0px;
+        margin-top: 0px;
+        padding-left: 5px ;
+    }\n" ;
+
+    $css .= "    " . join( ", ", map {"div.$_ p"} keys %as_box ) ;
+    $css .= " {
+        padding: 0px;
+        margin: 0px;
+        margin-top: 0px;
+        padding-top: 0px;
+        padding-left: 5px ;
+    }\n" ;
+}
 
 # ----------------------------------------------------------------------------
 # decide which simple handler should process this request
@@ -904,16 +1004,21 @@ sub process
     my $self = shift ;
     my ( $tag, $content, $params, $cachedir ) = @_ ;
     state $css = 0 ;
+    my $retval = undef ;
 
-    if( !$css) {
-        add_css( $default_css) ;
+    if ( !$css ) {
+        add_css($default_css) ;
+        add_css( _admonition_css() ) ;
         $css++ ;
     }
 
-    if ( $self->can($tag) ) {
-        return $self->$tag(@_) ;
+    if ( $as_box{$tag} && $self->can('box') ) {
+        $retval = $self->box(@_) ;
+
+    } elsif ( $self->can($tag) ) {
+        $retval = $self->$tag(@_) ;
     }
-    return undef ;
+    return $retval ;
 }
 
 # ----------------------------------------------------------------------------

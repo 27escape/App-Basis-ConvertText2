@@ -98,6 +98,7 @@ my $default_css = <<END_CSS;
     /* -------------- ConvertText2.pm css -------------- */
 
     table { page-break-inside: auto ;}
+    table { page-break-inside: avoid ;}
     tr    { page-break-inside:avoid; page-break-after:auto }
     thead { display:table-header-group }
     tfoot { display:table-footer-group }
@@ -129,7 +130,6 @@ my $default_css = <<END_CSS;
         text-decoration: none ;
         color: black;
     }
-    table { page-break-inside: avoid ;}
 
     /* nice markup for source code */
     table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
@@ -405,10 +405,11 @@ sub clean_cache
     # don't do any cleanup if we are not using a cache
     return if ( !$self->use_cache() ) ;
 
-    try { path( $self->cache_dir() )->remove_tree } catch {} ;
+    # try { path( $self->cache_dir() )->remove_tree } catch {} ;
 
-    # and make it fresh again
-    path( $self->cache_dir() )->mkpath() ;
+    # # and make it fresh again
+    # path( $self->cache_dir() )->mkpath() ;
+    system( "rm -rf '" . $self->cache_dir() . "'/* 2>/dev/null" ) ;
 }
 
 # ----------------------------------------------------------------------------
@@ -848,7 +849,8 @@ sub _pandoc_html
     my $paninput  = Path::Tiny->tempfile("pandoc.in.XXXX") ;
     my $panoutput = Path::Tiny->tempfile("pandoc.out.XXXX") ;
     path($paninput)->spew_utf8($input) ;
-    # path( "/tmp/pandoc.md")->spew_utf8($input) ;
+    # my $debug_file = "/tmp/pandoc.$$.md" ;
+    # path( $debug_file)->spew_utf8($input) ;
 
     my $command
         = PANDOC
@@ -870,7 +872,9 @@ sub _pandoc_html
 
             # path( "/tmp/pandoc.html")->spew_utf8($html) ;
 
-
+            # this will have html headers and footers, we need to dump these
+            $html =~ s/<!DOCTYPE.*?<body>//gsm ;
+            $html =~ s/^<\/body>\n<\/html>//gsm ;
         } else {
             my $err = $resp->{stderr} || "" ;
             chomp $err ;
@@ -964,7 +968,7 @@ sub _convert_file
                 if ( $self->{replace}->{KEYWORDS} ) ;
 # seems to create smaller files if we embed fonts!
 # $cmd .= " --no-embed-fonts --no-subset-fonts --media=print $file -o $outfile" ;
-            $cmd .= "  --no-artificial-fonts --no-embed-fonts " ;
+# $cmd .= "  --no-artificial-fonts --no-embed-fonts " ;
             $cmd .= " --media=print '$file' -o '$outfile'" ;
         } elsif ( $pdfconvertor =~ /^wkhtmltopdf/i ) {
             $cmd = WKHTML . " -q --print-media-type " ;
@@ -1005,6 +1009,64 @@ sub _convert_file
 }
 
 # ----------------------------------------------------------------------------
+# convert Admonition paragraphs to tagged blocks
+sub _rewrite_admonitions
+{
+    my ( $tag, $content ) = @_ ;
+    $content =~ s/^\s+|\s+$//gsm ;
+
+    my $out = "\n~~~~{." . lc($tag) . " icon=1}\n$content\n~~~~\n\n" ;
+
+    return $out ;
+}
+
+# ----------------------------------------------------------------------------
+# convert things to fontawesome icons, can do most things except staking fonts
+sub _fontawesome
+{
+    my ( $demo, $icon, $class ) = @_ ;
+    my $out ;
+
+    $icon =~ s/^fa-// if( $icon) ;
+    if ( !$demo ) {
+        my $style = "vertical-align:middle;" ;
+        my @colors ;
+        if ($class) {
+            $class =~ s/^\[|\]$//g ;
+            $class =~ s/\b(fw|lg|border)\b/fa-$1/ ;
+            $class =~ s/\b([2345]x)\b/fa-$1/ ;
+            $class =~ s/\b(90|180|270)\b/fa-rotate-$1/ ;
+            $class =~ s/\bflipv\b/fa-flip-vertical/ ;
+            $class =~ s/\bfliph\b/fa-flip-horizontal/ ;
+
+            if ( $class =~ s/#((\w+)?\.?(\w+)?)// ) {
+                my ( $fg, $bg ) = ( $2, $3 ) ;
+                $style .= "color:" . to_hex_color($fg) . ";" if ($fg) ;
+                $style .= "background-color:" . to_hex_color($bg) . ";"
+                    if ($bg) ;
+            }
+        # things changed and anything left in class must be a real class thing
+            $class =~ s/^\s+|\s+$//g ;
+        } else {
+            $class = "" ;
+        }
+        $out = "<span class='fa fa-$icon $class'"
+            . ( $style ? "style='$style'" : "" ) ;
+        $out .= ">&nbsp;</span>" ;
+    } else {
+        if ( $icon eq '\\' ) {
+            ( $icon, $class ) = @_[ 2 .. 3 ] ;
+            $icon =~ s/^fa-// if( $icon) ;
+        }
+        $class =~ s/^\[|\]$//g if( $class);
+        $out = ":fa:$icon" ;
+        $out .= ":[$class]" if ($class) ;
+    }
+
+    return $out ;
+}
+
+# ----------------------------------------------------------------------------
 
 =item parse
 
@@ -1022,6 +1084,11 @@ sub parse
 
     die "Nothing to parse" if ( !$data ) ;
 
+    # big cheat to get this link in ahead of the main CSS
+    add_javascript( '<link rel="stylesheet" type="text/css" '
+            . ' href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">'
+    ) ;
+
     # add in our basic CSS
     add_css($default_css) ;
 
@@ -1037,6 +1104,14 @@ sub parse
         $self->{output} = $cache ;    # put cached item into output
     } else {
         $self->{output} = "" ;        # blank the output
+
+# we have some special extensions that need to be handled first, as they generate
+# blocks
+# replace Admonition paragraphs with a proper block
+
+        $data
+            =~ s/^(NOTE|TIP|IMPORTANT|CAUTION|WARNING|DANGER|TODO|ASIDE):(.*?)\n\n/_rewrite_admonitions( $1, $2)/egsmi
+            ;
 
         my @lines = split( /\n/, $data ) ;
 
@@ -1065,7 +1140,7 @@ sub parse
         # $self->_store_cache( $self->cache_dir() . "/$id.md",
         #     encode_utf8( $self->{output} ), 1 ) ;
         $self->_store_cache( $self->cache_dir() . "/$id.md",
-            $self->{output} , 1 ) ;
+            $self->{output}, 1 ) ;
 
         # we have a special replace for '---' alone on a line which is used to
         # signifiy a page break
@@ -1076,6 +1151,12 @@ sub parse
 
         # add in some smilies
         $self->{output} = utf_smilies( $self->{output} ) ;
+
+        # do the fontawesome replacements
+        $self->{output}
+            =~ s/(\\)?:fa:([\w|-]+):?(\[(.*?)\])?/_fontawesome( $1, $2,  $3)/egsi
+            ;
+
 
         # we have created something so we can cache it, if use_cache is off
         # then this will not happen lower down

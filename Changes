@@ -1,4 +1,6 @@
 0.6
+    * added Font Awesome support and Admonitions
+    * new versions of box for admonitions
     * remove embed option from ct2, embed all the time, use pandoc --self-contained
     * Support.pm now holds the blocks to process, allows the plugins to call other plugins
     * Support.pm has functions for javascript and css storage and retrival

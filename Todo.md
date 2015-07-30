@@ -172,8 +172,6 @@ image: |.2 .img300x200 | [upload] \n [delete]
 
 ~~~~
 
-
-
 ## javascript charting
 
 * http://www.sitepoint.com/15-best-javascript-charting-libraries/
@@ -191,3 +189,34 @@ image: |.2 .img300x200 | [upload] \n [delete]
 ### pay for
 
 * http://gojs.net/latest/index.html?gclid=CPPInOyoqcYCFZMZtAodWEwA8A
+
+## RACI
+
+http://www.valuebasedmanagement.net/methods_raci.html
+
+
+**Responsible** – Who is responsible for the execution of the task?
+**Accountable** – Who is accountable for the tasks and signs off the work?
+**Support** - optional, supports Responsible person
+**Consulted** – Who are the subject matter experts who to be consulted?
+**Informed** – Who are the people who need to be updated of the progress?
+
+simple to add {{.raci}} to ct2
+
+top line is roles, so that things can be spaced out nice
+subsequent lines are the tasks with the responsibilities
+~~~~{.raci }
+roles   | PM | EGL | dir engineering | CEO | legal
+task 1  | A  |     |                 |     |
+task 2  | AR | R   | C               | I   |
+task 3  | A  | R   | I               | C   | I
+~~~~
+
+There must be one R, errors if more than one R
+There must be one A, errors if more than one A
+warns if too many Cs (>50%?)
+
+http://project-management.com/understanding-responsibility-assignment-matrix-raci-matrix/
+
+suitable book http://www.amazon.co.uk/Effective-Project-Management-Traditional-Extreme/dp/1118729161/ref=sr_1_1?ie=UTF8&qid=1437980474&sr=8-1&keywords=Effective+Project+Management%3A+Traditional%2C+Agile%2C+Extreme
+   http://eu.wiley.com/WileyCDA/WileyTitle/productCd-1118729161.html

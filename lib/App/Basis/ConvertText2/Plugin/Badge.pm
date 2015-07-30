@@ -12,7 +12,7 @@ use CSS to style all the badges
 
 Create a badge style image
 
-~~~~{.badge subject='The Christmas Tree' status='' color=''}
+~~~~{.badge subject='The Christmas Tree' status='up' color='green'}
 ~~~~
 
 =cut
@@ -72,6 +72,7 @@ Create abadge/shield to show status of something
         status  - how well is it doing
         color   - what color is the status part, defaults to goldenrod
         size    - change the font-size from the CSS one to this
+        reverse - swap status and subject positions
 
 =cut
 
@@ -104,15 +105,23 @@ sub badge
         $subject_style .= "font-size: $params->{size}%; " ;
     }
 
-    # create something suitable for the HTML, no spaces
+    if( $params->{reverse}) {
+        my $t = $params->{subject} ;
+        $params->{subject} = $params->{status} ;
+        $params->{status} = $t ;
+        $t = $subject_style ;
+        $subject_style = $status_style ;
+        $status_style = $t ; 
+    }
+
+    # create something suitable for the HTML, no spaces, no extra lines
     $out
         = "<span class='badge'>"
         . "<span class='subject' style='$subject_style'>&nbsp;&nbsp;"
         . $params->{subject}
         . "&nbsp;</span><span class='status' style='$status_style'>&nbsp;"
         . $params->{status}
-        . "&nbsp;&nbsp;</span>
-</span>" ;
+        . "&nbsp;&nbsp;</span></span>" ;
 
     return $out ;
 }
