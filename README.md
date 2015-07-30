@@ -194,12 +194,12 @@ The options are
 * rotate [90], [180], [270]
     * :fa:flask:[2x 90], :fa:flask:[2x 180], :fa:flask:[2x 270]
 * flip vertical [flipv]
-    * :fa:flask vs :fa:flask:[flipv]
+    * :fa:flask:[2x] vs :fa:flask:[2x flipv]
 * flip horizontal [fliph]
-        * :fa:graduation-cap:[2x] vs :fa:graduation-cap:[2x fliph]
+    * :fa:graduation-cap:[2x] vs :fa:graduation-cap:[2x fliph]
 * fixed width [fw]
     * :fa:gamepad:[2x]. vs :fa:gamepad:[2x fw].
-    * note there is a bigger space before the '.' on the variable width font (left) than fixed width (right)
+    * note the bigger space before the '.' on the fixed width font (right) than the normal font (left)
 * border [border]
     * :fa:gear:[ border]
 
@@ -809,7 +809,7 @@ The optional arguments are
 * id
     * HTML/CSS class
 * width
-    * width of the box (default 98%)
+    * width of the box (default 100%)
 * title
     * optional title for the section
 * style
@@ -824,42 +824,55 @@ The optional arguments are
 <td>
     \{\{.note icon=1 content='sample text'}}
 </td>
-<td>{{.note icon=1 content='sample text'}}</td>
+<td><br/>
+{{.note icon=1 content='sample text'}}</td>
 </tr>
 <td>
     \{\{.tip icon=1 content='sample text'}}
 </td>
-<td>{{.tip icon=1 content='sample text'}}</td>
+<td><br/>
+{{.tip icon=1 content='sample text'}}</td>
 </tr>
 <td>
     \{\{.important icon=1 content='sample text'}}
 </td>
-<td>{{.important icon=1 content='sample text'}}</td>
+<td><br/>
+{{.important icon=1 content='sample text'}}</td>
 </tr>
 <td>
     \{\{.caution icon=1 content='sample text'}}
 </td>
-<td>{{.caution icon=1 content='sample text'}}</td>
+<td><br/>
+{{.caution icon=1 content='sample text'}}</td>
 </tr>
 <td>
     \{\{.warning icon=1 content='sample text'}}
 </td>
-<td>{{.warning icon=1 content='sample text'}}</td>
+<td><br/>
+{{.warning icon=1 content='sample text'}}</td>
 </tr>
 <td>
-    \{\{.danger icon=1 content='sample text'}}
+    \{\{.danger icon=1 content='sample text'
+      style='background-color:#FF80AB;
+      font-size:1.5em;' }}
 </td>
-<td>{{.danger icon=1 content='sample text'}}</td>
+<td><br/>
+{{.danger icon=1 content='sample text' style='background-color:#FF80AB;font-size:1.5em;'}}</td>
 </tr>
 <td>
-    \{\{.todo icon=1 content='sample text'}}
+    \{\{.todo icon=1 content='sample text'
+      width='50%' }}
 </td>
-<td>{{.todo icon=1 content='sample text'}}</td>
+<td><br/>
+{{.todo icon=1 content='sample text' width='50%'}}</td>
 </tr>
 <td>
-    \{\{.aside icon=1 content='sample text'}}
+    \{\{.aside icon=1 content='sample text'
+        title='Try this'
+    }}
 </td>
-<td>{{.aside icon=1 content='sample text'}}</td>
+<td><br/>
+{{.aside icon=1 content='sample text' title='Try this'}}</td>
 
 </tr></table>
 
@@ -1187,14 +1200,14 @@ The optional arguments are
 
 ~~~~{.buffer to_buffer=uml}
 ' this is a comment on one line
-    /' this is a
-    multi-line
-    comment'/
-    Alice -> Bob: Auth Request
-    Bob --> Alice: Auth Response
+/' this is a
+multi-line
+comment'/
+Alice -> Bob: Auth Request
+Bob --> Alice: Auth Response
 
-    Alice -> Bob: Auth Request 2
-    Alice <-- Bob: Auth Response 2
+Alice -> Bob: Auth Request 2
+Alice <-- Bob: Auth Response 2
 ~~~~
 
 <table class='box' width='99%'>

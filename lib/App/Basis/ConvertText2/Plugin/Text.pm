@@ -811,14 +811,16 @@ sub box
     #  defaults
     $params->{width} ||= '100%' ;
     $params->{class} ||= "" ;
-    # notes may get a default title if its missing
+    $params->{style} ||= "" ;
+     # notes may get a default title if its missing
     $params->{title} = ucfirst($tag)
         if ( !defined $params->{title} && $tag ne 'box' ) ;
     my $out ;
 
-    $params->{class} .= " $tag" ;
+    $params->{class} = "$tag $params->{class}" ;
 
     my $icon ;
+    $params->{style} = "width:$params->{width};$params->{style}" ;
     # boxes cannot have icons
     if ( $tag ne 'box' && $params->{icon} ) {
         # we can over-ride the icon with a string
@@ -842,21 +844,17 @@ sub box
             $icon =~ s/\]/ fw]/ ;
         }
 
-        my $width = "width:$params->{width};" ;
-
         $out
-            .= "<div class='$params->{class}' " ;
+            .= "<div class='$params->{class}' style='$params->{style}' " ;
         $out .= "id='$params->{id}' " if ( $params->{id} ) ;
-        $out .= "style='$params->{style}' " if ( $params->{style} ) ;
         $out .= ">" ;
         $out .= "<table width='100%' class='$params->{class}'><tr>"
             . "<td class='$tag" . "_left'>$icon</td>\n"
             . "<td class='$tag" . "_right'>" ;
     } else {
-        $out .= "<div style='width:100%' " ;
+        $out .= "<div style='$params->{style}' " ;
         $out .= "class='$params->{class}' " if ( !$icon ) ;
         $out .= "id='$params->{id}' " if ( $params->{id} ) ;
-        $out .= "style='$params->{style}' " if ( $params->{style} ) ;
         $out .= ">" ;
     }
     $out .= "<p class='$tag" . "_header'>$params->{title}</p>\n"

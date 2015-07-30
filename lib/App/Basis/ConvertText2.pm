@@ -1029,7 +1029,7 @@ sub _fontawesome
 
     $icon =~ s/^fa-// if ($icon) ;
     if ( !$demo ) {
-        my $style = "vertical-align:middle;" ;
+        my $style = "" ;
         my @colors ;
         if ($class) {
             $class =~ s/^\[|\]$//g ;
@@ -1050,9 +1050,9 @@ sub _fontawesome
         } else {
             $class = "" ;
         }
-        $out = "<span class='fa fa-$icon $class'"
+        $out = "<i class='fa fa-$icon $class'"
             . ( $style ? "style='$style'" : "" ) ;
-        $out .= ">&nbsp;</span>" ;
+        $out .= "></i>" ;
     } else {
         if ( $icon eq '\\' ) {
             ( $icon, $class ) = @_[ 2 .. 3 ] ;
