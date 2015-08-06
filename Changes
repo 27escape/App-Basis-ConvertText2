@@ -1,7 +1,8 @@
 0.6
+    * added import option to include other files
     * added Font Awesome support and Admonitions
     * new versions of box for admonitions
-    * remove embed option from ct2, embed all the time, use pandoc --self-contained
+    * fetch and embed images all the time
     * Support.pm now holds the blocks to process, allows the plugins to call other plugins
     * Support.pm has functions for javascript and css storage and retrival
         * will allow plugins to specify their own css and not have it in the base template

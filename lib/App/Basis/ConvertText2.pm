@@ -69,6 +69,9 @@ use Try::Tiny ;
 use Path::Tiny ;
 use Digest::MD5 qw(md5_hex) ;
 use Encode qw(encode_utf8) ;
+use GD ;
+use MIME::Base64 ;
+use Furl ;
 # use Text::Markdown qw(markdown) ;
 # use Text::MultiMarkdown qw(markdown) ;
 # use CommonMark ;
@@ -97,6 +100,25 @@ use constant WKHTML   => 'wkhtmltopdf' ;
 my $default_css = <<END_CSS;
     /* -------------- ConvertText2.pm css -------------- */
 
+    img {max-width: 100%;}
+    /* setup for print */
+    \@media print {
+        /* this is the normal page style */
+        \@page {
+            size: %PAGE_SIZE%  %ORIENTATION% ;
+            margin: 60pt 30pt 40pt 30pt ;
+        }
+    }
+
+    /* setup for web */
+    \@media screen {
+        #toc a {
+            text-decoration: none ;
+            font-weight: normal;
+        }
+
+    }            
+
     table { page-break-inside: auto ;}
     table { page-break-inside: avoid ;}
     tr    { page-break-inside:avoid; page-break-after:auto }
@@ -104,30 +126,30 @@ my $default_css = <<END_CSS;
     tfoot { display:table-footer-group }
 
     /* toc */
-    #toc {
+    .toc {
         padding: 0.4em;
         page-break-after: always;
     }
-    #toc p {
-        font-weight: bold;
-        font-size: 32;
+    .toc p {
+        font-size: 24;
     }
-    #toc h3 { text-align: center }
-    #toc ul {
+    .toc h3 { text-align: center }
+    .toc ul {
         columns: 1;
     }
-    #toc ul, #toc li {
+    .toc ul, .toc li {
         list-style: none;
         margin: 0;
         padding: 0;
         padding-left: 10px ;
     }
-    #toc a::after {
+    .toc a::after {
         content: leader('.') target-counter(attr(href), page);
         font-style: normal;
     }
-    #toc a {
+    .toc a {
         text-decoration: none ;
+        font-weight: normal;
         color: black;
     }
 
@@ -158,12 +180,11 @@ my $default_css = <<END_CSS;
         page: landscape;
     }
 
-    img { max-width: 100%; }
     body {
-        font-family: 'Open Sans', sans-serif;
+        font-family: sans-serif;
     }
     code {
-        font-family: 'Cousine', monospace;
+        font-family: monospace;
     }
 
     /* we do not want these, headings start from h2 onwards */
@@ -507,6 +528,9 @@ sub _call_function
             if ( $params->{content} ) {
                 $content = $params->{content} ;
             }
+            if ( $params->{file} ) {
+                $content = _include_file( $params->{file} ) ;
+            }
 
             my $to = $params->{to} || $params->{to_buffer} ;
 
@@ -713,6 +737,109 @@ sub _parse_lines
 # ----------------------------------------------------------------------------
 # fetch any img references and copy into the cache, if the image is already
 # in the cache then nothing will happen, will rewrite other img uri's
+sub _rewrite_imgsrc
+{
+    my $self = shift ;
+    my ( $pre, $img, $post, $want_size ) = @_ ;
+    my $ext ;
+    if ( $img =~ /\.(\w+)$/ ) {
+        $ext = $1 ;
+    }
+
+    if ($ext) {    # potentially image is already an embedded image
+        if ( $img !~ /base64,/ && $img !~ /\.svg$/i ) {
+            # if ( $img !~ /base64,/ ) {
+
+            # if its an image we have generated then it may already be here
+            # check to see if we have this in the cache
+            my $cachefile = cachefile( $self->cache_dir, $img ) ;
+            $cachefile =~ s/\n//g ;
+            if ( !-f $cachefile ) {
+                my $id = md5_hex($img) ;
+                $id .= ".$ext" ;
+
+                # this is what it will be named in the cache
+                $cachefile = cachefile( $self->cache_dir, $id ) ;
+
+                # not in the cache , fetch it and store it local to the cache
+                # if we are a local file
+                if ( $img !~ m|^\w+://| || $img =~ m|^file://| ) {
+                    $img =~ s|^file://|| ;
+                    $img = fix_filename($img) ;
+
+                    if ( $img !~ m|/| ) {
+
+                        # if file is relative, then we need to add the basedir
+                        $img = $self->basedir . "/$img" ;
+                    }
+
+                    # copy it to the cache location
+                    try {
+                        path($img)->copy($cachefile) ;
+                    }
+                    catch {
+                        debug( "ERROR",
+                            "failed to copy $img to $cachefile" ) ;
+                    } ;
+
+                    $img = $cachefile if ( -f $cachefile ) ;
+                } else {
+                    if ( $img =~ m|^(\w+)://(.*)| ) {
+
+                        my $furl = Furl->new(
+                            agent   => get_program(),
+                            timeout => 0.2,
+                        ) ;
+
+                        my $res = $furl->get($img) ;
+                        if ( $res->is_success ) {
+                            path($cachefile)->spew_raw( $res->content ) ;
+                            $img = $cachefile ;
+                        } else {
+                            debug( "ERROR", "unknown could not fetch $img" ) ;
+                        }
+                    } else {
+                        debug( "ERROR", "unknown protocol for $img" ) ;
+                    }
+                }
+            } else {
+                $img = $cachefile ;
+            }
+
+            # make sure we add the image size if its not already there
+            if (   $want_size
+                && $pre !~ /width=|height=/i
+                && $post !~ /width=|height=/i ) {
+                my $image = GD::Image->new($img) ;
+                if ($image) {
+                    $post =~ s/\/>$// ;
+                    $post
+                        .= " height='"
+                        . $image->height()
+                        . "' width='"
+                        . $image->width()
+                        . "' />" ;
+                }
+            }
+
+ # do we need to embed the images, if we do this then libreoffice may be pants
+ # however 'prince' is happy
+
+# we encode the image as base64 so that the HTML document can be moved with all images
+# intact
+            my $base64 = MIME::Base64::encode( path($img)->slurp_raw ) ;
+            $img = "data:image/$ext;base64,$base64" ;
+        }
+
+    }
+    return $pre . $img . $post ;
+}
+
+
+
+# ----------------------------------------------------------------------------
+# fetch any img references and copy into the cache, if the image is already
+# in the cache then nothing will happen, will rewrite other img uri's
 sub _rewrite_imgsrc_local
 {
     my $self = shift ;
@@ -855,7 +982,7 @@ sub _pandoc_html
     my $command
         = PANDOC
         . " --ascii --email-obfuscation=none -S -R --normalize -t html5 "
-        . " --highlight-style='kate' --self-contained "
+        . " --highlight-style='kate' "
         . " '$paninput' -o '$panoutput'" ;
 
     my $resp = execute_cmd(
@@ -889,9 +1016,9 @@ sub _pandoc_html
         # markdown would prefer this for fenced code blocks
         $input =~ s/^~~~~.*$/\`\`\`\`/gm ;
 
-        $html = markdown( $input, { markdown => 1 } )
-            ;    # do markdown in HTML elements too
-                 # $html = CommonMark->markdown_to_html($input) ;
+        $html = markdown( $input, { markdown => 1 } ) ;
+        # do markdown in HTML elements too
+        # $html = CommonMark->markdown_to_html($input) ;
     }
 
     # strip out any HTML comments that may have come in from template
@@ -1067,6 +1194,22 @@ sub _fontawesome
 }
 
 # ----------------------------------------------------------------------------
+# grab external files
+
+sub _include_file
+{
+    my ($file) = @_ ;
+    my $out = "" ;
+
+    $file =~ s/^["']|["']$//g ;
+    $file = fix_filename($file) ;
+    if ( -f $file ) {
+        $out = path($file)->slurp_utf8() ;
+    }
+    return $out ;
+}
+
+# ----------------------------------------------------------------------------
 
 =item parse
 
@@ -1107,8 +1250,12 @@ sub parse
 
         # replace Admonition paragraphs with a proper block
         $data
-            =~ s/^(NOTE|TIP|IMPORTANT|CAUTION|WARNING|DANGER|TODO|ASIDE):(.*?)\n\n/_rewrite_admonitions( $1, $2)/egsm
+            =~ s/^(NOTE|INFO|TIP|IMPORTANT|CAUTION|WARNING|DANGER|TODO|ASIDE):(.*?)\n\n/_rewrite_admonitions( $1, $2)/egsm
             ;
+
+        $data =~ s/\{\{.include file=(.*?)\}\}/_include_file($1)/esgm ;
+        $data
+            =~ s/^~~~~\{.include file=(.*?)\}.*?~~~~/_include_file($1)/esgm ;
 
         my @lines = split( /\n/, $data ) ;
 
@@ -1154,7 +1301,6 @@ sub parse
             =~ s/(\\)?:fa:([\w|-]+):?(\[(.*?)\])?/_fontawesome( $1, $2,  $3)/egsi
             ;
 
-
         # we have created something so we can cache it, if use_cache is off
         # then this will not happen lower down
         # now we convert the parsed output into HTML
@@ -1162,6 +1308,10 @@ sub parse
 
         # add the converted markdown into the template
         my $html = $self->template ;
+        # lets do the includes in the templates to, gives us some flexibility
+        $html =~ s/\{\{.include file=(.*?)\}\}/_include_file($1)/esgm ;
+        $html
+            =~ s/^~~~~\{.include file=(.*?)\}.*?~~~~/_include_file($1)/esgm ;
 
         my $program = get_program() ;
         $html
@@ -1171,7 +1321,7 @@ sub parse
         my $rep = "%" . CONTENTS . "%" ;
         $html =~ s/$rep/$pan/gsm ;
 
-# if the user has not used title:, the we need to grab the title from the page so far
+        # if the user has not used title: grab from the page so far
         if ( !$self->{replace}->{TITLE} ) {
             my (@h1) = ( $html =~ m|<h1.*?>(.*?)</h1>|gsmi ) ;
 
@@ -1191,7 +1341,8 @@ sub parse
             $html
                 =~ s|(<h([23456]).*?>)(.*?)(</h\2>)|_rewrite_hdrs( $1, $3, $4)|egsi
                 ;
-            $self->{replace}->{TOC} = _build_toc($html) ;
+            $self->{replace}->{TOC}
+                = "<div class='toc'>" . _build_toc($html) . "</div>" ;
         }
 
         $self->{replace}->{CSS}        = get_css() ;
@@ -1216,15 +1367,26 @@ sub parse
         $html =~ s/(?<!_)%[A-Z-_]+\%//gsm ;
         $html =~ s/_(%.*?%)/$1/gsm ;
 
-      # fetch any images and store to the cache, make sure they have sizes too
+# fetch any images and store to the cache, make sure they have sizes too
+# $html
+#     =~ s/(<img.*?src=['"])(.*?)(['"].*?>)/$self->_rewrite_imgsrc_local( $1, $2, $3)/egs
+#     ;
+
+# # write any css url images and store to the cache
+# $html
+#     =~ s/(url\s*\(['"]?)(.*?)(['"]?\))/$self->_rewrite_imgsrc_local( $1, $2, $3)/egs
+#     ;
+
         $html
-            =~ s/(<img.*?src=['"])(.*?)(['"].*?>)/$self->_rewrite_imgsrc_local( $1, $2, $3)/egs
+            =~ s/(<img.*?src=['"])(.*?)(['"].*?>)/$self->_rewrite_imgsrc( $1, $2, $3, 1)/egs
             ;
 
         # write any css url images and store to the cache
         $html
-            =~ s/(url\s*\(['"]?)(.*?)(['"]?\))/$self->_rewrite_imgsrc_local( $1, $2, $3)/egs
+            =~ s/(url\s*\(['"]?)(.*?)(['"]?\))/$self->_rewrite_imgsrc( $1, $2, $3, 0)/egs
             ;
+
+
 
 # replace any escaped \{ braces when needing to explain short code blocks in examples
         $html =~ s/\\\{/{/gsm ;

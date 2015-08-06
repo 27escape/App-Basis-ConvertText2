@@ -37,13 +37,6 @@
 
 new command internal to ConvertText2
 
-## include
-
-inserts stuff into the $lines arrayref at the current point so that the content of the include
-file can also be processed in the normal manner
-
-can we unshift to the arrayref or change the foreach for a for and an index?
-
 ## macros
 
 for things that are not matched, can we find them in the $HOME/.ct2/macros directory
@@ -172,6 +165,19 @@ image: |.2 .img300x200 | [upload] \n [delete]
 
 ~~~~
 
+## Openiconic
+
+Implement same as fontawesome https://useiconic.com/open/
+
+## Extra markup
+
+Creole (in plantuml does http://www.plantuml.com/creole.html) allowes you to specify color and underlines etc. it would be simple to add something similar
+
+<c:#fg.bg>word</c> inline with other coloring methods
+
+<w>wavy underline</w>
+<u>underline</u>
+
 ## javascript charting
 
 * http://www.sitepoint.com/15-best-javascript-charting-libraries/
@@ -182,9 +188,6 @@ image: |.2 .img300x200 | [upload] \n [delete]
 * http://www.omnipotent.net/jquery.sparkline/#s-about
 * http://metricsgraphicsjs.org/examples.htm
 
-* ### gantt
-
-* http://knsv.github.io/mermaid/index.html
 
 ### pay for
 

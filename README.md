@@ -1,12 +1,10 @@
-title: App::Basis::ConvertText2
+title: Using App::Basis::ConvertText2
 format: pdf
-date: 2015-05-07
+date: 2015-08-05
 author: Kevin Mulholland
 keywords: perl, readme
 template: coverpage
-version: 7
-
-%TOC%
+version: 8
 
 ## Introduction
 
@@ -131,9 +129,10 @@ This feature is disabled at the moment while bugs are fixed.
 
 ## Admonitions
 
-There are certain statements that you may want to draw attention to by taking them out of the content’s flow and labeling them with a priority. These are called admonitions. It’s rendered style is determined by the assigned label (i.e., value). We provide eight admonition style labels:
+There are certain statements that you may want to draw attention to by taking them out of the content’s flow and labeling them with a priority. These are called admonitions. It’s rendered style is determined by the assigned label (i.e., value). We provide nine admonition style labels:
 
 * NOTE
+* INFO
 * TIP
 * IMPORTANT
 * CAUTION
@@ -159,11 +158,11 @@ Normal Markup may be used in the paragraph.
 
 Admonitions are processed before the rest of the document, so you cannot put their contents into buffers and expect them to work correctly.
 
-Admonitions are a short cut to [Admonition Boxes](#admonition_boxes) which allow multiple paragraphs to be used.
+Admonitions are a short cut to [Admonition Boxes](#admonition-boxes) which allow multiple paragraphs to be used.
 
 ## Font Awesome
 
-Font Awesome provides many useful icons,see [Font Awesome Cheatsheet], however there is a lot of hassle to add them to your document, we of course offer a simple shortcut of the form
+Font Awesome provides many useful icons,see [Font Awesome Cheatsheet], however there is a lot of hassle to add them to your document; we of course offer a simple shortcut, with the form
 
     \:fa:font-name
 
@@ -199,7 +198,7 @@ The options are
     * :fa:graduation-cap:[2x] vs :fa:graduation-cap:[2x fliph]
 * fixed width [fw]
     * :fa:gamepad:[2x]. vs :fa:gamepad:[2x fw].
-    * note the bigger space before the '.' on the fixed width font (right) than the normal font (left)
+    * note the normal font (left) has a smaller space before the '.' than the fixed width font (right)
 * border [border]
     * :fa:gear:[ border]
 
@@ -210,6 +209,17 @@ Of course multiple options may be combined
     \:fa:trash:[2x 90 #red border]
 
 as :fa:trash:[2x 90 #red border]
+
+## Including other files
+
+It is possible to include content from other files, the methods match fenced code-block and their short cuts.
+
+    \{\{.include file="filename"}}
+
+    ~~~~{.include file='filename'}
+    ~~~~
+
+Either of these methods will bring the contents of the file inline to the current document at the location where they are used.
 
 ## Fenced code-blocks
 
@@ -229,7 +239,7 @@ code-blocks take the form
 </tr>
 </table>
 
-code-blocks **ALWAYS** start at the start of a line without any preceding whitespace.
+Code-blocks **ALWAYS** start at the start of a line without any preceding whitespace.
 The 'top' line of the code-block can wrap onto subsequent lines, this line is considered complete when the final '}' is seen. There should be only whitespace after the closing '}' symbol before the next line.
 
 We use this construct to create our own handlers to generate HTML or markdown.
@@ -280,6 +290,17 @@ sub process
 ~~~~
 </table>
 
+#### External content
+
+Its is possible to bring in content from another file by using the *file* attribute.
+
+    ~~~~{.table file="/tmp/data.csv"}
+    ~~~~
+
+This is also valid when using short cuts
+
+    \{\{.table file="/tmp/data.csv"}}
+
 ### Code-block short cuts
 
 Sometimes using a fenced code-block is overkill, especially if the command to be executed does not have any content. So there is a shortcut to this. Additionally this will allow you to use multiple commands on a single line, this may be important in some instances.
@@ -295,7 +316,7 @@ We wrap the command and its arguments with double braces.
     \{\{.tag argument1='fred' arg2=3}}
 </td></tr></table>
 
-Its is possible to add content that would normally be in the fenced code-block, if there is not too much information, by adding it to a *content* attribute.
+Its is possible to add content that would normally be within the fenced code-block, if there is not too much information, by adding it to a *content* attribute.
 
 We can see this in action below and in the barcode examples later on.
 
@@ -716,9 +737,12 @@ The required argument are
 The optional arguments are
 
 * color
-    + over ridge default color goldenrod
+    + over ride the default color 'goldenrod'
+    + can use #foregrounf.bgbackground format, ie #blue.yellow, or #ffffff.blue
 * size
     + the width of the button
+* reverse
+    - swap the colors around
 
 <table class='box' width='99%'>
 <tr><th width='100%'>Example</th></tr>
@@ -731,6 +755,17 @@ The optional arguments are
 Badges / shields work well as short blocks
 
     \{\{.shield subject='test run' status='pending' size='150'}}
+
+Swap the colors around
+
+    \{\{.shield subject='test run' status='pending' size='150' color='orange'
+     reverse=1}}
+
+Fully specify the colors
+
+    \{\{.shield subject='test run' status='failed' size='150'
+    color='#white.red' }}
+
 </td></tr>
 <tr><th>Output</th></tr>
 <tr><td>
@@ -739,6 +774,14 @@ Badges / shields work well as short blocks
 Badges / shields work well as short blocks
 
 {{.shield subject='test run' status='pending' size='150'}}
+
+Swap the colors around
+
+{{.shield subject='test run' status='pending' size='150' color='orange' reverse=1}}
+
+Fully specify the colors
+
+{{.shield subject='test run' status='failed' size='150' color='#white.red' }}
 
 </td></tr></table>
 
@@ -791,9 +834,10 @@ Show that something is important by putting it in a box with an icon
 
 This is the complete form of the [Admonitions](#admoniotions).
 
-There are eight types
+There are nine types
 
 * note
+* info
 * tip
 * important
 * caution
@@ -826,6 +870,12 @@ The optional arguments are
 </td>
 <td><br/>
 {{.note icon=1 content='sample text'}}</td>
+</tr>
+<td>
+    \{\{.info icon=1 content='sample text'}}
+</td>
+<td><br/>
+{{.info icon=1 content='sample text'}}</td>
 </tr>
 <td>
     \{\{.tip icon=1 content='sample text'}}

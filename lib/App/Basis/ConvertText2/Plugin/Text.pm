@@ -78,7 +78,7 @@ has handles => (
     default  => sub {
         [   qw{yamlasjson yamlasxml table version page
                 columns links tree
-                box note tip important caution warning danger todo aside
+                box note info tip important caution warning danger todo aside
                 quote
                 appendix
                 }
@@ -91,7 +91,7 @@ has handles => (
 
 my %as_box
     = map { $_ => 'box' }
-    qw (note tip important caution warning danger todo aside) ;
+    qw (note info tip important caution warning danger todo aside) ;
 
 # ----------------------------------------------------------------------------
 
@@ -299,7 +299,7 @@ sub _split_csv_data
             undef $row[$i] if ( $row[$i] eq 'undef' ) ;
 
             # dont' bother with any zero values either
-            undef $row[$i] if ( $row[$i] =~ /^0\.?0?$/ ) ;
+            # undef $row[$i] if ( $row[$i] =~ /^0\.?0?$/ ) ;
             push @{ $d[$j] }, $row[$i] ;
         }
         $j++ ;
@@ -375,7 +375,7 @@ sub table
         # decide if the top row has the legends
         my $tag = ( !$i && $params->{legends} ) ? 'th' : 'td' ;
         map {
-            $_ ||= '' ;
+            $_ ||= '&nbsp;' ;
             $out .= "<$tag>$_</$tag>" ;
         } @row ;
         $out .= "</tr>\n" ;
@@ -421,9 +421,10 @@ sub version
     $params->{class} ||= "" ;
 
     my $out
-        = $params->{title}
-        ? "<h2 class='toc_skip'>$params->{title}</h2>"
-        : "" ;
+        = "<div class='version'>" 
+        . ($params->{title}
+                ? "<h2 class='toc_skip'>$params->{title}</h2>"
+                : "") ;
     $out .= "<table " ;
     $out .= "class='$tag $params->{class}' " ;
     $out .= "id='$params->{id}' " if ( $params->{id} ) ;
@@ -467,7 +468,7 @@ sub version
         }
     }
 
-    $out .= "</table>\n" ;
+    $out .= "</table></div>\n" ;
     return $out ;
 }
 
@@ -778,7 +779,7 @@ Y2hgQIf/GbAAAKCTBYBUjWvCAAAAAElFTkSuQmCC
 
 # ----------------------------------------------------------------------------
 
-=item box | note | tip | important | caution | warning | danger | todo | aside
+=item box | note | info | tip | important | caution | warning | danger | todo | aside
 
 create a box around some text, if note is used and there is no title, then 'Note'
 will be added as a default
@@ -794,8 +795,9 @@ will be added as a default
 =cut
 
 my %icons = (
-    note      => ':fa:asterisk',
-    tip       => ':fa:sun-o:[ #FFA000]',
+    note      => ':fa:commenting-o:[#green]',
+    info      => ':fa:info-circle:[#01579B]',
+    tip       => ':fa:lightbulb-o:[ #FFA000]',
     important => ':fa:exclamation:[ #blue]',
     caution   => ':fa:minus-circle:[ #crimson]',
     warning   => ':fa:exclamation-triangle:[ #red]',

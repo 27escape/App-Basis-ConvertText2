@@ -88,7 +88,7 @@ sub badge
         $fg = to_hex_color($fg) ;
         $bg = to_hex_color($bg) ;
     } else {
-        my $bg = $params->{color} ;
+        $bg = $params->{color} ;
     }
 
     my $out ;
