@@ -795,7 +795,7 @@ will be added as a default
 =cut
 
 my %icons = (
-    note      => ':fa:commenting-o:[#green]',
+    note      => ':fa:bookmark:[#green]',
     info      => ':fa:info-circle:[#01579B]',
     tip       => ':fa:lightbulb-o:[ #FFA000]',
     important => ':fa:exclamation:[ #blue]',

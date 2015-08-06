@@ -84,7 +84,6 @@ use Module::Pluggable
     } ;
 use App::Basis ;
 use App::Basis::ConvertText2::Support ;
-use App::Basis::ConvertText2::UtfTransform ;
 use utf8::all ;
 
 # ----------------------------------------------------------------------------
@@ -94,6 +93,64 @@ use constant CONTENTS => '_CONTENTS_' ;
 use constant PANDOC   => 'pandoc' ;
 use constant PRINCE   => 'prince' ;
 use constant WKHTML   => 'wkhtmltopdf' ;
+
+# ----------------------------------------------------------------------------
+
+# http://www.fileformat.info/info/unicode/category/So/list.htm
+# not great matches in all cases but best that can be done when there is no support
+# for emoji's
+my %smilies = (
+    '<3'      => ":fa:heart",      # heart
+    ':heart:' => ":fa:heart",      # heart
+    ':)'      => ":fa:smile-o",    # smile
+    ':smile:' => ":fa:smile-o",    # smile
+                                   # ':D'           => "\x{1f601}",    # grin
+                                   # ':grin:'       => "\x{1f601}",    # grin
+                                   # '8-)'          => "\x{1f60e}",    # cool
+                                   # ':cool:'       => "\x{1f60e}",    # cool
+         # ':P'           => "\x{1f61b}",    # pull tounge
+         # ':tongue:'     => "\x{1f61b}",    # pull tounge
+         # ":'("          => "\x{1f62d}",    # cry
+         # ":cry:"        => "\x{1f62d}",    # cry
+    ':('      => ":fa:frown-o",    # sad
+    ':sad:'   => ":fa:frown-o",    # sad
+                                   # ";)"      => "\x{1f609}",    # wink
+                                   # ":wink:"  => "\x{1f609}",      # wink
+    ":sleep:" => ":fa:bed",        # sleep
+    ":zzz:"   => ":fa:bed",        # sleep
+                                   # ":halo:"       => "\x{1f607}",    # halo
+                                   # ":devil:"      => "\x{1f608}",    # devil
+                                   # ":horns:"      => "\x{1f608}",    # devil
+                                   # ":fear:"  => "\x{1f631}",      # fear
+    "(c)"     => "\x{a9}",         # copyright
+    ":c:"     => "\x{a9}",         # copyright
+    ":copyright:"  => "\x{a9}",                       # copyright
+    "(r)"          => "\x{ae}",                       # registered
+    ":r:"          => "\x{ae}",                       # registered
+    ":registered:" => "\x{ae}",                       # registered
+    "(tm)"         => "\x{99}",                       # trademark
+    ":tm:"         => "\x{99}",                       # trademark
+    ":trademark:"  => "\x{99}",                       # trademark
+    ":email:"      => ":fa:envelope-o",               # email
+    ":yes:"        => "\x{2714}",                     # tick / check
+    ":no:"         => "\x{2718}",                     # cross
+    ":beer:"       => ":fa:beer:[fliph]",             # beer
+    ":wine:"       => ":fa:glass",                    # wine
+    ":glass:"      => ":fa:glass",                    # wine
+    ":cake:"       => ":fa:birthday-cake",            # cake
+    ":star:"       => ":fa:star-o",                   # star
+    ":ok:"         => ":fa:thumbs-o-up:[fliph]",      # ok = thumbsup
+    ":thumbsup:"   => ":fa:thumbs-o-up:[fliph]",      # thumbsup
+    ":thumbsdown:" => ":fa:thumbs-o-down:[fliph]",    # thumbsdown
+    ":bad:"        => ":fa:thumbs-o-down:[fliph]",    # bad = thumbsdown
+         # ":ghost:"      => "\x{1f47b}",            # ghost
+         # ":skull:"      => "\x{1f480}",            # skull 1f480
+    ":time:"      => ":fa:clock-o",        # time, watch face
+    ":clock:"     => ":fa:clock-o",        # time, watch face
+    ":hourglass:" => ":fa:hourglass-o",    # hourglass
+) ;
+
+my $smiles = join( '|', map { quotemeta($_) } keys %smilies ) ;
 
 # ----------------------------------------------------------------------------
 # we want some CSS
@@ -196,6 +253,9 @@ my $default_css = <<END_CSS;
         padding-left: 0px;
         margin-left: -2em ;
     }
+
+    /* enable tooltips on 'title' attributes when using PrinceXML */
+    *[title] { prince-tooltip: attr(title) }
 
 END_CSS
 
@@ -1003,7 +1063,9 @@ sub _pandoc_html
             $html =~ s/<!DOCTYPE.*?<body>//gsm ;
             $html =~ s/^<\/body>\n<\/html>//gsm ;
             # remove any footnotes hr
-            $html =~s/(<section class="footnotes">)\n<hr \/>/<h2>Footnotes<\/h2>\n$1/gsm;
+            $html
+                =~ s/(<section class="footnotes">)\n<hr \/>/<h2>Footnotes<\/h2>\n$1/gsm
+                ;
         } else {
             my $err = $resp->{stderr} || "" ;
             chomp $err ;
@@ -1296,7 +1358,7 @@ sub parse
             ;
 
         # add in some smilies
-        $self->{output} = utf_smilies( $self->{output} ) ;
+        $self->{output} =~ s/(?<!\w)($smiles)(?!\w)/$smilies{$1}/g ;
 
         # do the fontawesome replacements
         $self->{output}

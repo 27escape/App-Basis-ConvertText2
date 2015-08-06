@@ -2593,29 +2593,29 @@ Last section,Add another, 2015-06-29, 2015-06-31 #grey
 </td>
 </tr></table>
 
-
 ## Smilies
 
-**THERE ARE ISSUES WITH THE SMILIES AT THE MOMENT!**
+Conversion of some smilies to font-awesome characters, others to general UTF8 characters that can be displayed in most browsers. **Not everything is working at the moment**
 
-Conversion of some smilies to unicode characters. This is tricky to show as however I change things the processor will make smilies of these   :) <3  ;) .
+This is tricky to show as however I change things the processor will make smilies of these   :) <3  ;) .
 
 Just try some of your favourite smilies and see what comes out!
 
-There are a range of smilies that are words pre/post fixed with a colon
+There are a range of smilies that are also available as words pre/post fixed with a colon like **:word:**
 
-| smilie      | symbol          |
+| smilie      | word            |
 |-------------+-----------------|
 | <3          | heart           |
 | :)          | smile           |
 | :D          | grin            |
 | 8-)         | cool            |
 | :P          | tongue          |
-| :(          | cry             |
+| :'(         | cry             |
 | :(          | sad             |
 | ;)          | wink            |
+| :fear:      | fear            |
 | :halo:      | halo            |
-| :devil:     | devil horns     |
+| :devil:     | devil, horns    |
 | (c)         | c, copyright    |
 | (r)         | r, registered   |
 | (tm)        | tm, trademark   |
@@ -2623,7 +2623,7 @@ There are a range of smilies that are words pre/post fixed with a colon
 | :yes:       | tick            |
 | :no:        | cross           |
 | :beer:      | beer            |
-| :wine:      | wine wine_glass |
+| :wine:      | wine, glass     |
 | :cake:      | cake            |
 | :star:      | star            |
 | :ok:        | ok, thumbsup    |
@@ -2631,8 +2631,8 @@ There are a range of smilies that are words pre/post fixed with a colon
 | :ghost:     | ghost           |
 | :skull:     | skull           |
 | :hourglass: | hourglass       |
-| :time:      | watch face      |
-| :sleep:     | sleep           |
+| :time:      | watch, clock    |
+| :sleep:     | sleep, zzz      |
 
 ----
 ## Using ct2 script to process files
