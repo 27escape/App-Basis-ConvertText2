@@ -1002,6 +1002,8 @@ sub _pandoc_html
             # this will have html headers and footers, we need to dump these
             $html =~ s/<!DOCTYPE.*?<body>//gsm ;
             $html =~ s/^<\/body>\n<\/html>//gsm ;
+            # remove any footnotes hr
+            $html =~s/(<section class="footnotes">)\n<hr \/>/<h2>Footnotes<\/h2>\n$1/gsm;
         } else {
             my $err = $resp->{stderr} || "" ;
             chomp $err ;
