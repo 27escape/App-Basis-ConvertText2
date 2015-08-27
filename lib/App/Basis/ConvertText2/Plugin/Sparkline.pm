@@ -83,7 +83,8 @@ sub process {
     my $self = shift;
     my ( $tag, $content, $params, $cachedir ) = @_;
     my $scheme = $params->{scheme};
-    my ( $b, $a, $l ) = ( $params->{bgcolor}, $params->{color}, $params->{line} );
+    my ( $b, $a, $l ) = ( to_hex_color( $params->{bgcolor}), 
+        to_hex_color($params->{color}), to_hex_color($params->{line}) );
 
     $params->{size} ||= "80x20";
     $params->{size} =~ /^\s*(\d+)\s*x\s*(\d+)\s*$/;

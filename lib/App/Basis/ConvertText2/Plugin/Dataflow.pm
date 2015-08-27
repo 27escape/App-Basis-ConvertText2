@@ -71,6 +71,7 @@ create a simple dataflow image
         class   - optional
         format  - either dfd (default) or seq
         title   - optional set the alt text
+        align   - option, set alignment of image
 
 =cut
 
@@ -78,6 +79,7 @@ sub process
 {
     my $self = shift ;
     my ( $tag, $content, $params, $cachedir ) = @_ ;
+    $params->{size} ||= "" ;
     my ( $x, $y ) = ( $params->{size} =~ /^\s*(\d+)\s*x\s*(\d+)\s*$/ ) ;
     $x = $params->{width}  if ( $params->{width} ) ;
     $y = $params->{height} if ( $params->{height} ) ;
@@ -140,9 +142,16 @@ sub process
         $s .= " width='$x'"  if ($x) ;
         $s .= " height='$y'" if ($y) ;
 
-        $out
-            = "<img src='$filename' class='$tag $params->{class}' alt='$params->{title}' $s />"
-            ;
+        if( $params->{align}) {
+            $params->{align} =~ s/middle/center/i ;
+            $params->{align} =~ s/centre/center/i ;
+            $out = "<div style='text-align:$params->{align};width:100%;'>" ;
+        }
+        $out .= "<img src='$filename' class='$tag $params->{class}' alt='$params->{title}' $s />" ;
+        if( $params->{align}) {
+            $out .= "</div>";
+        }
+
     }
     return $out ;
 

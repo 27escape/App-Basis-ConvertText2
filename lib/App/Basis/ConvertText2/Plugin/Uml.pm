@@ -65,6 +65,7 @@ create a simple uml image
         class   - optional
         title   - optional set the alt text
         png     - optional, force output to be png rather than svg
+        align   - option, set alignment of image
 
 =cut
 
@@ -125,9 +126,15 @@ sub uml
         $s .= " width='$x'"  if ($x) ;
         $s .= " height='$y'" if ($y) ;
 
-        $out
-            = "<img src='$filename' class='$tag $params->{class}' alt='$params->{title}' $s />"
-            ;
+        if( $params->{align}) {
+            $params->{align} =~ s/middle/center/i ;
+            $params->{align} =~ s/centre/center/i ;
+            $out = "<div style='text-align:$params->{align};width:100%;'>" ;
+        }
+        $out .= "<img src='$filename' class='$tag $params->{class}' alt='$params->{title}' $s />" ;
+        if( $params->{align}) {
+            $out .= "</div>";
+        }
     }
 
     return $out ;
@@ -172,20 +179,8 @@ sub umltree
 
     # make bullet points all the same
     $content =~ s/(^\s+)[\+-]/$1*/gsm ;
-    #     $content =~ s/^\*/+/gsm ;
-    # say "content1\n$content"     ;
-    #     $content =~ s/^    /+/gsm ;
-    #     $content =~ s/^(\+*)    /$1+/gsm ;
-    # say "content2\n$content"     ;
-    #     $content =~ s/\*//gsm ;
-
     $content =~ s/\*/+/gsm ;
-
-    # $content =~ s/^/ /gsm ;
-
     $content =~ s/    /+/gsm ;
-
-    # $content =~ s/^ \+/+/gsm ;
     $content =~ s/^\+/ ++/gsm ;
 
     my $out = "

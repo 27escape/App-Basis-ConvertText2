@@ -108,7 +108,7 @@ sub timeline_package
             add_css(
                 "#$element svg g:first-of-type rect { fill-opacity: 0; }") ;
         } else {
-            $bg_color = "backgroundColor: '$params->{background}'," ;
+            $bg_color = "backgroundColor: '" .to_hex_color( $params->{background}) . "'," ;
         }
     }
 
@@ -141,6 +141,7 @@ $dataTable.addColumn({ type: 'date', id: 'End' });
         if ( $line =~ s/(#(\w+)(\/\w+)?\s?)// ) {
             $color = $2 ;
         }
+        $color = to_hex_color( $color) ;
         $color = "#$color" if ( $color =~ /^[0-9a-f]+$/i ) ;
 
         push @colors, "'$color'" ;
@@ -316,7 +317,7 @@ $dataTable.addColumn('number', 'Weight');
         my @colors ;
         foreach my $c ( split( /\s|,/, $params->{colors} ) ) {
             next if ( !$c ) ;
-            push @colors, $c ;
+            push @colors, to_hex_color($c) ;
         }
         $colors
             = "var colors = [ "
