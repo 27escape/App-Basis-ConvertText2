@@ -83,6 +83,7 @@ has handles => (
                 appendix
                 counter
                 comment
+                indent
                 }
         ] ;
     }
@@ -1012,6 +1013,24 @@ sub comment
     my ( $tag, $content, $params, $cachedir ) = @_ ;
 
     return "" ;
+}
+
+# ----------------------------------------------------------------------------
+
+=item indent
+
+indent each line of the content by 4 spaces
+ 
+=cut
+
+sub indent
+{
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
+
+    $content =~ s/^/    /gsm;
+
+    return $content ;
 }
 
 # ----------------------------------------------------------------------------

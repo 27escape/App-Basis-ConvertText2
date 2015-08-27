@@ -1,5 +1,7 @@
 0.6
-    * table plugin can now align left, middle, right
+    * Text.pm
+        * new indent plugin, indents contents to 4 spaces
+        * table plugin can now align left, middle, right
     * added Google Material Font icon support
     * dataflow and uml diagrams can now be align-ed
     * comment, appendix and counter added to Text.pm
