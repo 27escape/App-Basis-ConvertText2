@@ -32,7 +32,7 @@ There are plugins to handle
 * sparklines
 * charts
 * barcodes and qrcodes
-* and many others
+* and many, many others
 
 As a perl module you can obtain it from https://metacpan.org/pod/App::Basis::ConvertText2
 or install
@@ -141,11 +141,11 @@ There are certain statements that you may want to draw attention to by taking th
 * TODO
 * ASIDE
 
-When you want to call attention to a single paragraph, start the first line of the paragraph with the label you want to use. The label must be uppercase and followed by a colon (:).
+When you want to call attention to a single paragraph, start the first line of the paragraph with the label you want to use. The label must be uppercase and followed by a colon ':'
 
     WARNING: Something could go wrong if you do not follow the rules
 
-* The label must be uppercase and immediately followed by a colon (:).
+* The label must be uppercase and immediately followed by a colon ':'
 * Separate the first line of the paragraph from the label by a single space.
 
 And here is the generated Admonition
@@ -210,6 +210,60 @@ Of course multiple options may be combined
 
 as :fa:trash:[2x 90 #red border]
 
+## Google Material Font
+
+Font Awesome provides many useful icons,see [Google Material Font Cheatsheet], however there is a lot of hassle to add them to your document; we of course offer a simple shortcut, with the form
+
+    \:mi:font-name
+
+E.g.
+
+    \:mi:add-shopping-cart
+
+Will display a :mi:add-shopping-cart icon.
+
+NOTE: Google Material fonts do not usually have a '-' in them, we use this to allow us to know where the font name ends. It is removed.
+
+It is possible to scale the images, give them colors and apply CSS classes to them by adding this information in square brackets
+
+E.g.
+
+    \:mi:alarm:[2x]
+
+The options are
+
+* size [lg] [2x], [3x], [4x], [5x]
+    * :mi:alarm:[lg] :mi:alarm:[2x], :mi:alarm:[3x], :mi:alarm:[4x], :mi:alarm:[5x]
+* rotate [90], [180], [270]
+    * :mi:book:[2x 90], :mi:book:[2x 180], :mi:book:[2x 270 ]
+* flip vertical [flipv]
+    * :mi:build:[2x] vs :mi:build:[2x flipv]
+* flip horizontal [fliph]
+    * :mi:add-shopping-cart:[2x] vs :mi:add-shopping-cart:[2x fliph]
+* foreground color [#orangea700]
+    * :mi:book:[2x #orangea700]
+* foreground and background color [#yellow.black]
+    * :mi:book:[2x #yellow.black]
+
+Any thing remaining in the square brackets after handling the above options will be considered as a class to be applied to the icon.
+
+Of course multiple options may be combined
+
+    \:mi:delete:[2x 90 #red border-inset-grey]
+
+as :mi:delete:[2x 90 #red border-inset-grey]
+
+~~~~{.tip icon=1 title='Google Material Colors'}
+
+All of the google material colors are available to be used both in css and style sections.
+
+Orange with an accent of A700, is named as orangea700. Light blue 500 is lightblue500.
+
+Anywhere in your document/css that uses color= or color: then these replacements can be made.
+
+For the complete list of colors see [Google Colors]
+~~~~
+
 ## Including other files
 
 It is possible to include content from other files, the methods match fenced code-block and their short cuts.
@@ -220,6 +274,8 @@ It is possible to include content from other files, the methods match fenced cod
     ~~~~
 
 Either of these methods will bring the contents of the file inline to the current document at the location where they are used.
+
+**import** can also be used as a synonym for include.
 
 ## Fenced code-blocks
 
@@ -480,6 +536,8 @@ Create a simple table using CSV style data
     * if true first line csv as headings for table, these correspond to the data sets
 * separator
     * what should be used to separate cells, defaults to ','
+* align
+    - align the table, left, middle/center (default), right
 
 ~~~~{.buffer to_buffer=table_data}
 Date,Item,Cost
@@ -537,6 +595,8 @@ My Github   | https://github.com/27escape/App-Basis-ConvertText2/tree/master/scr
 Brewer      | http://www.graphviz.org/content/color-names#brewer
 README PDF  | https://github.com/27escape/App-Basis-ConvertText2/blob/master/docs/README.pdf
 Font Awesome Cheatsheet | http://fontawesome.io/cheatsheet/
+Google Material Font Cheatsheet | https://www.google.com/design/icons/
+Google Colors | http://www.google.com/design/spec/style/color.html#color-color-palette
 ~~~~
 
 <table class='box' width='99%'>
@@ -669,6 +729,93 @@ spelling.
 <tr><td>
 ~~~~{.columns from_buffer=columns count=3 ruler=yes width='95%'}
 ~~~~
+</td>
+</tr>
+</table>
+
+### Appendix
+
+This should generally be used as a short block as an easy way to increment appendix values in headings.
+
+Appendicies will be created as 'Appendix A', 'Appendix B' etc
+
+<table class='box' width='99%'>
+<tr><th width='50%'>Example</th><th>Output</th></tr>
+<tr>
+<td>
+
+    * \{\{.appendix}}
+    * \{\{.appendix}}
+    * \{\{.appendix}}
+
+</td>
+<td>
+* {{.appendix}}
+* {{.appendix}}
+* {{.appendix}}
+</td>
+</tr>
+</table>
+
+### Counter
+
+This should generally be used as a short block as an easy way to increment counter values, e.g. in headings
+
+The optional arguments are
+
+* name
+    - the name of the counter to increment, otherwise 'default' will be used
+* start
+    - start the counter from this number, defaults to '1'
+
+<table class='box' width='99%'>
+<tr><th width='50%'>Example</th><th>Output</th></tr>
+<tr>
+<td>
+
+    * \{\{.counter name=fred}}
+    * \{\{.counter name=fred}}
+    * default \{\{.counter}}
+    * \{\{.counter name=martha start=100}}
+    * \{\{.counter name=martha}}
+
+</td>
+<td>
+* {{.counter name=fred}}
+* {{.counter name=fred}}
+* default {{.counter}}
+* {{.counter name=martha start=100}}
+* {{.counter name=martha}}
+</td>
+</tr>
+</table>
+
+### Comment
+
+If its useful to comment your software, likely you will also find it useful to comment your documents. Having a comment construct allows sections to be removed/hidden too.
+
+<table class='box' width='99%'>
+<tr><th width='50%'>Example</th><th>Output</th></tr>
+<tr>
+<td>
+
+    Normal flow of text
+
+    ~~~~\{\{.comment}
+    This comment is not seen in the generated document
+    ~~~~
+
+    text continues
+
+</td>
+<td>
+Normal flow of text
+
+~~~~{{.comment}
+This comment is not seen in the generated document
+~~~~
+
+text continues
 </td>
 </tr>
 </table>
@@ -860,71 +1007,109 @@ The optional arguments are
     * style the box if not doing anything else
 * icon
     * give the admonition an icon
-    * '1' uses the default, otherwise use a [Font Awesome](#font-awesome) named icon
+    * '1' uses the default, otherwise use a [Font Awesome](#font-awesome) or [Google Material Font](#google-material-font) named icon, without :fa or :ma prefix, default will be for fontawesome.
 
 <table class='box' width='99%'>
 <thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
 <tr>
 <td>
-    \{\{.note icon=1 content='sample text'}}
+    \{\{.note icon=1
+      content='sample text'
+    }}
 </td>
 <td><br/>
 {{.note icon=1 content='sample text'}}</td>
 </tr>
+<tr>
 <td>
-    \{\{.info icon=1 content='sample text'}}
+    \{\{.info icon=1
+      content='sample text'
+    }}
 </td>
 <td><br/>
 {{.info icon=1 content='sample text'}}</td>
 </tr>
+<tr>
 <td>
-    \{\{.tip icon=1 content='sample text'}}
+    \{\{.tip icon=1
+      content='sample text'
+    }}
 </td>
 <td><br/>
 {{.tip icon=1 content='sample text'}}</td>
 </tr>
+<tr>
 <td>
-    \{\{.important icon=1 content='sample text'}}
+    \{\{.important icon=1
+      content='sample text'
+    }}
 </td>
 <td><br/>
 {{.important icon=1 content='sample text'}}</td>
 </tr>
+<tr>
 <td>
-    \{\{.caution icon=1 content='sample text'}}
+    \{\{.caution icon=1
+      content='sample text'
+    }}
 </td>
 <td><br/>
 {{.caution icon=1 content='sample text'}}</td>
 </tr>
+<tr>
 <td>
-    \{\{.warning icon=1 content='sample text'}}
+    \{\{.warning icon=1
+      content='sample text'
+    }}
 </td>
 <td><br/>
 {{.warning icon=1 content='sample text'}}</td>
 </tr>
+<tr>
 <td>
-    \{\{.danger icon=1 content='sample text'
+    \{\{.danger icon=1
+      content='sample text'
       style='background-color:#FF80AB;
-      font-size:1.5em;' }}
+      font-size:1.5em;'
+    }}
 </td>
 <td><br/>
 {{.danger icon=1 content='sample text' style='background-color:#FF80AB;font-size:1.5em;'}}</td>
 </tr>
+<tr>
 <td>
-    \{\{.todo icon=1 content='sample text'
-      width='50%' }}
+    \{\{.todo icon=1
+      content='sample text'
+      width='70%'
+    }}
 </td>
 <td><br/>
-{{.todo icon=1 content='sample text' width='50%'}}</td>
+{{.todo icon=1 content='sample text' width='70%'}}</td>
 </tr>
+<tr>
 <td>
-    \{\{.aside icon=1 content='sample text'
-        title='Try this'
+    \{\{.aside icon=1
+      content='sample text'
+      title='Try this'
     }}
 </td>
 <td><br/>
 {{.aside icon=1 content='sample text' title='Try this'}}</td>
+</tr>
 
-</tr></table>
+<tr>
+<td>
+    \{\{.note
+      icon=\:mi:settings-bluetooth
+      content='Google material icon'
+      title='Bluetooth Settings'
+    }}
+</td>
+<td><br/>
+{{.note icon=:mi:settings-bluetooth content='Google material icon' title='Bluetooth Settings' }}
+</td>
+</tr>
+</table>
 
 ### Glossary
 
@@ -1247,6 +1432,8 @@ The optional arguments are
     - just constrain the height
 + class
     - add this class to the image
+* align
+    - align the generated image, left, center, right
 
 ~~~~{.buffer to_buffer=uml}
 ' this is a comment on one line
@@ -2257,6 +2444,8 @@ The optional arguments are
     - add this class to the image
 * format
     - either dfd (default) or seq
+* align
+    - align the generated image, left, center, right
 
 The example images are a bit compressed to fit in the table, normally they look a lot better than this!
 
@@ -2603,36 +2792,39 @@ Just try some of your favourite smilies and see what comes out!
 
 There are a range of smilies that are also available as words pre/post fixed with a colon like **:word:**
 
-| smilie      | word            |
-|-------------+-----------------|
-| <3          | heart           |
-| :)          | smile           |
-| :D          | grin            |
-| 8-)         | cool            |
-| :P          | tongue          |
-| :'(         | cry             |
-| :(          | sad             |
-| ;)          | wink            |
-| :fear:      | fear            |
-| :halo:      | halo            |
-| :devil:     | devil, horns    |
-| (c)         | c, copyright    |
-| (r)         | r, registered   |
-| (tm)        | tm, trademark   |
-| :email:     | email           |
-| :yes:       | tick            |
-| :no:        | cross           |
-| :beer:      | beer            |
-| :wine:      | wine, glass     |
-| :cake:      | cake            |
-| :star:      | star            |
-| :ok:        | ok, thumbsup    |
-| :bad:       | bad, thumbsdown |
-| :ghost:     | ghost           |
-| :skull:     | skull           |
-| :hourglass: | hourglass       |
-| :time:      | watch, clock    |
-| :sleep:     | sleep, zzz      |
+~~~~{.table class=box width=50% zebra=1 legends=1 separator='\|'}
+ smilie      | word
+ <3          | \:heart\:
+ :)          | \:smile\:
+ :D          | \:grin\:
+ 8-)         | \:cool\:
+ :P          | \:tongue\:
+ :'(         | \:cry\:
+ :(          | \:sad\:
+ ;)          | \:wink\:
+ :fear:      | \:fear\:
+ :halo:      | \:halo\:
+ :devil:     | \:devil\:, \:horns\:
+ (c)         | \:c\:, \:copyright\:
+ (r)         | \:r\:, \:registered\:
+ (tm)        | \:tm\:, \:trademark\:
+ :email:     | \:email\:
+ :yes:       | \:tick\:
+ :no:        | \:cross\:
+ :beer:      | \:beer\:
+ :wine:      | \:wine\:, \:glass\:
+ :cake:      | \:cake\:
+ :star:      | \:star\:
+ :ok:        | \:ok\:, \:thumbsup\:
+ :bad:       | \:bad\:, \:thumbsdown\:
+ :ghost:     | \:ghost\:
+ :skull:     | \:skull\:
+ :hourglass: | \:hourglass\:
+ :time:      | \:watch\:, \:clock\:
+ :sleep:     | \:sleep\:
+ :zzz:       | \:zzz\:, \:snooze\:
+~~~~
+
 
 ----
 ## Using ct2 script to process files

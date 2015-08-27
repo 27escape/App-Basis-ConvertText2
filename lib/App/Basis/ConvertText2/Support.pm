@@ -26,6 +26,7 @@ use Cwd ;
 use App::Basis ;
 use Exporter ;
 use utf8 ;
+use WebColors ;
 
 use vars qw( @EXPORT @ISA) ;
 
@@ -172,8 +173,8 @@ sub create_img_src
 # simple getters/setters for css/javscript data
 # keep things private
 {
-    my $css  ;
-    my $js  ;
+    my $css ;
+    my $js ;
 
 =item get_css
 
@@ -202,7 +203,7 @@ B<Params>
     {
         my ($in) = @_ ;
 
-        $css .= "$in\n" if( $in);
+        $css .= "$in\n" if ($in) ;
     }
 
 =item get_javascript
@@ -385,9 +386,14 @@ sub to_hex_color
 {
     my $c = shift ;
 
-    if ( $c) {
-        $c =~ s/^([0-9a-f])([0-9a-f])([0-9a-f])$/#$1$1$2$2$3$3/i ;
-        $c =~ s/^([0-9a-f]{6})$/#$1/i  ;
+    if ($c) {
+        if ( $c =~ /^\w+[50]0$/ ) {
+            my $c2 = colorname_to_hex($c) ;
+            $c = "#$c2" if ($c2) ;
+        } else {
+            $c =~ s/^([0-9a-f])([0-9a-f])([0-9a-f])$/#$1$1$2$2$3$3/i ;
+            $c =~ s/^([0-9a-f]{6})$/#$1/i ;
+        }
     }
     return $c ;
 }

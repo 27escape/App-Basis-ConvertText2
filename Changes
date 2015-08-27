@@ -1,4 +1,9 @@
 0.6
+    * table plugin can now align left, middle, right
+    * added Google Material Font icon support
+    * dataflow and uml diagrams can now be align-ed
+    * comment, appendix and counter added to Text.pm
+    * support for google material colors (via WebColors) added
     * added import option to include other files
     * added Font Awesome support and Admonitions
     * new versions of box for admonitions

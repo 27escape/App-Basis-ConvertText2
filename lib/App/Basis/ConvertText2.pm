@@ -117,7 +117,8 @@ my %smilies = (
                                    # ";)"      => "\x{1f609}",    # wink
                                    # ":wink:"  => "\x{1f609}",      # wink
     ":sleep:" => ":fa:bed",        # sleep
-    ":zzz:"   => ":fa:bed",        # sleep
+    ":zzz:"   => ":ma:snooze",     # snooze
+    ":snooze:" => ":ma:snooze",     # snooze
                                    # ":halo:"       => "\x{1f607}",    # halo
                                    # ":devil:"      => "\x{1f608}",    # devil
                                    # ":horns:"      => "\x{1f608}",    # devil
@@ -256,6 +257,61 @@ my $default_css = <<END_CSS;
 
     /* enable tooltips on 'title' attributes when using PrinceXML */
     *[title] { prince-tooltip: attr(title) }
+
+    .rotate-90 {
+      filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=1);
+      -webkit-transform: rotate(90deg);
+      -ms-transform: rotate(90deg);
+      transform: rotate(90deg);
+    }
+    .rotate-180 {
+      filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=2);
+      -webkit-transform: rotate(180deg);
+      -ms-transform: rotate(180deg);
+      transform: rotate(180deg);
+    }
+    .rotate-270 {
+      filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=3);
+      -webkit-transform: rotate(270deg);
+      -ms-transform: rotate(270deg);
+      transform: rotate(270deg);
+    }
+    .flip-horizontal {
+      filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=0, mirror=1);
+      -webkit-transform: scale(-1, 1);
+      -ms-transform: scale(-1, 1);
+      transform: scale(-1, 1);
+    }
+    .flip-vertical {
+      filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=2, mirror=1);
+      -webkit-transform: scale(1, -1);
+      -ms-transform: scale(1, -1);
+      transform: scale(1, -1);
+    }
+
+    .border-grey {
+        border-style: solid;
+        border-width: 1px;
+        border-color: grey300;
+        box-shadow:inset 0px 0px 85px rgba(0,0,0,.5);
+        -webkit-box-shadow:inset 0px 0px 85px rgba(0,0,0,.5);
+        -moz-box-shadow:inset 0px 0px 85px rgba(0,0,0,.5);        
+        box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);        
+    }
+
+    .border-inset-grey {
+        border: 1px solid #666666;
+        -webkit-box-shadow: inset 3px 3px 3px #AAAAAA;
+        border-radius: 3px;
+    }
+
+    .border-shadow-grey {
+        -moz-box-shadow: 3px 3px 4px #444;
+        -webkit-box-shadow: 3px 3px 4px #444;
+        box-shadow: 3px 3px 4px #444;
+        -ms-filter: "progid:DXImageTransform.Microsoft.Shadow(Strength=4, Direction=135, Color='#444444')";
+        filter: progid:DXImageTransform.Microsoft.Shadow(Strength=4, Direction=135, Color='#444444');    
+    }
 
 END_CSS
 
@@ -495,6 +551,7 @@ sub clean_cache
 
 # ----------------------------------------------------------------------------
 # _extract_args
+# get key=value data from a passed string
 sub _extract_args
 {
     my $buf = shift ;
@@ -589,7 +646,7 @@ sub _call_function
                 $content = $params->{content} ;
             }
             if ( $params->{file} ) {
-                $content = _include_file( $params->{file} ) ;
+                $content = _include_file("file='$params->{file}'") ;
             }
 
             my $to = $params->{to} || $params->{to_buffer} ;
@@ -1212,7 +1269,7 @@ sub _rewrite_admonitions
 }
 
 # ----------------------------------------------------------------------------
-# convert things to fontawesome icons, can do most things except staking fonts
+# convert things to fontawesome icons, can do most things except stacking fonts
 sub _fontawesome
 {
     my ( $demo, $icon, $class ) = @_ ;
@@ -1242,7 +1299,7 @@ sub _fontawesome
             $class = "" ;
         }
         $out = "<i class='fa fa-$icon $class'"
-            . ( $style ? "style='$style'" : "" ) ;
+            . ( $style ? " style='$style'" : "" ) ;
         $out .= "></i>" ;
     } else {
         if ( $icon eq '\\' ) {
@@ -1258,19 +1315,147 @@ sub _fontawesome
 }
 
 # ----------------------------------------------------------------------------
+# convert things to google material icons
+sub _fontmaterial
+{
+    my ( $demo, $icon, $class ) = @_ ;
+    my $out ;
+
+    $icon =~ s/^mi-// if ($icon) ;
+    if ( !$demo ) {
+        my $style = "" ;
+        my @colors ;
+        if ($class) {
+            $class =~ s/^\[|\]$//g ;
+            # $class =~ s/\b(fw|lg|border)\b/mi-$1/ ;
+            if( $class =~ /\blg\b/) {
+                $style .= "font-size:1.75em;" ;
+                $class =~ s/\blg\b// ;
+            } elsif( $class =~ /\b([2345])x\b/) {
+                $style .= "font-size:$1" . "em;" ;
+                $class =~ s/\b[2345]x\b// ;
+            }
+            $class =~ s/\b(90|180|270)\b/rotate-$1/ ;
+            $class =~ s/\bflipv\b/flip-vertical/ ;
+            $class =~ s/\bfliph\b/flip-horizontal/ ;
+
+            if ( $class =~ s/#((\w+)?\.?(\w+)?)// ) {
+                my ( $fg, $bg ) = ( $2, $3 ) ;
+                $style .= "color:" . to_hex_color($fg) . ";" if ($fg) ;
+                $style .= "background-color:" . to_hex_color($bg) . ";"
+                    if ($bg) ;
+            }
+        # things changed and anything left in class must be a real class thing
+            $class =~ s/^\s+|\s+$//g ;
+        } else {
+            $class = "" ;
+        }
+        # names are actually underscore spaced
+        $icon =~ s/[-| ]/_/g;
+        $out = "<i class='material-icons $class'"
+            . ( $style ? " style='$style'" : "" ) ;
+        $out .= ">$icon</i>" ;
+    } else {
+        if ( $icon eq '\\' ) {
+            ( $icon, $class ) = @_[ 2 .. 3 ] ;
+            $icon =~ s/^mi-// if ($icon) ;
+        }
+        $class =~ s/^\[|\]$//g if ($class) ;
+        $out = ":mi:$icon" ;
+        $out .= ":[$class]" if ($class) ;
+    }
+
+    return $out ;
+}
+
+# ----------------------------------------------------------------------------
+# handle all font replacers
+sub _font_replace {
+    my ( $demo, $type, $icon, $class ) = @_ ;
+
+    if( $type eq 'mi') {
+        return _fontmaterial(  $demo, $icon, $class ) ;
+    } elsif( $type eq 'fa') {
+        return _fontawesome(  $demo, $icon, $class ) ;
+    }
+
+    # its not a font we support yet, so rebuild the line
+    my $out = "" ;
+    $out .= $demo if( $demo) ;
+    $out .= ":$type:$icon" ;
+    $out .= ":[$class]" if( $class) ;
+
+    return $out;
+}
+
+# ----------------------------------------------------------------------------
+# do some private stuff
+{
+    my $_yaml_counter = 0 ;
+
+    sub _reset_yaml_counter
+    {
+        $_yaml_counter = 0 ;
+    }
+
+   # remove the first yaml from the first 20 lines, pass anything else through
+    sub _remove_yaml
+    {
+        my ( $line, $count ) = @_ ;
+
+        $count ||= 20 ;
+        if ( ++$_yaml_counter < $count ) {
+            $line =~ s/^\w+:.*// ;
+        }
+
+        return $line ;
+    }
+}
+
+# ----------------------------------------------------------------------------
 # grab external files
+# param is filename followed by any arguments
 
 sub _include_file
 {
-    my ($file) = @_ ;
+    my ($attributes) = @_ ;
     my $out = "" ;
 
-    $file =~ s/^["']|["']$//g ;
-    $file = fix_filename($file) ;
-    if ( -f $file ) {
-        $out = path($file)->slurp_utf8() ;
+    my $params = _extract_args($attributes) ;
+
+    $params->{file} = fix_filename( $params->{file} ) ;
+    if ( -f $params->{file} ) {
+        $out = path( $params->{file} )->slurp_utf8() ;
     }
+    if ( $params->{markdown} ) {
+        # if we are importing markdown we may want to fix things up a bit
+
+        # first off remove any yaml head matter from first 20 lines
+        $out =~ s/^(.*)?$/_remove_yaml($1,20)/egm ;
+
+        # then any version table
+        $out =~ s/^~~~~\{.version.*?^~~~~//gsm ;
+
+        # expand any headings if required
+        if ( $params->{headings} ) {
+            my $str = "#" x int( $params->{headings} ) ;
+            $out =~ s/^#/#$str/gsm ;
+        }
+    }
+
     return $out ;
+}
+
+sub _replace_material
+{
+    my ( $operator, $value ) = @_ ;
+    my $quote ="";
+    if( $value =~ /^(["'"])/) {
+        $quote = $1 ;
+        $value =~ s/^["'"]//;
+    }
+
+    return "color" . $operator . $quote . to_hex_color($value) ;
 }
 
 # ----------------------------------------------------------------------------
@@ -1296,6 +1481,9 @@ sub parse
             . ' href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">'
     ) ;
 
+    add_javascript( '<link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">') ;
+
     # add in our basic CSS
     add_css($default_css) ;
 
@@ -1317,9 +1505,10 @@ sub parse
             =~ s/^(NOTE|INFO|TIP|IMPORTANT|CAUTION|WARNING|DANGER|TODO|ASIDE):(.*?)\n\n/_rewrite_admonitions( $1, $2)/egsm
             ;
 
-        $data =~ s/\{\{.include file=(.*?)\}\}/_include_file($1)/esgm ;
+        $data =~ s/\{\{.(include|import)\s+(.*?)\}\}/_include_file($2)/iesgm ;
         $data
-            =~ s/^~~~~\{.include file=(.*?)\}.*?~~~~/_include_file($1)/esgm ;
+            =~ s/^~~~~\{.(include|import)\s+(.*?)\}.*?~~~~/_include_file($2)/iesgm
+            ;
 
         my @lines = split( /\n/, $data ) ;
 
@@ -1360,10 +1549,10 @@ sub parse
         # add in some smilies
         $self->{output} =~ s/(?<!\w)($smiles)(?!\w)/$smilies{$1}/g ;
 
-        # do the fontawesome replacements
+        # do the font replacements, awesome or material
+        # :fa:icon,  :mi:icon,  
         $self->{output}
-            =~ s/(\\)?:fa:([\w|-]+):?(\[(.*?)\])?/_fontawesome( $1, $2,  $3)/egsi
-            ;
+            =~ s/(\\)?:(\w{2}):([\w|-]+):?(\[(.*?)\])?/_font_replace( $1, $2, $3, $4)/egsi ;
 
         # we have created something so we can cache it, if use_cache is off
         # then this will not happen lower down
@@ -1454,6 +1643,10 @@ sub parse
 
 # replace any escaped \{ braces when needing to explain short code blocks in examples
         $html =~ s/\\\{/{/gsm ;
+
+# we should have everything here, so lets do any final replacements for material colors
+        $html =~ s/color(=|:)\s?(["']?\w+[50]0\b)/_replace_material( $1,$2)/egsm ;
+
 
         $self->{output} = $html ;
         $self->_store_cache( $cachefile, $html, 1 ) ;

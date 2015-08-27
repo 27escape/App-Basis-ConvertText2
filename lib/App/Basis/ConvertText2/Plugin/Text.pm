@@ -81,6 +81,8 @@ has handles => (
                 box note info tip important caution warning danger todo aside
                 quote
                 appendix
+                counter
+                comment
                 }
         ] ;
     }
@@ -201,7 +203,7 @@ sub _make_numbers
             ${$item}[$i] = _make_numbers( ${$item}[$i] ) ;
         }
     } elsif ( ref($item) eq '' || ref($item) eq 'SCALAR' ) {
-        if ( $item =~ /^\d+(\.\d+)?$/ ) {
+        if ( $item && $item =~ /^\d+(\.\d+)?$/ ) {
             # force numbers to be numbers
             $item += 0 ;
         }
@@ -325,6 +327,9 @@ create a basic html table
         legends - flag to indicate that the top row is the legends
         separator - characters to be used to separate the fields
         zebra   - apply odd/even classes to table rows, default 0 OFF
+        align   - option, set alignment of table
+        sort - todo sort on a column number, "1", "1r"
+        columns - columns to be included in the output "1,2,3,4"
 
 =cut
 
@@ -343,11 +348,26 @@ sub table
     # open the csv file, read contents, calc max, add into data array
     my @data = _split_csv_data( $content, $params->{separator} ) ;
 
+    # default align center
+    my $align = "margin: 0 auto;" ;
+
+    if ( $params->{align} ) {
+        if ( $params->{align} =~ /left/i ) {
+            $align = "margin-left: 0 ; margin-right: auto;" ;
+        } elsif ( $params->{align} =~ /right/i ) {
+            $align = "margin-left: auto; margin-right 0;" ;
+        }
+    }
+
     my $out = "<table " ;
     $out .= "class='$params->{class}' " ;
     $out .= "id='$params->{id}' " if ( $params->{id} ) ;
     $out .= "width='$params->{width}' " if ( $params->{width} ) ;
-    $out .= "style='$params->{style}' " if ( $params->{style} ) ;
+    if ( $params->{style} ) {
+        $out .= "style='$align$params->{style}' " ;
+    } else {
+        $out .= "style='$align' " ;
+    }
     $out .= ">\n" ;
 
     for ( my $i = 0; $i < scalar(@data); $i++ ) {
@@ -382,6 +402,7 @@ sub table
     }
 
     $out .= "</table>\n" ;
+
     return $out ;
 }
 
@@ -420,11 +441,12 @@ sub version
     $content =~ s/\n$//gsm ;
     $params->{class} ||= "" ;
 
-    my $out
-        = "<div class='version'>" 
-        . ($params->{title}
-                ? "<h2 class='toc_skip'>$params->{title}</h2>"
-                : "") ;
+    my $out = "<div class='version'>"
+        . (
+        $params->{title}
+        ? "<h2 class='toc_skip'>$params->{title}</h2>"
+        : ""
+        ) ;
     $out .= "<table " ;
     $out .= "class='$tag $params->{class}' " ;
     $out .= "id='$params->{id}' " if ( $params->{id} ) ;
@@ -704,6 +726,8 @@ sub tree
     $params->{class} ||= "" ;
     $params->{color} ||= 'black' ;
 
+    # incase material colors used
+    $params->{color} = to_hex_color( $params->{color} ) ;
     # we create a sig based on the parameters and do not include the content
     # as we can reuse the same layout for other elements
     my $sig = create_sig( '', $params ) ;
@@ -790,7 +814,8 @@ will be added as a default
         width   - width of the box (default 98%)
         title   - optional title for the section
         style   - style the box if not doing anything else
-        icon    - add a fontawesome icon to match the tag
+        icon    - add a fontawesome or google material icon to match the tag
+                - default is fontawesome name if not specific trash -> :fa:trash
 
 =cut
 
@@ -814,7 +839,7 @@ sub box
     $params->{width} ||= '100%' ;
     $params->{class} ||= "" ;
     $params->{style} ||= "" ;
-     # notes may get a default title if its missing
+    # notes may get a default title if its missing
     $params->{title} = ucfirst($tag)
         if ( !defined $params->{title} && $tag ne 'box' ) ;
     my $out ;
@@ -831,7 +856,8 @@ sub box
             ? ( $icons{$tag} || "" )
             : $params->{icon} ;
         # allow icon flame hourglass etc, we will fix it up right
-        if ( $icon !~ /^:fa:/ ) {
+        # the default is fontaweome if there is no specific
+        if ( $icon !~ /^:[fm]a:/ ) {
             $icon = ":fa:$icon" ;
         }
         if ( $icon !~ /:\[.*?\]/ ) {
@@ -846,13 +872,15 @@ sub box
             $icon =~ s/\]/ fw]/ ;
         }
 
-        $out
-            .= "<div class='$params->{class}' style='$params->{style}' " ;
+        $out .= "<div class='$params->{class}' style='$params->{style}' " ;
         $out .= "id='$params->{id}' " if ( $params->{id} ) ;
         $out .= ">" ;
-        $out .= "<table width='100%' class='$params->{class}'><tr>"
-            . "<td class='$tag" . "_left'>$icon</td>\n"
-            . "<td class='$tag" . "_right'>" ;
+        $out
+            .= "<table width='100%' class='$params->{class}'><tr>"
+            . "<td class='$tag"
+            . "_left'>$icon</td>\n"
+            . "<td class='$tag"
+            . "_right'>" ;
     } else {
         $out .= "<div style='$params->{style}' " ;
         $out .= "class='$params->{class}' " if ( !$icon ) ;
@@ -864,10 +892,11 @@ sub box
 
     # convert any content to HTML from Markdown
     $out .= markdown( $content, { markdown => 1 } ) ;
-    if( $icon) {
+    if ($icon) {
         $out .= "</td></tr></table></div>\n" if ($icon) ;
     } else {
-        $out .= "</div>\n" ;}
+        $out .= "</div>\n" ;
+    }
 
     return $out ;
 }
@@ -941,6 +970,51 @@ sub appendix
 }
 
 # ----------------------------------------------------------------------------
+
+=item counter
+
+return the next value of a named counter
+
+ parameters
+
+ name - name of counter to increment or default
+ start - number to count from - or 0
+
+=cut
+
+sub counter
+{
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
+    state $counters = {} ;
+    my $name = $params->{name} || 'default' ;
+
+    if ( $params->{start} && $params->{start} =~ s/^.*?(\d+).*/$1/ ) {
+        $counters->{$name} = $params->{start} ;
+    } else {
+        $counters->{$name}++ ;
+    }
+
+    return $counters->{$name} ;
+}
+
+# ----------------------------------------------------------------------------
+
+=item comment
+
+remove block from the document, its just a comment
+ 
+=cut
+
+sub comment
+{
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
+
+    return "" ;
+}
+
+# ----------------------------------------------------------------------------
 # build the css for the different box types
 sub _admonition_css
 {
@@ -951,7 +1025,7 @@ sub _admonition_css
         margin-bottom: 1em;
     }\n" ;
 
-    $css .= "    " . join( ", ", map { "table.$_ " } keys %as_box ) ;
+    $css .= "    " . join( ", ", map {"table.$_ "} keys %as_box ) ;
     $css .= " {
         padding: 0px;
         margin: 0px;
