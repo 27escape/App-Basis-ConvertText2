@@ -1416,6 +1416,14 @@ sub _font_replace {
 # grab external files
 # param is filename followed by any arguments
 
+# parameters
+
+#  file - name of file to import
+#  markdown - show input is markdown and may need some tidy ups
+#  headings - in markdown add this many '#' heading to the start of headers
+#  class - optional class to wrap around import
+#  style - optional style to wrap around import
+
 sub _include_file
 {
     my ($attributes) = @_ ;
@@ -1443,9 +1451,18 @@ sub _include_file
         }
     }
 
+    # add a div for class and style if required
+    if( $params->{class} || $params->{style}) {
+        my $div = "<div " ;
+        $div .= "class='$params->{class}'" if( $params->{class}) ;
+        $div .= "style='$params->{style}'" if( $params->{style}) ;
+        $out = "$div>$out$</div>"
+    }
+
     return $out ;
 }
 
+# ----------------------------------------------------------------------------
 sub _replace_material
 {
     my ( $operator, $value ) = @_ ;

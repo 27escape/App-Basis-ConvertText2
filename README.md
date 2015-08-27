@@ -268,14 +268,36 @@ For the complete list of colors see [Google Colors]
 
 It is possible to include content from other files, the methods match fenced code-block and their short cuts.
 
+The optional arguments are
+
+* class
+    * add a div with this CSS class name
+* style
+    * add a div with this CSS style
+* markdown
+    - import file is markdown and will need some tidying up
+* headings
+    - if a markdown file, add this nunber of '#' characters to headers in the imported file
+
+**import** can also be used as a synonym for include.
+
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
+
     \{\{.include file="filename"}}
 
     ~~~~{.include file='filename'}
     ~~~~
 
+</td>
+</tr>
+</table>
+
+
 Either of these methods will bring the contents of the file inline to the current document at the location where they are used.
 
-**import** can also be used as a synonym for include.
 
 ## Fenced code-blocks
 
@@ -801,7 +823,7 @@ If its useful to comment your software, likely you will also find it useful to c
 
     Normal flow of text
 
-    ~~~~\{\{.comment}
+    ~~~~\{.comment}
     This comment is not seen in the generated document
     ~~~~
 
@@ -819,6 +841,33 @@ text continues
 </td>
 </tr>
 </table>
+
+### Indent
+
+Import a file and indent it 4 spaces. This is useful if you want to pull code or config files etc into your document to explain them.
+
+The optional arguments are
+
+* class
+    * add a div with this CSS class name
+* style
+    * add a div with this CSS style
+
+<table class='box' width='99%'>
+<tr><th width='50%'>Example</th></tr>
+<tr>
+<td>
+
+    Here is the example config file
+    \{\{.indent file=fred.conf style='background-color:grey50;'}}
+
+    text continues
+
+</td>
+</tr>
+</table>
+
+
 
 ### Tree
 

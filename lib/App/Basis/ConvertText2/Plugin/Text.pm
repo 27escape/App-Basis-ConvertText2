@@ -1019,7 +1019,12 @@ sub comment
 
 =item indent
 
-indent each line of the content by 4 spaces
+return each line of the content by 4 spaces
+
+ parameters
+
+ class - optional class to wrap around import
+ style - optional style to wrap around import
  
 =cut
 
@@ -1029,6 +1034,14 @@ sub indent
     my ( $tag, $content, $params, $cachedir ) = @_ ;
 
     $content =~ s/^/    /gsm;
+
+    # add a div for class and style if required
+    if( $params->{class} || $params->{style}) {
+        my $div = "<div " ;
+        $div .= "class='$params->{class}'" if( $params->{class}) ;
+        $div .= "style='$params->{style}'" if( $params->{style}) ;
+        $content = "$div>$content</div>"
+    }
 
     return $content ;
 }
