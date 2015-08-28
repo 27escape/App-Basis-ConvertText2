@@ -1370,7 +1370,7 @@ sub _fontmaterial
 
 # ----------------------------------------------------------------------------
 # handle all font replacers
-sub _font_replace
+sub _icon_replace
 {
     my ( $demo, $type, $icon, $class ) = @_ ;
 
@@ -1457,7 +1457,7 @@ sub _include_file
         my $div = "<div " ;
         $div .= "class='$params->{class}'" if ( $params->{class} ) ;
         $div .= "style='$params->{style}'" if ( $params->{style} ) ;
-        $out = "$div>$out$</div>";
+        $out = "$div>$out$</div>" ;
     }
 
     return $out ;
@@ -1479,13 +1479,18 @@ sub _replace_material
 # ----------------------------------------------------------------------------
 sub _replace_colors
 {
-    my ( $color, $string ) = @_ ;
+    my ( $demo, $color, $string ) = @_ ;
+    my $out ;
 
-    my ( $fg, $bg ) = split_colors($color) ;
-
-    my $out = "<span style='color:$fg;" ;
-    $out .= "background-color:$bg;" if ($bg) ;
-    $out .= "'>$string</span>" ;
+    if ( !$demo ) {
+        my ( $fg, $bg ) = split_colors($color) ;
+        $out = "<span style='" ;
+        $out .= "color:$fg;" if( $fg) ;
+        $out .= "background-color:$bg;" if ($bg) ;
+        $out .= "'>$string</span>" ;
+    } else {
+        $out .= "<c:$color>$string</c>" ;
+    }
 
     return $out ;
 }
@@ -1580,17 +1585,29 @@ sub parse
             =~ s|^-{3,}\s?$|<div style='page-break-before: always;'></div>\n\n|gsm
             ;
 
+      # this allows us to put short blocks as output of other blocks or inline
+      # with things that might otherwise not allow them
+      # we use the single line parse version too
+      # short tags cannot have the form
+      # {{.class .tag args=123}}
+
+        $self->{output}
+            =~ s/\{\{\.(\w+)(\b.*?)\}\}/$self->_rewrite_short_block( $1, $2)/egs
+            ;
+
         # add in some smilies
         $self->{output} =~ s/(?<!\w)($smiles)(?!\w)/$smilies{$1}/g ;
 
         # do the font replacements, awesome or material
         # :fa:icon,  :mi:icon,
         $self->{output}
-            =~ s/(\\)?:(\w{2}):([\w|-]+):?(\[(.*?)\])?/_font_replace( $1, $2, $3, $4)/egsi
+            =~ s/(\\)?:(\w{2}):([\w|-]+):?(\[(.*?)\])?/_icon_replace( $1, $2, $3, $4)/egsi
             ;
 
         $self->{output}
-            =~ s/<c:+(.*?)>(.*?)<\/c>/_replace_colors( $1, $2)/egsi ;
+            =~ s/<c(\\)?:+(.*?)>(.*?)<\/c>/_replace_colors( $1, $2, $3)/egsi ;
+
+
 
         # we have created something so we can cache it, if use_cache is off
         # then this will not happen lower down
@@ -1642,15 +1659,15 @@ sub parse
         # replace things we have saved
         $html = $self->_do_replacements($html) ;
 
-      # this allows us to put short blocks as output of other blocks or inline
-      # with things that might otherwise not allow them
-      # we use the single line parse version too
-      # short tags cannot have the form
-      # {{.class .tag args=123}}
+      # # this allows us to put short blocks as output of other blocks or inline
+      # # with things that might otherwise not allow them
+      # # we use the single line parse version too
+      # # short tags cannot have the form
+      # # {{.class .tag args=123}}
 
-        $html
-            =~ s/\{\{\.(\w+)(\b.*?)\}\}/$self->_rewrite_short_block( $1, $2)/egs
-            ;
+      #   $html
+      #       =~ s/\{\{\.(\w+)(\b.*?)\}\}/$self->_rewrite_short_block( $1, $2)/egs
+      #       ;
 # and without arguments
 # $html =~ s/\{\{\.(\w+)\s?\}\}/$self->_rewrite_short_block( '', $1, {})/egs ;
 

@@ -858,7 +858,7 @@ sub box
             : $params->{icon} ;
         # allow icon flame hourglass etc, we will fix it up right
         # the default is fontaweome if there is no specific
-        if ( $icon !~ /^:[fm]a:/ ) {
+        if ( $icon !~ /^:(fa|mi):/ ) {
             $icon = ":fa:$icon" ;
         }
         if ( $icon !~ /:\[.*?\]/ ) {

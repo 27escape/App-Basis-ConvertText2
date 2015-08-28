@@ -297,11 +297,19 @@ The optional arguments are
 
 Either of these methods will bring the contents of the file inline to the current document at the location where they are used.
 
-## Using colors
+## Font effects
 
-Markdown does not include any facility for setting the color of text in a document, however sometimes it is useful to be able to do some basic color manipulation.
+Markdown does not include any facility for setting the maniulating the font of text in a document, however sometimes it is useful to be able to do some basic manipulation.
 
-We have a HTML-like construct &lt;c\:colorname&gt; Your text &lt;/c&gt; or &lt;c\:#foreground.background&gt; Your text &lt;/c&gt;
+We have a HTML-like constructs
+
+* For Colors
+    * &lt;c\:colorname&gt; Your text &lt;/c&gt;
+    * &lt;c\:#foreground.background&gt; Your text &lt;/c&gt;
+* For Underline - standard HTML
+    * &lt;u&gt; Your text &lt;/u&gt;
+* For Strikethroughs - standard HTML
+    * &lt;s&gt; Your text &lt;/s&gt;
 
 <table class='box' width='99%'>
 <thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
@@ -313,12 +321,15 @@ We have a HTML-like construct &lt;c\:colorname&gt; Your text &lt;/c&gt; or &lt;c
     <c\:#white.blue>White foreground,
       blue background</c>
 
+    <c\:#.green300>green300 background</c>
 </td>
 <td>
 
 <c:red>set this string to red</c>
 
 <c:#white.blue>White foreground, blue background</c>
+
+<c:#.green300>green300 background</c>
 
 </td></tr></table>
 
