@@ -48,6 +48,7 @@ use vars qw( @EXPORT @ISA) ;
     has_block
     run_block
     to_hex_color
+    split_colors
     ) ;
 
 # ----------------------------------------------------------------------------
@@ -396,6 +397,37 @@ sub to_hex_color
         }
     }
     return $c ;
+}
+
+
+# ----------------------------------------------------------------------------
+
+=item split_colors
+
+Split a #foreground.background color string into its components
+
+B<Parameters>
+    colorstring   - the color to split
+
+B<Returns>
+    array foreground color, background color
+
+=cut
+
+sub split_colors
+{
+    my ($colors) = @_ ;
+    my ( $fg, $bg ) ;
+
+    if ( $colors =~ s/#((\w+)?\.?(\w+)?)// ) {
+        ( $fg, $bg ) = ( $2, $3 ) ;
+        $fg = to_hex_color($fg) if ($fg) ;
+        $bg = to_hex_color($bg) if ($bg) ;
+    } else {
+        $fg = $colors ;
+    }
+
+    return ( $fg, $bg ) ;
 }
 
 # ----------------------------------------------------------------------------

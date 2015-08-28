@@ -1,4 +1,5 @@
 0.6
+    * color HTML-like construct <c:color>
     * Text.pm
         * new indent plugin, indents contents to 4 spaces
         * table plugin can now align left, middle, right

@@ -112,19 +112,19 @@ my %smilies = (
          # ':tongue:'     => "\x{1f61b}",    # pull tounge
          # ":'("          => "\x{1f62d}",    # cry
          # ":cry:"        => "\x{1f62d}",    # cry
-    ':('      => ":fa:frown-o",    # sad
-    ':sad:'   => ":fa:frown-o",    # sad
+    ':('       => ":fa:frown-o",   # sad
+    ':sad:'    => ":fa:frown-o",   # sad
                                    # ";)"      => "\x{1f609}",    # wink
                                    # ":wink:"  => "\x{1f609}",      # wink
-    ":sleep:" => ":fa:bed",        # sleep
-    ":zzz:"   => ":ma:snooze",     # snooze
-    ":snooze:" => ":ma:snooze",     # snooze
+    ":sleep:"  => ":fa:bed",       # sleep
+    ":zzz:"    => ":ma:snooze",    # snooze
+    ":snooze:" => ":ma:snooze",    # snooze
                                    # ":halo:"       => "\x{1f607}",    # halo
                                    # ":devil:"      => "\x{1f608}",    # devil
                                    # ":horns:"      => "\x{1f608}",    # devil
                                    # ":fear:"  => "\x{1f631}",      # fear
-    "(c)"     => "\x{a9}",         # copyright
-    ":c:"     => "\x{a9}",         # copyright
+    "(c)"      => "\x{a9}",        # copyright
+    ":c:"      => "\x{a9}",        # copyright
     ":copyright:"  => "\x{a9}",                       # copyright
     "(r)"          => "\x{ae}",                       # registered
     ":r:"          => "\x{ae}",                       # registered
@@ -1328,10 +1328,10 @@ sub _fontmaterial
         if ($class) {
             $class =~ s/^\[|\]$//g ;
             # $class =~ s/\b(fw|lg|border)\b/mi-$1/ ;
-            if( $class =~ /\blg\b/) {
+            if ( $class =~ /\blg\b/ ) {
                 $style .= "font-size:1.75em;" ;
                 $class =~ s/\blg\b// ;
-            } elsif( $class =~ /\b([2345])x\b/) {
+            } elsif ( $class =~ /\b([2345])x\b/ ) {
                 $style .= "font-size:$1" . "em;" ;
                 $class =~ s/\b[2345]x\b// ;
             }
@@ -1351,7 +1351,7 @@ sub _fontmaterial
             $class = "" ;
         }
         # names are actually underscore spaced
-        $icon =~ s/[-| ]/_/g;
+        $icon =~ s/[-| ]/_/g ;
         $out = "<i class='material-icons $class'"
             . ( $style ? " style='$style'" : "" ) ;
         $out .= ">$icon</i>" ;
@@ -1370,22 +1370,23 @@ sub _fontmaterial
 
 # ----------------------------------------------------------------------------
 # handle all font replacers
-sub _font_replace {
+sub _font_replace
+{
     my ( $demo, $type, $icon, $class ) = @_ ;
 
-    if( $type eq 'mi') {
-        return _fontmaterial(  $demo, $icon, $class ) ;
-    } elsif( $type eq 'fa') {
-        return _fontawesome(  $demo, $icon, $class ) ;
+    if ( $type eq 'mi' ) {
+        return _fontmaterial( $demo, $icon, $class ) ;
+    } elsif ( $type eq 'fa' ) {
+        return _fontawesome( $demo, $icon, $class ) ;
     }
 
     # its not a font we support yet, so rebuild the line
     my $out = "" ;
-    $out .= $demo if( $demo) ;
+    $out .= $demo       if ($demo) ;
     $out .= ":$type:$icon" ;
-    $out .= ":[$class]" if( $class) ;
+    $out .= ":[$class]" if ($class) ;
 
-    return $out;
+    return $out ;
 }
 
 # ----------------------------------------------------------------------------
@@ -1452,11 +1453,11 @@ sub _include_file
     }
 
     # add a div for class and style if required
-    if( $params->{class} || $params->{style}) {
+    if ( $params->{class} || $params->{style} ) {
         my $div = "<div " ;
-        $div .= "class='$params->{class}'" if( $params->{class}) ;
-        $div .= "style='$params->{style}'" if( $params->{style}) ;
-        $out = "$div>$out$</div>"
+        $div .= "class='$params->{class}'" if ( $params->{class} ) ;
+        $div .= "style='$params->{style}'" if ( $params->{style} ) ;
+        $out = "$div>$out$</div>";
     }
 
     return $out ;
@@ -1466,13 +1467,27 @@ sub _include_file
 sub _replace_material
 {
     my ( $operator, $value ) = @_ ;
-    my $quote ="";
-    if( $value =~ /^(["'"])/) {
+    my $quote = "" ;
+    if ( $value =~ /^(["'"])/ ) {
         $quote = $1 ;
-        $value =~ s/^["'"]//;
+        $value =~ s/^["'"]// ;
     }
 
     return "color" . $operator . $quote . to_hex_color($value) ;
+}
+
+# ----------------------------------------------------------------------------
+sub _replace_colors
+{
+    my ( $color, $string ) = @_ ;
+
+    my ( $fg, $bg ) = split_colors($color) ;
+
+    my $out = "<span style='color:$fg;" ;
+    $out .= "background-color:$bg;" if ($bg) ;
+    $out .= "'>$string</span>" ;
+
+    return $out ;
 }
 
 # ----------------------------------------------------------------------------
@@ -1498,8 +1513,10 @@ sub parse
             . ' href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">'
     ) ;
 
-    add_javascript( '<link href="https://fonts.googleapis.com/icon?family=Material+Icons"
-      rel="stylesheet">') ;
+    add_javascript(
+        '<link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">'
+    ) ;
 
     # add in our basic CSS
     add_css($default_css) ;
@@ -1567,9 +1584,13 @@ sub parse
         $self->{output} =~ s/(?<!\w)($smiles)(?!\w)/$smilies{$1}/g ;
 
         # do the font replacements, awesome or material
-        # :fa:icon,  :mi:icon,  
+        # :fa:icon,  :mi:icon,
         $self->{output}
-            =~ s/(\\)?:(\w{2}):([\w|-]+):?(\[(.*?)\])?/_font_replace( $1, $2, $3, $4)/egsi ;
+            =~ s/(\\)?:(\w{2}):([\w|-]+):?(\[(.*?)\])?/_font_replace( $1, $2, $3, $4)/egsi
+            ;
+
+        $self->{output}
+            =~ s/<c:+(.*?)>(.*?)<\/c>/_replace_colors( $1, $2)/egsi ;
 
         # we have created something so we can cache it, if use_cache is off
         # then this will not happen lower down
@@ -1656,13 +1677,13 @@ sub parse
             =~ s/(url\s*\(['"]?)(.*?)(['"]?\))/$self->_rewrite_imgsrc( $1, $2, $3, 0)/egs
             ;
 
-
-
 # replace any escaped \{ braces when needing to explain short code blocks in examples
         $html =~ s/\\\{/{/gsm ;
 
 # we should have everything here, so lets do any final replacements for material colors
-        $html =~ s/color(=|:)\s?(["']?\w+[50]0\b)/_replace_material( $1,$2)/egsm ;
+        $html
+            =~ s/color(=|:)\s?(["']?\w+[50]0\b)/_replace_material( $1,$2)/egsm
+            ;
 
 
         $self->{output} = $html ;
