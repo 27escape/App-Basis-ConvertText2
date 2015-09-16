@@ -1013,6 +1013,7 @@ Swap the subject and status around
 Fully specify the colors
 
 {{.shield subject='test run' status='failed' size='150' color='#white.red' }}
+
 </td></tr></table>
 
 ### Buttons
@@ -1029,8 +1030,9 @@ The required argument are
 The optional arguments are
 
 * color
-    + over ride the default color 'goldenrod'
+    + over ride the default background color 'purple300'
     + can use #foreground.bgbackground format, ie #blue.yellow, or #ffffff.blue
+    + without a foreground color, this will default to white
 * size
     + the width of the button
 
@@ -1050,6 +1052,14 @@ Fully specify the colors
 
     \{\{.button subject='test run' size='150'  color='#blue.yellow' }}
 
+With a border
+
+    \{\{.button subject='test run' border='1'  }}
+
+and a colored border
+
+    \{\{.button subject='test run' border='red'  }}
+
 </td></tr>
 <tr><th>Output</th></tr>
 <tr><td>
@@ -1062,6 +1072,12 @@ Buttons work well as short blocks
 Fully specify the colors
 
 {{.button subject='test run' size='150' color='#blue.yellow' }}
+
+With a border
+{{.button subject='test run' border='1'  }}
+
+and a colored border
+{{.button subject='test run' border='red'  }}
 
 </td></tr></table>
 

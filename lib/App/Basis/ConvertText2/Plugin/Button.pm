@@ -44,8 +44,8 @@ BEGIN {
 
     span.button span.subject { 
         color: white; 
-        background-color: darkslategray;
-        border-radius: 10px;
+        background-color: purple300;
+        border-radius: 7px;
     }
     
 " ) ;
@@ -61,8 +61,9 @@ Create a button
 
     hashref params of
         subject - whats the button for
-        color   - what color should it be, defaults to goldenrod
+        color   - what color should it be, defaults to purple300
         size    - change the font-size from the CSS one to this
+        border  - add a 1px border, if param looks like a color will color the border
 
 =cut
 
@@ -82,20 +83,24 @@ sub button
     }
 
     my $out ;
-    $params->{color} //= 'goldenrod' ;
-    my $subject_style = $bg ? "background-color: $bg; " : "" ;
-    $subject_style .= "color: $fg; " if ($fg) ;
+    $params->{color} //= 'purple300' ;
+    my $style = $bg ? "background-color: $bg; " : "" ;
+    $style .= "color: $fg; " if ($fg) ;
     $params->{subject} //= 'Missing subject' ;
 
     if ( $params->{size} ) {
         $params->{size} =~ s/%//g ;
-        $subject_style .= "font-size: $params->{size}%; " ;
+        $style .= "font-size: $params->{size}%; " ;
+    }
+    if( $params->{border}) {
+        my $c = $params->{border} eq "1" ? 'black' : to_hex_color($params->{border}) ;
+        $style .= "border: 1px solid $c; ";
     }
 
     # create something suitable for the HTML, no spaces, no extra lines
     $out
         = "<span class='button'>"
-        . "<span class='subject' style='$subject_style'>&nbsp;"
+        . "<span class='subject' style='$style'>&nbsp;"
         . $params->{subject}
         . "&nbsp;</span></span>" ;
 
