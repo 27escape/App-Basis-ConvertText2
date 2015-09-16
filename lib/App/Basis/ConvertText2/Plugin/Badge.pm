@@ -63,7 +63,7 @@ BEGIN {
 
 aka shield
 
-Create abadge/shield to show status of something
+Create a badge/shield to show status of something
 
  parameters
 

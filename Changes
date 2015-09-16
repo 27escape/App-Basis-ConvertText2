@@ -1,4 +1,6 @@
 0.6
+    * Button.pm     
+        * new plugin to give simple buttons
     * color HTML-like construct <c:color>
     * Text.pm
         * new indent plugin, indents contents to 4 spaces

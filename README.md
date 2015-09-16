@@ -961,17 +961,17 @@ Depending on your template the color of the text and the color for the status po
 The required argument are
 
 * subject
-    + text saying what the button is
+    + text saying what the badge is
 * status
-    + text status to put at the end of the button
+    + text status to put at the end of the badge
 
 The optional arguments are
 
 * color
     + over ride the default color 'goldenrod'
-    + can use #foregrounf.bgbackground format, ie #blue.yellow, or #ffffff.blue
+    + can use #foreground.bgbackground format, ie #blue.yellow, or #ffffff.blue
 * size
-    + the width of the button
+    + the size of the badge
 * reverse
     - swap the colors around
 
@@ -987,7 +987,7 @@ Badges / shields work well as short blocks
 
     \{\{.shield subject='test run' status='pending' size='150'}}
 
-Swap the colors around
+Swap the subject and status around
 
     \{\{.shield subject='test run' status='pending' size='150' color='orange'
      reverse=1}}
@@ -1006,15 +1006,65 @@ Badges / shields work well as short blocks
 
 {{.shield subject='test run' status='pending' size='150'}}
 
-Swap the colors around
+Swap the subject and status around
 
 {{.shield subject='test run' status='pending' size='150' color='orange' reverse=1}}
 
 Fully specify the colors
 
 {{.shield subject='test run' status='failed' size='150' color='#white.red' }}
+</td></tr></table>
+
+### Buttons
+
+Buttons are like badges but with no status, just a simple styled item.
+
+The buttons are placed inline, so you can insert text around the fenced codeblock.
+
+The required argument are
+
+* subject
+    + text saying what the button is
+
+The optional arguments are
+
+* color
+    + over ride the default color 'goldenrod'
+    + can use #foreground.bgbackground format, ie #blue.yellow, or #ffffff.blue
+* size
+    + the width of the button
+
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>A basic button
+
+    ~~~~{.button subject='test run' color='green'}
+    ~~~~
+
+Buttons work well as short blocks
+
+    \{\{.button subject='test run' size='150'}}
+
+Fully specify the colors
+
+    \{\{.button subject='test run' size='150'  color='#blue.yellow' }}
+
+</td></tr>
+<tr><th>Output</th></tr>
+<tr><td>
+{{.button subject='test run' color='green'}}
+
+Buttons work well as short blocks
+
+{{.button subject='test run' size='150'}}
+
+Fully specify the colors
+
+{{.button subject='test run' size='150' color='#blue.yellow' }}
 
 </td></tr></table>
+
 
 ### Box
 
