@@ -143,7 +143,6 @@ sub create_defaults
     if ( !-f "$default/template.html" ) {
         path("$default/template.html")->spew_utf8($TEMPLATE) ;
         say "Created default template in '$default/template.html'" ;
-
     }
 
     my $config = App::Basis::Config->new( filename => "$default/config" ) ;
