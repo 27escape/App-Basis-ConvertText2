@@ -72,6 +72,7 @@ use Encode qw(encode_utf8) ;
 use GD ;
 use MIME::Base64 ;
 use Furl ;
+use POSIX qw(strftime) ;
 # use Text::Markdown qw(markdown) ;
 # use Text::MultiMarkdown qw(markdown) ;
 # use CommonMark ;
@@ -1424,6 +1425,7 @@ sub _icon_replace
 #  headings - in markdown add this many '#' heading to the start of headers
 #  class - optional class to wrap around import
 #  style - optional style to wrap around import
+#  date  - optional note the date of the imported file
 
 sub _include_file
 {
@@ -1452,13 +1454,20 @@ sub _include_file
         }
     }
 
+    my $date = "" ;
+    if( $params->{date}) {
+        $date = "\n\n*Updated: " ;
+        my $st = path( $params->{file})->stat ;
+        $date .= strftime( "%Y-%m-%d", gmtime( $st->mtime )) ;
+        $date .= "*\n" ;
+    }
     # add a div for class and style if required
-    if ( $params->{class} || $params->{style} ) {
+    # if ( $params->{class} || $params->{style} ) {
         my $div = "<div " ;
         $div .= "class='$params->{class}'" if ( $params->{class} ) ;
         $div .= "style='$params->{style}'" if ( $params->{style} ) ;
-        $out = "$div>$out$</div>" ;
-    }
+        $out = "$div>$out$date</div>" ;
+    # }
 
     return $out ;
 }

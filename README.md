@@ -278,6 +278,8 @@ The optional arguments are
     - import file is markdown and will need some tidying up
 * headings
     - if a markdown file, add this nunber of '#' characters to headers in the imported file
+* date
+    - add the date the import file was updated to the end of the imported text
 
 **import** can also be used as a synonym for include.
 
