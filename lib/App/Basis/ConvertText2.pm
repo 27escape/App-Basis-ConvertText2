@@ -1533,7 +1533,13 @@ sub parse
     $self->_set_input($data) ;
 
     my $cachefile = cachefile( $self->cache_dir, "$id.html" ) ;
-    if ( -f $cachefile ) {
+    # because we now have an import option, we cannot use a cached HTML file
+    # as the imported may have changed and the cache file will not have
+    # possible in the future that we could additionally check for the 
+    # existance of .import or filename= in some of the fenced code blocks
+    # but probably not worth the effort over regeneration
+    # if ( -f $cachefile ) {
+    if ( 0 ) {
         my $cache = path($cachefile)->slurp_utf8 ;
         $self->{output} = $cache ;    # put cached item into output
     } else {
@@ -1704,7 +1710,8 @@ sub parse
 
 
         $self->{output} = $html ;
-        $self->_store_cache( $cachefile, $html, 1 ) ;
+        # no longer cache the HTML as it may no longer be useful
+        # $self->_store_cache( $cachefile, $html, 1 ) ;
     }
     return $self->{output} ;
 }

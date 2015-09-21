@@ -1,4 +1,5 @@
 0.6
+    * parse will no longer use a cachefile for the generated HTML as import and filename= parameters would not be able to operate
     * Button.pm     
         * new plugin to give simple buttons
     * color HTML-like construct <c:color>
