@@ -264,7 +264,7 @@ show_usage("Bad markup file $opt{filename}") if ( !$story ) ;
 my $replace = {
 
 # '%TITLE%'   => '',    # this comes from the first markdown level 1 header
-# '%DATE%' => strftime( "%Y-%m-%d", gmtime() ),    # :date in document overrides
+# '%DATE%' => strftime( "%Y-%m-%d", localtime() ),    # :date in document overrides
 # '%COPYRIGHT%'   => $settings->{config}->get("copyright")        || '',    # :copyright in document overrides
 # '%AUTHOR%'      => $settings->{config}->get("author")           || '',    # :author in document overrides
 # '%PAGE_SIZE%'   => $settings->{config}->get("page/size")        || '',
@@ -283,7 +283,8 @@ $template = $opt{template} if ( $opt{template} ) ;
 $settings = read_settings( $template, $opt{config_dir} ) ;
 
 # add in template defaults if needed
-$replace->{DATE} ||= strftime( "%Y-%m-%d", gmtime() ) ;
+$replace->{DATE} ||= strftime( "%Y-%m-%d", localtime() ) ;
+$replace->{GENERATED} = strftime( "%Y-%m-%d %H:%M:%S", localtime() ) ;
 $replace->{COPYRIGHT}   ||= $settings->{config}->get("copyright") ;
 $replace->{AUTHOR}      ||= $settings->{config}->get("author") ;
 $replace->{PAGE_SIZE}   ||= $settings->{config}->get("page/size") ;

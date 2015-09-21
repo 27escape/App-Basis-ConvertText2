@@ -1435,40 +1435,38 @@ sub _include_file
     my $params = _extract_args($attributes) ;
 
     $params->{file} = fix_filename( $params->{file} ) ;
-    if ( -f $params->{file} ) {
-        $out = path( $params->{file} )->slurp_utf8() ;
-    }
-    if ( $params->{markdown} ) {
-        # if we are importing markdown we may want to fix things up a bit
+    if ( -f $params->{file} && ($out = path( $params->{file} )->slurp_utf8() ) ) {
+        if ( $params->{markdown} ) {
+            # if we are importing markdown we may want to fix things up a bit
 
-        # first off remove any yaml head matter from first 20 lines
-        $out =~ s/^(.*)?$/_remove_yaml($1,20)/egm ;
+            # first off remove any yaml head matter from first 20 lines
+            $out =~ s/^(.*)?$/_remove_yaml($1,20)/egm ;
 
-        # then any version table
-        $out =~ s/^~~~~\{.version.*?^~~~~//gsm ;
+            # then any version table
+            $out =~ s/^~~~~\{.version.*?^~~~~//gsm ;
 
-        # expand any headings if required
-        if ( $params->{headings} ) {
-            my $str = "#" x int( $params->{headings} ) ;
-            $out =~ s/^#/#$str/gsm ;
+            # expand any headings if required
+            if ( $params->{headings} ) {
+                my $str = "#" x int( $params->{headings} ) ;
+                $out =~ s/^#/#$str/gsm ;
+            }
         }
-    }
 
-    my $date = "" ;
-    if( $params->{date}) {
-        $date = "\n\n*Updated: " ;
-        my $st = path( $params->{file})->stat ;
-        $date .= strftime( "%Y-%m-%d", gmtime( $st->mtime )) ;
-        $date .= "*\n" ;
-    }
-    # add a div for class and style if required
-    # if ( $params->{class} || $params->{style} ) {
+        my $date = "" ;
+        if ( $params->{date} ) {
+            $date = "\n\n*Updated: " ;
+            my $st = path( $params->{file} )->stat ;
+            $date .= strftime( "%Y-%m-%d %H:%M:%S", localtime( $st->mtime ) ) ;
+            $date .= "*\n" ;
+        }
+        # add a div for class and style if required
+        # if ( $params->{class} || $params->{style} ) {
         my $div = "<div " ;
         $div .= "class='$params->{class}'" if ( $params->{class} ) ;
         $div .= "style='$params->{style}'" if ( $params->{style} ) ;
         $out = "$div>$out$date</div>" ;
-    # }
-
+        # }
+    }
     return $out ;
 }
 
@@ -1494,7 +1492,7 @@ sub _replace_colors
     if ( !$demo ) {
         my ( $fg, $bg ) = split_colors($color) ;
         $out = "<span style='" ;
-        $out .= "color:$fg;" if( $fg) ;
+        $out .= "color:$fg;"            if ($fg) ;
         $out .= "background-color:$bg;" if ($bg) ;
         $out .= "'>$string</span>" ;
     } else {
@@ -1544,11 +1542,11 @@ sub parse
     my $cachefile = cachefile( $self->cache_dir, "$id.html" ) ;
     # because we now have an import option, we cannot use a cached HTML file
     # as the imported may have changed and the cache file will not have
-    # possible in the future that we could additionally check for the 
+    # possible in the future that we could additionally check for the
     # existance of .import or filename= in some of the fenced code blocks
     # but probably not worth the effort over regeneration
     # if ( -f $cachefile ) {
-    if ( 0 ) {
+    if (0) {
         my $cache = path($cachefile)->slurp_utf8 ;
         $self->{output} = $cache ;    # put cached item into output
     } else {
@@ -1674,15 +1672,15 @@ sub parse
         # replace things we have saved
         $html = $self->_do_replacements($html) ;
 
-      # # this allows us to put short blocks as output of other blocks or inline
-      # # with things that might otherwise not allow them
-      # # we use the single line parse version too
-      # # short tags cannot have the form
-      # # {{.class .tag args=123}}
+    # # this allows us to put short blocks as output of other blocks or inline
+    # # with things that might otherwise not allow them
+    # # we use the single line parse version too
+    # # short tags cannot have the form
+    # # {{.class .tag args=123}}
 
-      #   $html
-      #       =~ s/\{\{\.(\w+)(\b.*?)\}\}/$self->_rewrite_short_block( $1, $2)/egs
-      #       ;
+#   $html
+#       =~ s/\{\{\.(\w+)(\b.*?)\}\}/$self->_rewrite_short_block( $1, $2)/egs
+#       ;
 # and without arguments
 # $html =~ s/\{\{\.(\w+)\s?\}\}/$self->_rewrite_short_block( '', $1, {})/egs ;
 
