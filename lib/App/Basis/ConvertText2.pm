@@ -73,10 +73,6 @@ use GD ;
 use MIME::Base64 ;
 use Furl ;
 use POSIX qw(strftime) ;
-# use Text::Markdown qw(markdown) ;
-# use Text::MultiMarkdown qw(markdown) ;
-# use CommonMark ;
-use Text::Markdown qw(markdown) ;
 use Module::Pluggable
     require          => 1,
     on_require_error => sub {
@@ -1138,7 +1134,7 @@ sub _pandoc_html
         # markdown would prefer this for fenced code blocks
         $input =~ s/^~~~~.*$/\`\`\`\`/gm ;
 
-        $html = markdown( $input, { markdown => 1 } ) ;
+        $html = convert_md( $input ) ;
         # do markdown in HTML elements too
         # $html = CommonMark->markdown_to_html($input) ;
     }

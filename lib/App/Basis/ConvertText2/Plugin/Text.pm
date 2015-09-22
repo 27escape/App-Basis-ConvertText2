@@ -67,7 +67,6 @@ use XML::Simple qw(XMLout) ;
 
 use Moo ;
 use App::Basis::ConvertText2::Support ;
-use Text::Markdown qw(markdown) ;
 use namespace::clean ;
 
 use feature 'state' ;
@@ -477,11 +476,10 @@ sub version
 
             if ( !$params->{items} || int( $params->{items} ) > $item_count )
             {
-
                 # convert any of the data with markdown
                 $out
                     .= "<tr><td valign='top'>$vers</td><td valign='top'>$date</td><td valign='top'>"
-                    . markdown( $c, { markdown => 1 } )
+                    . convert_md( $c )
                     . "</td></tr>\n" ;
             }
             $item_count++ ;
@@ -635,7 +633,7 @@ sub links
     my ( $tag, $content, $params, $cachedir ) = @_ ;
 
     # strip any ending linefeed
-    chomp $content ;
+    chomp $content if( $content);
     return "" if ( !$content ) ;
 
     $params->{class} ||= "" ;
@@ -785,8 +783,7 @@ Y2hgQIf/GbAAAKCTBYBUjWvCAAAAAElFTkSuQmCC
     }
 
     # we need to convert the bullet list into a HTML one
-    $content = markdown( $content, { markdown => 1 } )
-        ;    # do markdown in HTML elements too
+    $content = convert_md( $content) ;
 
     # make sure the first ul has class tree
     $content =~ s/<ul>/<ul id='$idname' class='$tag $params->{class}'>/ ;
@@ -892,7 +889,7 @@ sub box
         if ( $params->{title} ) ;
 
     # convert any content to HTML from Markdown
-    $out .= markdown( $content, { markdown => 1 } ) ;
+    $out .= convert_md( $content) ;
     if ($icon) {
         $out .= "</td></tr></table></div>\n" if ($icon) ;
     } else {
@@ -933,9 +930,7 @@ sub quote
     $out .= ">\n" ;
 
     # convert any content to HTML from Markdown
-    # lets keep any line spacing
-    $content =~ s/\n\n/<br><br>/gsm ;
-    $out .= markdown( $content, { markdown => 1 } ) ;
+    $out .= convert_md( $content) ;
 
     $out .= "</blockquote></div><br/>\n" ;
     return $out ;

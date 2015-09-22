@@ -27,6 +27,7 @@ use App::Basis ;
 use Exporter ;
 use utf8 ;
 use WebColors ;
+use Text::Markdown qw(markdown) ;
 
 use vars qw( @EXPORT @ISA) ;
 
@@ -49,6 +50,7 @@ use vars qw( @EXPORT @ISA) ;
     run_block
     to_hex_color
     split_colors
+    convert_md
     ) ;
 
 # ----------------------------------------------------------------------------
@@ -428,6 +430,34 @@ sub split_colors
     }
 
     return ( $fg, $bg ) ;
+}
+
+# ----------------------------------------------------------------------------
+
+=item convert_md
+
+Convert markdown into HTML
+
+B<Parameters>
+    content   - the markdown code
+
+B<Returns>
+    HTML string
+
+=cut
+
+sub convert_md
+{
+    my ($content) = @_ ;
+
+   # cos we do markdown and so does pandoc, we strip out some vertical spacing
+   # we want to retain, lets make sure we have it!
+    $content =~ s/\n\n/\n\n&nbsp;\n\n/gsm ;
+
+    # lets keep any line spacing
+    # $content =~ s/\n\n/<br><br>/gsm ;
+
+    return markdown( $content, { markdown => 1 } );
 }
 
 # ----------------------------------------------------------------------------
