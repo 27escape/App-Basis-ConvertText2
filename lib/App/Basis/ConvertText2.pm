@@ -1750,7 +1750,8 @@ sub save_to_file
         die "parse has not been run yet" ;
     }
 
-    if ( !-f $cf ) {
+    # if ( !-f $cf ) {
+    if ( 1 ) { # always save the HTML
         if ( !$self->use_cache() ) {
 
             # create a file name to store the output to
