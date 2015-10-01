@@ -311,6 +311,28 @@ sub _split_csv_data
 }
 
 # ----------------------------------------------------------------------------
+# sort data on column number optionally reverse it
+
+sub _sort_data {
+    my ($d, $column) = @_ ;
+    my @data = @{$d} ;
+    my $reverse ;
+
+    if( $column =~ /r/) {
+        $reverse = 1 ;
+    }
+    # just the number
+    $column =~ s/^.*?([0-9]).*?$/$1/ ;
+
+    @data = sort { $a->[$column] cmp $b->[$column] } @data ;
+
+    if( $reverse) {
+        @data = reverse @data ;
+    }
+    return @data ;
+}
+
+# ----------------------------------------------------------------------------
 
 =item table
 
@@ -328,7 +350,7 @@ create a basic html table
         separator - characters to be used to separate the fields
         zebra   - apply odd/even classes to table rows, default 0 OFF
         align   - option, set alignment of table
-        sort - todo sort on a column number, "1", "1r"
+        sort    - sort on a column number, "1", "1r"
         columns - columns to be included in the output "1,2,3,4"
 
 =cut
@@ -347,6 +369,14 @@ sub table
 
     # open the csv file, read contents, calc max, add into data array
     my @data = _split_csv_data( $content, $params->{separator} ) ;
+
+    if( defined $params->{sort}) {
+        my $legends ;
+        $legends = shift @data if( $params->{legends}) ;
+        @data = _sort_data( \@data, $params->{sort}) ;
+        # add legends back to start
+        unshift @data, $legends   if( $legends) ;
+    }
 
     # default align center
     my $align = "margin: 0 auto;" ;
