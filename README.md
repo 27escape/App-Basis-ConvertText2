@@ -2,7 +2,7 @@ title: Using App::Basis::ConvertText2
 format: pdf
 date: 2015-08-05
 author: Kevin Mulholland
-keywords: perl, readme
+keywords: perl, readme, markdown
 template: coverpage
 version: 8
 
@@ -210,9 +210,9 @@ Of course multiple options may be combined
 
 as :fa:trash:[2x 90 #red border]
 
-## Google Material Font
+## Google Material Icons
 
-Font Awesome provides many useful icons,see [Google Material Font Cheatsheet], however there is a lot of hassle to add them to your document; we of course offer a simple shortcut, with the form
+Google also provides many useful icons,see [Google Material Font Cheatsheet], however there is a lot of hassle to add them to your document; we of course offer a simple shortcut, with the form
 
     \:mi:font-name
 
@@ -597,12 +597,14 @@ Create a simple table using CSV style data
     * what should be used to separate cells, defaults to ','
 * align
     - align the table, left, middle/center (default), right
+* sort
+    - column number to sort on, append 'r' to reverse the sort
 
 ~~~~{.buffer to_buffer=table_data}
 Date,Item,Cost
-2015-06-25, Tree, 23.99
-2015-04-20, Shed, 400
-2015-03-02, Lawn mower, 69.95
+2012-06-25, Tree, 23.99
+2015-04-20, Shed, 400.00
+2010-03-02, Lawn mower, 69.95
 2014-12-12, Gnome, 7.95
 ~~~~
 
@@ -614,12 +616,26 @@ Date,Item,Cost
     ~~~~{.table separator=',' width='100%' legends=1}
     %TABLE_DATA%
     ~~~~
+
+    The table can be sorted too, reverse date (newest first)
+
+    ~~~~{.table separator=',' width='100%' legends=1 sort='0r'}
+    %TABLE_DATA%
+    ~~~~
+
 </td></tr>
 <tr><th>Output</th></tr>
 <tr><td>
 
+
 ~~~~{.table separator=',' width='100%' legends=1 from_buffer='table_data'}
 ~~~~
+
+The table can be sorted too, reverse date (newest first)
+
+~~~~{.table separator=',' width='100%' legends=1 from_buffer='table_data' sort='0r'}
+~~~~
+
 </td></tr></table>
 
 ### Links
@@ -1037,6 +1053,10 @@ The optional arguments are
     + without a foreground color, this will default to white
 * size
     + the width of the button
+* icon
+    - add an icon before the subject text
+    - defaults to a font-awesome icon if there is no ':' prefix to fully specify the icon.
+        - 'plus-circle' interpreted as '\:fa:plus-circle'
 
 <table class='box' width='99%'>
 <tr><th width='100%'>Example</th></tr>
@@ -1062,6 +1082,14 @@ and a colored border
 
     \{\{.button subject='test run' border='red'  }}
 
+With an icon
+
+    \{\{.button subject='test run' icon='plus-circle' color='green'}}
+
+Using a Material icon
+
+    \{\{.button subject='Upload' icon='\:mi:file-upload' }}
+
 </td></tr>
 <tr><th>Output</th></tr>
 <tr><td>
@@ -1080,6 +1108,14 @@ With a border
 
 and a colored border
 {{.button subject='test run' border='red'  }}
+
+With an icon
+
+{{.button subject='test run' icon='plus-circle' color='green'}}
+
+Using a Material icon
+
+{{.button subject='Upload' icon=':mi:file-upload'}}
 
 </td></tr></table>
 
@@ -1122,8 +1158,8 @@ Vestibulum consectetur massa non fermentum dignissim.
     ~~~~
 </td>
 <td><br>
-~~~~{.box from_buffer=box title='Important Notice' width='80%'}
-~~~~
+{{.box from_buffer=box title='Important Notice' width='80%'}}
+
 <br>
 </td></tr></table>
 
