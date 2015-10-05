@@ -313,12 +313,13 @@ sub _split_csv_data
 # ----------------------------------------------------------------------------
 # sort data on column number optionally reverse it
 
-sub _sort_data {
-    my ($d, $column) = @_ ;
+sub _sort_data
+{
+    my ( $d, $column ) = @_ ;
     my @data = @{$d} ;
     my $reverse ;
 
-    if( $column =~ /r/) {
+    if ( $column =~ /r/ ) {
         $reverse = 1 ;
     }
     # just the number
@@ -326,7 +327,7 @@ sub _sort_data {
 
     @data = sort { $a->[$column] cmp $b->[$column] } @data ;
 
-    if( $reverse) {
+    if ($reverse) {
         @data = reverse @data ;
     }
     return @data ;
@@ -370,12 +371,12 @@ sub table
     # open the csv file, read contents, calc max, add into data array
     my @data = _split_csv_data( $content, $params->{separator} ) ;
 
-    if( defined $params->{sort}) {
+    if ( defined $params->{sort} ) {
         my $legends ;
-        $legends = shift @data if( $params->{legends}) ;
-        @data = _sort_data( \@data, $params->{sort}) ;
+        $legends = shift @data if ( $params->{legends} ) ;
+        @data = _sort_data( \@data, $params->{sort} ) ;
         # add legends back to start
-        unshift @data, $legends   if( $legends) ;
+        unshift @data, $legends if ($legends) ;
     }
 
     # default align center
@@ -509,7 +510,7 @@ sub version
                 # convert any of the data with markdown
                 $out
                     .= "<tr><td valign='top'>$vers</td><td valign='top'>$date</td><td valign='top'>"
-                    . convert_md( $c )
+                    . convert_md($c)
                     . "</td></tr>\n" ;
             }
             $item_count++ ;
@@ -654,6 +655,7 @@ pipe '|' symbol
  parameters
     class   - name of class for the list
     table   - create a table rather than a list
+    width   - width of the table, if used
 
 =cut
 
@@ -663,7 +665,7 @@ sub links
     my ( $tag, $content, $params, $cachedir ) = @_ ;
 
     # strip any ending linefeed
-    chomp $content if( $content);
+    chomp $content if ($content) ;
     return "" if ( !$content ) ;
 
     $params->{class} ||= "" ;
@@ -671,10 +673,12 @@ sub links
     my $ul         = "<ul class='$tag $params->{class}'>\n" ;
     my %refs       = () ;
     my %uls        = () ;
+    my $width      = $params->{width} ? "width='$params->{width}'" : "" ;
 
-    $ul
-        = "<table class='$params->{class} $tag'><tr><th>Reference</th><th>Link</th></tr>\n"
-        if ( $params->{table} ) ;
+    if ( $params->{table} ) {
+        $ul
+            = "<table class='$params->{class} $tag'$width><tr><th>Reference</th><th>Link</th></tr>\n";
+    }
 
     foreach my $line ( split( /\n/, $content ) ) {
         my ( $ref, $link ) = split( /\|/, $line ) ;
@@ -708,7 +712,12 @@ sub links
 
     # make them nice and sorted
     map { $ul .= $uls{$_} } sort keys %uls ;
-    $ul .= "</ul>\n" if ( !$params->{table} ) ;
+
+    if ( $params->{table} ) {
+        $ul .= "</table>\n";
+    } else {
+        $ul .= "</ul>\n";
+    }
 
     return "\n" . $references . "\n" . $ul . "\n" ;
 }
@@ -813,7 +822,7 @@ Y2hgQIf/GbAAAKCTBYBUjWvCAAAAAElFTkSuQmCC
     }
 
     # we need to convert the bullet list into a HTML one
-    $content = convert_md( $content) ;
+    $content = convert_md($content) ;
 
     # make sure the first ul has class tree
     $content =~ s/<ul>/<ul id='$idname' class='$tag $params->{class}'>/ ;
@@ -919,7 +928,7 @@ sub box
         if ( $params->{title} ) ;
 
     # convert any content to HTML from Markdown
-    $out .= convert_md( $content) ;
+    $out .= convert_md($content) ;
     if ($icon) {
         $out .= "</td></tr></table></div>\n" if ($icon) ;
     } else {
@@ -960,7 +969,7 @@ sub quote
     $out .= ">\n" ;
 
     # convert any content to HTML from Markdown
-    $out .= convert_md( $content) ;
+    $out .= convert_md($content) ;
 
     $out .= "</blockquote></div><br/>\n" ;
     return $out ;
@@ -1058,14 +1067,14 @@ sub indent
     my $self = shift ;
     my ( $tag, $content, $params, $cachedir ) = @_ ;
 
-    $content =~ s/^/    /gsm;
+    $content =~ s/^/    /gsm ;
 
     # add a div for class and style if required
-    if( $params->{class} || $params->{style}) {
+    if ( $params->{class} || $params->{style} ) {
         my $div = "<div " ;
-        $div .= "class='$params->{class}'" if( $params->{class}) ;
-        $div .= "style='$params->{style}'" if( $params->{style}) ;
-        $content = "$div>$content</div>"
+        $div .= "class='$params->{class}'" if ( $params->{class} ) ;
+        $div .= "style='$params->{style}'" if ( $params->{style} ) ;
+        $content = "$div>$content</div>";
     }
 
     return $content ;
