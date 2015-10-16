@@ -83,6 +83,7 @@ has handles => (
                 counter
                 comment
                 indent
+                percent
                 }
         ] ;
     }
@@ -180,6 +181,24 @@ my $default_css = <<END_CSS;
         text-align: center;
         font-size: 130%;
         color: white;
+    }
+
+    .percent {
+        display: inline-block ;
+        width: 100px;
+        padding: 0px;
+        margin: 0px ;
+        border: 0px ;
+        background: bluegrey50;
+        vertical-align: middle ;
+    }
+
+    .percent > .bar {
+        display: inline-block ;
+        font-weight: bold;
+        background: blue400;
+        padding: 0px;
+        text-align: right;
     }
 
 END_CSS
@@ -677,7 +696,8 @@ sub links
 
     if ( $params->{table} ) {
         $ul
-            = "<table class='$params->{class} $tag'$width><tr><th>Reference</th><th>Link</th></tr>\n";
+            = "<table class='$params->{class} $tag'$width><tr><th>Reference</th><th>Link</th></tr>\n"
+            ;
     }
 
     foreach my $line ( split( /\n/, $content ) ) {
@@ -714,9 +734,9 @@ sub links
     map { $ul .= $uls{$_} } sort keys %uls ;
 
     if ( $params->{table} ) {
-        $ul .= "</table>\n";
+        $ul .= "</table>\n" ;
     } else {
-        $ul .= "</ul>\n";
+        $ul .= "</ul>\n" ;
     }
 
     return "\n" . $references . "\n" . $ul . "\n" ;
@@ -1074,11 +1094,74 @@ sub indent
         my $div = "<div " ;
         $div .= "class='$params->{class}'" if ( $params->{class} ) ;
         $div .= "style='$params->{style}'" if ( $params->{style} ) ;
-        $content = "$div>$content</div>";
+        $content = "$div>$content</div>" ;
     }
 
     return $content ;
 }
+
+# ----------------------------------------------------------------------------
+
+=item percent
+
+return each line of the content by 4 spaces
+
+ parameters
+     value - value of the percent, required, max 100, min 0
+     color - color of the bar, optional
+     border - add a grey border to the box, optional
+     trigger - set the color based on the value
+     width - width of the bounding box, optional
+
+=cut
+
+sub percent
+{
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
+    my $style = "" ;
+
+    $style .= $params->{border} ? "border:1px solid grey;" : "" ;
+
+    if ( $params->{width} ) {
+        $params->{width} .= "px" if ( $params->{width} !~ /%|px/ ) ;
+        $style .= "width:$params->{width};" ;
+    }
+    $params->{value} =~ s/.*?(\d+).*/$1/ if ( $params->{value} ) ;
+    my $value = int( $params->{value} ) ;
+    if ( $value < 0 ) {
+        $value = 0 ;
+    } elsif ( $value > 100 ) {
+        $value = 100 ;
+    }
+    my $barstyle = "" ;
+    my $color = $params->{color} ? $params->{color} : "" ;
+
+    if ( $params->{trigger} ) {
+        $color = 'reda700' ;
+        if ( $value >= 100 ) {
+            $color = 'green700' ;
+        } elsif ( $value >= 75 ) {
+            $color = 'yellow500' ;
+        } elsif ( $value >= 50 ) {
+            $color = 'amber800' ;
+        } elsif ( $value >= 25 ) {
+            $color = 'red400' ;
+        }
+    }
+    $barstyle .= "background:$color;" if ($color) ;
+
+    $style .= $params->{size} ? "font-size:$params->{size};" : "" ;
+    # $barstyle .= $params->{size} ? "font-size:$params->{size};" : "" ;
+    $barstyle .= "width:$value%;" ;
+    $content
+        = "<div class='percent' style='$style'>"
+        . "<div class='bar' style='$barstyle'>$value%</div>"
+        . "</div>" ;
+
+    return $content ;
+}
+
 
 # ----------------------------------------------------------------------------
 # build the css for the different box types
