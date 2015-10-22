@@ -299,6 +299,7 @@ my $format = App::Basis::ConvertText2->new(
     template  => $settings->{template},
     replace   => $replace,
     verbose   => $opt{verbose},
+    filename => $opt{filename}, # add filename even if its '-'
 ) ;
 $format->clean_cache() if ( $opt{clean} ) ;
 
