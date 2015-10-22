@@ -75,7 +75,7 @@ has handles => (
     is       => 'ro',
     init_arg => undef,
     default  => sub {
-        [   qw{yamlasjson yamlasxml table version page
+        [   qw{yamlasjson yamlasxml table spreadsheet version page
                 columns links tree
                 box note info tip important caution warning danger todo aside
                 quote
@@ -104,6 +104,19 @@ my $default_css = <<END_CSS;
     /* zebra tables */
     tr.odd { background: white;}
     tr.even {background: whitesmoke;}
+
+    table.spreadsheet td {
+        border: 1px solid #ccc;
+    }
+    table.spreadsheet th {
+        border: 1px solid #ccc;
+        text-align: center;
+    }
+
+    table.spreadsheet td.cell {
+        background: grey200;
+        color: black ;
+    }
 
     span.glossary {
       display: inline-block;
@@ -199,6 +212,7 @@ my $default_css = <<END_CSS;
         background: blue400;
         padding: 0px;
         text-align: right;
+        mix-blend-mode:darken;
     }
 
 END_CSS
@@ -223,6 +237,7 @@ sub _make_numbers
         }
     } elsif ( ref($item) eq '' || ref($item) eq 'SCALAR' ) {
         if ( $item && $item =~ /^\d+(\.\d+)?$/ ) {
+
             # force numbers to be numbers
             $item += 0 ;
         }
@@ -300,8 +315,6 @@ sub yamlasxml
     return $str ;
 }
 
-
-
 # ----------------------------------------------------------------------------
 
 sub _split_csv_data
@@ -341,6 +354,7 @@ sub _sort_data
     if ( $column =~ /r/ ) {
         $reverse = 1 ;
     }
+
     # just the number
     $column =~ s/^.*?([0-9]).*?$/$1/ ;
 
@@ -350,6 +364,57 @@ sub _sort_data
         @data = reverse @data ;
     }
     return @data ;
+}
+
+# ----------------------------------------------------------------------------
+# get the style and class data from the passed table cell
+# add in the cell class and style
+# also remove the row class as nothing used it effectively
+# {
+# .class
+# align things need to have a space between them
+#  ^ valign top, - valign centre, _ valign bottom
+#  < align left, = align center,  > align right
+#  #fg.bg
+# }
+
+sub _split_cell_data
+{
+    my ($cell) = @_ ;
+    my ( $class, $style ) ;
+
+    while ( $cell =~ s/\{(.*?)\}\s*$// ) {
+        my $cs = $1 ;
+
+        # cell color may contain a period so lets do that first
+        if ( $cs =~ s/#((\w+)?\.?(\w+)?)$// ) {
+            my ( $fg, $bg ) = ( $2, $3 ) ;
+            $style .= "color: " . to_hex_color($fg) . ";" if ($fg) ;
+            $style .= "background-color: " . to_hex_color($bg) . ";"
+                if ($bg) ;
+        }
+
+        # any class
+        if ( $cs =~ s/\.([\w\-_]+)// ) {
+            $class .= "$1 " ;
+        }
+
+        if ( $cs =~ /=/ ) {
+            $style .= "text-align: center;" ;
+        } elsif ( $cs =~ /</ ) {
+            $style .= "text-align: left;" ;
+        } elsif ( $cs =~ />/ ) {
+            $style .= "text-align: right;" ;
+        } elsif ( $cs =~ /\^/ ) {
+            $style .= "vertical-align: top;" ;
+        } elsif ( $cs =~ /-/ ) {
+            $style .= "vertical-align: middle;" ;
+        } elsif ( $cs =~ /_/ ) {
+            $style .= "vertical-align: bottom;" ;
+        }
+    }
+
+    return ( $class, $style, $cell ) ;
 }
 
 # ----------------------------------------------------------------------------
@@ -369,7 +434,7 @@ create a basic html table
         legends - flag to indicate that the top row is the legends
         separator - characters to be used to separate the fields
         zebra   - apply odd/even classes to table rows, default 0 OFF
-        align   - option, set alignment of table
+        align   - option, set alignment of entire table
         sort    - sort on a column number, "1", "1r"
         columns - columns to be included in the output "1,2,3,4"
 
@@ -381,6 +446,9 @@ sub table
     my ( $tag, $content, $params, $cachedir ) = @_ ;
 
     return "" if ( !$content ) ;
+
+    # note if we are really a spreadsheet table
+    my $spreadsheet = $tag eq 'spreadsheet' ;
 
     $params->{title} ||= "" ;
     $params->{class} ||= "" ;
@@ -394,6 +462,7 @@ sub table
         my $legends ;
         $legends = shift @data if ( $params->{legends} ) ;
         @data = _sort_data( \@data, $params->{sort} ) ;
+
         # add legends back to start
         unshift @data, $legends if ($legends) ;
     }
@@ -420,40 +489,126 @@ sub table
     }
     $out .= ">\n" ;
 
+    my $maxcol = 0 ;
     for ( my $i = 0; $i < scalar(@data); $i++ ) {
-        my @row   = @{ $data[$i] } ;
+        $maxcol = scalar @{ $data[$i] }
+            if ( scalar @{ $data[$i] } > $maxcol ) ;
+    }
+
+    my $leg_row = 0 ;
+    if ($spreadsheet) {
+
+        # lets limit the number of named columns to something sensible
+        $maxcol = 26 if ( $maxcol > 26 ) ;
+
+        my @tmp = map {
+            my $value = $_ ;
+
+            # first entry is blank to accomodate the row counter, has no class
+            $value
+                ? "**" . chr( ord('A') + $value - 1 ) . "** {.cell =}"
+                : " {.cell}" ;
+        } 0 .. $maxcol ;
+
+        unshift @data, \@tmp ;
+
+        $leg_row++ ;
+    }
+
+    # add in the row counters
+    my $rcount = 1 ;
+    for ( my $i = 0; $i < scalar(@data); $i++ ) {
+        my @col = @{ $data[$i] } ;
+        if ( $i && $spreadsheet ) {
+
+            # add in a row count and class the cell
+            unshift @col, "$rcount {.cell}" ;
+            $rcount++ ;
+        }
         my $class = $params->{zebra} ? ( $i & 1 ? 'odd' : 'even' ) : '' ;
         my $style = "" ;
-        my $last  = pop @row ;
+        my $last  = pop @col ;
 
-        # allow {.classname} as a thing on the end of the row
-        if ( $last =~ s/\{\.(.*?)\}\s+$// ) {
-            $class .= " $1" ;
-        }
-        if ( $last =~ s/#((\w+)?\.?(\w+)?)// ) {
+        # row color last thing on the line after class removed
+        if ( $last =~ s/#((\w+)?\.?(\w+)?)$// ) {
             my ( $fg, $bg ) = ( $2, $3 ) ;
             $style .= "color: " . to_hex_color($fg) . ";" if ($fg) ;
             $style .= "background-color: " . to_hex_color($bg) . ";"
                 if ($bg) ;
         }
-        push @row, $last ;
+        push @col, $last ;
+
+        # pad columns if needed
+        if ( @{ $data[$i] } < $maxcol ) {
+            push @col,
+                map {"&nbsp;"} scalar( @{ $data[$i] } ) .. $maxcol - 1 ;
+        }
         $out .= "<tr" ;
         $out .= " class='$class'" if ($class) ;
         $out .= " style='$style'" if ($style) ;
         $out .= ">" ;
 
         # decide if the top row has the legends
-        my $tag = ( !$i && $params->{legends} ) ? 'th' : 'td' ;
+        my $pos = 0 ;
         map {
+            $_ =~ s/^\s+|\s+$//g ;
             $_ ||= '&nbsp;' ;
-            $out .= "<$tag>$_</$tag>" ;
-        } @row ;
+
+            # need to make sure the row number is not a heading if legends being used
+            my $tag = ( $params->{legends} && ( $i == $leg_row ) && $pos ) ? 'th' : 'td' ;
+
+            my ( $class, $style, $data ) = _split_cell_data($_) ;
+            $out .= "<$tag" ;
+            $out .= " class='$class'" if ($class) ;
+            $out .= " style='$style'" if ($style) ;
+            $out .= ">$data</$tag>" ;
+            $pos++ ;
+        } @col ;
         $out .= "</tr>\n" ;
     }
-
     $out .= "</table>\n" ;
 
     return $out ;
+}
+
+# ----------------------------------------------------------------------------
+
+=item spreadsheet
+
+a special version of table
+
+ parameters
+    data   - comma separated lines of table data
+
+    hashref params of
+        class   - HTML/CSS class name
+        id      - HTML/CSS class
+        width   - width of the table
+        style   - style the table if not doing anything else
+        legends - flag to indicate that the top row is the legends
+        separator - characters to be used to separate the fields
+        align   - option, set alignment of entire table
+        sort    - sort on a column number, "1", "1r"
+        columns - columns to be included in the output "1,2,3,4"
+
+=cut
+
+sub spreadsheet
+{
+    my $self = shift ;
+    my ( $tag, $content, $params, $cachedir ) = @_ ;
+
+    return "" if ( !$content ) ;
+
+    # make sure we are a spreadsheet, also have a shadow (on html output) to
+    # make it stand out
+    $params->{class} = "spreadsheet shadow"
+        . ( $params->{class} ? " $params->{class}" : "" ) ;
+    # no zebra for spreadsheet
+    $params->{zebra} = 0 ;
+
+    # exit via the standard table call
+    return $self->table( "spreadsheet", $content, $params, $cachedir ) ;
 }
 
 # ----------------------------------------------------------------------------
@@ -484,6 +639,7 @@ sub version
 {
     my $self = shift ;
     my ( $tag, $content, $params, $cachedir ) = @_ ;
+
     # $params->{title} ||= 'Document Revision History' ;
     my $item_count = 0 ;
 
@@ -766,7 +922,7 @@ or viewing HTML with a browser, not sure why, likely to be the embedded backgrou
 which are not displaying
 
  parameters
- 
+
 @todo try this: find . -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g'
 or
 tree -C -L 2 -T "Ice's webpage" -H "http://mama.indstate.edu/users/ice" --charset=utf8 -o 00Tree.html
@@ -786,6 +942,7 @@ sub tree
 
     # incase material colors used
     $params->{color} = to_hex_color( $params->{color} ) ;
+
     # we create a sig based on the parameters and do not include the content
     # as we can reuse the same layout for other elements
     my $sig = create_sig( '', $params ) ;
@@ -797,6 +954,7 @@ sub tree
         # create a uniq name for this style
         $style_count++ ;
         $idname = "column$style_count" ;
+
         # taken from http://odyniec.net/articles/turning-lists-into-trees/
         my $css .= "ul#$idname, ul#$idname ul {
     list-style-type: none;
@@ -892,10 +1050,12 @@ sub box
 {
     my $self = shift ;
     my ( $tag, $content, $params, $cachedir ) = @_ ;
+
     #  defaults
     $params->{width} ||= '100%' ;
     $params->{class} ||= "" ;
     $params->{style} ||= "" ;
+
     # notes may get a default title if its missing
     $params->{title} = ucfirst($tag)
         if ( !defined $params->{title} && $tag ne 'box' ) ;
@@ -905,13 +1065,16 @@ sub box
 
     my $icon ;
     $params->{style} = "width:$params->{width};$params->{style}" ;
+
     # boxes cannot have icons
     if ( $tag ne 'box' && $params->{icon} ) {
+
         # we can over-ride the icon with a string
         $icon
             = $params->{icon} eq "1"
             ? ( $icons{$tag} || "" )
             : $params->{icon} ;
+
         # allow icon flame hourglass etc, we will fix it up right
         # the default is fontaweome if there is no specific
         if ( $icon !~ /^:(fa|mi):/ ) {
@@ -920,10 +1083,12 @@ sub box
         if ( $icon !~ /:\[.*?\]/ ) {
             $icon .= ':[]' ;
         }
+
         # icons need to be at least 2x size to look good here
         if ( $icon !~ /\[(.*?\blg\b|.*?\b\[2345]x\b).*?\]/ ) {
             $icon =~ s/\]/ 2x]/ ;
         }
+
         # make them fixed width too
         if ( $icon !~ /\[.*?\bfw\b.*?\]/ ) {
             $icon =~ s/\]/ fw]/ ;
@@ -977,6 +1142,7 @@ sub quote
 {
     my $self = shift ;
     my ( $tag, $content, $params, $cachedir ) = @_ ;
+
     #  defaults
     $params->{class} ||= "" ;
     my $w = $params->{width} ? "style='width:$params->{width};' " : "" ;
@@ -1012,6 +1178,7 @@ sub appendix
     state $count = 0 ;
     my $str = "Appendix " . chr( 65 + $count ) ;
     if ( $count > 26 ) {
+
         # gives AA, AB, AC etc
         $str
             = "Appendix "
@@ -1058,7 +1225,7 @@ sub counter
 =item comment
 
 remove block from the document, its just a comment
- 
+
 =cut
 
 sub comment
@@ -1079,7 +1246,7 @@ return each line of the content by 4 spaces
 
  class - optional class to wrap around import
  style - optional style to wrap around import
- 
+
 =cut
 
 sub indent
@@ -1152,6 +1319,7 @@ sub percent
     $barstyle .= "background:$color;" if ($color) ;
 
     $style .= $params->{size} ? "font-size:$params->{size};" : "" ;
+
     # $barstyle .= $params->{size} ? "font-size:$params->{size};" : "" ;
     $barstyle .= "width:$value%;" ;
     $content
@@ -1161,7 +1329,6 @@ sub percent
 
     return $content ;
 }
-
 
 # ----------------------------------------------------------------------------
 # build the css for the different box types

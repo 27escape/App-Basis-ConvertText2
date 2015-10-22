@@ -2113,6 +2113,88 @@ my $default_css = <<END_CSS;
         vertical-align: middle ;
     }
 
+    /* all boxed tables will be styled this way */
+    table.box
+    {
+        margin: 0px;
+        text-align: left;
+        border-collapse: collapse;
+    }
+    table.box tr { vertical-align:top;}
+    table.box th
+    {
+        padding: 0px 10px 0px 10px;
+        background-color: #ccc;
+        font-weight: bold;
+        text-align: center;
+        border: 1px solid black;
+    }
+    table.box td
+    {
+        padding: 0px 10px 0px 10px;
+        border: 1px solid black;
+    }
+
+
+    /* all boxed tables will be styled this way */
+    #box table
+    {
+        page-break-inside: auto ;
+        /*margin: 5px;*/
+        text-align: left;
+        border-collapse: collapse;
+    }
+    #box table tr {
+        vertical-align:top;
+        margin-top: 0px;
+        margin-bottom: 0px;
+    }
+    #box table th
+    {
+        padding: 0px 0px 0px 0px;
+        background-color: #81c635;
+        font-weight: bold;
+        text-align: center;
+        border: 1px solid black;
+    }
+    #box table td
+    {
+        padding: 0px 0px 0px 00px;
+        border: 1px solid black;
+    }
+    #box table p:first-child
+    {
+        margin-top: 0px;
+    }
+    #box table p:last-child
+    {
+        margin-bottom: 0px;
+    }
+
+    /* shadows may not work in PDF, but will in html */
+    /* taken from https://css-tricks.com/snippets/css/css-box-shadow/ */
+    .grey-shadow {
+        -moz-box-shadow:    3px 3px 5px  #ccc;
+        -webkit-box-shadow: 3px 3px 5px  #ccc;
+        box-shadow:         3px 3px 5px  #ccc;
+    }
+    .shadow {
+        -moz-box-shadow:    3px 3px 3px #444;
+        -webkit-box-shadow: 3px 3px 3px #444;
+        box-shadow:         3px 3px 3px #444;
+    }
+    .inner-shadow {
+        -moz-box-shadow:    inset 0 0 10px #000000;
+        -webkit-box-shadow: inset 0 0 10px #000000;
+        box-shadow:         inset 0 0 10px #000000;
+    }
+    .bottom-shadow {
+       -webkit-box-shadow: 0 8px 6px -6px black;
+       -moz-box-shadow: 0 8px 6px -6px black;
+       box-shadow: 0 8px 6px -6px black;
+    }
+
+
 END_CSS
 
 # The full set of sourceCode highlight css classes
@@ -2160,6 +2242,7 @@ my $TITLE = "%TITLE%" ;
 
 has 'name'    => ( is => 'ro', ) ;
 has 'basedir' => ( is => 'ro', ) ;
+has 'filename' => ( is => 'ro', ) ;
 
 has 'use_cache' => ( is => 'rw', default => sub { 0 ; } ) ;
 
@@ -3389,7 +3472,10 @@ sub parse
     # add in our basic CSS
     add_css($default_css) ;
 
-    my $id = md5_hex( encode_utf8($data) ) ;
+    # my $id = md5_hex( encode_utf8($data) ) ;
+    # base the hash on the filename as that will not change and will overwrite
+    # previouse versions
+    my $id = md5_hex( $self->{filename} ) ;
 
     # my $id = md5_hex( $data );
     $self->_set_md5id($id) ;
