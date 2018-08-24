@@ -67,8 +67,8 @@ use constant PLOTICUS => "ploticus" ;
 create a simple ploticus image
 
  parameters
-    data   - ploticus text      
-    filename - filename to save the created image as 
+    data   - ploticus text
+    filename - filename to save the created image as
 
  hashref params of
         size        - size of image, widthxheight - optional, default 720x512

@@ -31,7 +31,6 @@ basic config and the initial templates
         -t, --template        name of template to use
         -v, --verbose         verbose mode
         -w, --wkhtmltopdf     Convert to PDF using wkhtmltopdf
-        -m, --commonmark      use CommonMark rather than pandoc for markdown processing
 
 =head1 AUTHOR
 
@@ -85,24 +84,9 @@ my $TEMPLATE = <<EOD;
         %JAVASCRIPT%
 
         <style type='text/css'>
-            \@page { 
-                size: %PAGE_SIZE% %ORIENTATION% ; 
-                margin: 90pt 30pt 40pt 30pt ;
-                \@top { margin: -10pt 0pt 0pt -90pt ; }
-                \@bottom-right { content: counter(page) ;}
-            }
-            \@page landscape {
-                    prince-rotate-body: 270deg;
-            }
+
             %CSS%
 
-            /* tables */
-            table.footer { font-size: 10px; width: 100%;}
-            table.footer td.commercial { 
-                font-weight: bold; 
-                font-size: 12px;
-                text-align: center;
-            }
         </style>
     </head>
     <body>
@@ -121,6 +105,527 @@ my $TEMPLATE = <<EOD;
 </html>
 EOD
 
+my $COMMONCSS = <<END_CSS;
+/* -------------- common css -------------- */
+
+/* start with some stuff to make princexml docs look nice */
+\@prince-pdf {
+  prince-filter-resolution: 300dpi;
+  prince-pdf-open-action: command(FitPage) ;
+  prince-pdf-open-action: zoom(fit-page) ;
+}
+
+\@page {
+    size: %PAGE_SIZE% %ORIENTATION% ;
+    margin: 90pt 30pt 40pt 30pt ;
+    \@top { margin: -10pt 0pt 0pt -90pt ; }
+    \@bottom-right { content: counter(page) " / " counter(pages) ;}
+    \@bottom-left {content: "%COPYRIGHT%";}
+}
+\@page landscape {
+        prince-rotate-body: 270deg;
+}
+
+/* make sure that images do not go beyond any boundry */
+img {max-width: 100%;}
+
+.content {
+    width: 700px;
+    max-width: 700px;
+    min-width: 700px;
+}
+
+.container {
+    width: 700px;
+    max-width: 700px;
+    min-width: 700px;
+}
+
+/* setup for print */
+\@media print {
+    /* this is the normal page style */
+    \@page {
+        size: %PAGE_SIZE%  %ORIENTATION% ;
+        margin: 60pt 30pt 40pt 30pt ;
+    }
+    body {
+        max-width: 700px;
+        min-width: 700px;
+        width: 700px;
+    }
+}
+
+/* setup for web */
+\@media screen {
+    body {
+        max-width: 700px;
+        min-width: 700px;
+        width: 700px;
+    }
+    #toc a {
+        text-decoration: none ;
+        font-weight: normal;
+    }
+}
+
+table { page-break-inside: auto ;}
+table { page-break-inside: avoid ;}
+tr    { page-break-inside:avoid; page-break-after:auto }
+thead { display:table-header-group }
+tfoot { display:table-footer-group }
+
+/* toc */
+.toc {
+    padding: 0.4em;
+    page-break-after: always;
+}
+.toc p {
+    font-size: 24;
+}
+.toc h3 { text-align: center }
+.toc ul {
+    columns: 1;
+}
+.toc ul, .toc li {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    padding-left: 10px ;
+}
+.toc a::after {
+    content: leader('.') target-counter(attr(href), page);
+    font-style: normal;
+}
+.toc a {
+    text-decoration: none ;
+    font-weight: normal;
+    color: black;
+}
+
+\@page landscape {
+    prince-rotate-body: 270deg;
+}
+.landscape {
+    page: landscape;
+}
+
+body {
+    /* default width is about right for A4, should override for specific page sizes */
+    width: 800px ;
+    font-family: sans-serif;
+}
+code {
+    font-family: monospace;
+}
+
+/* we do not want these, headings start from h2 onwards */
+h1 {
+    display: none;
+}
+
+li {
+    padding-left: 0px;
+    margin-left: -2em ;
+}
+
+/* enable tooltips on 'title' attributes when using PrinceXML */
+*[title] { prince-tooltip: attr(title) }
+
+.rotate-90 {
+  filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=1);
+  -webkit-transform: rotate(90deg);
+  -ms-transform: rotate(90deg);
+  transform: rotate(90deg);
+}
+.rotate-180 {
+  filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=2);
+  -webkit-transform: rotate(180deg);
+  -ms-transform: rotate(180deg);
+  transform: rotate(180deg);
+}
+.rotate-270 {
+  filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=3);
+  -webkit-transform: rotate(270deg);
+  -ms-transform: rotate(270deg);
+  transform: rotate(270deg);
+}
+.flip-horizontal {
+  filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=0, mirror=1);
+  -webkit-transform: scale(-1, 1);
+  -ms-transform: scale(-1, 1);
+  transform: scale(-1, 1);
+}
+.flip-vertical {
+  filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=2, mirror=1);
+  -webkit-transform: scale(1, -1);
+  -ms-transform: scale(1, -1);
+  transform: scale(1, -1);
+}
+
+.border-grey {
+    border-style: solid;
+    border-width: 1px;
+    border-color: grey300;
+    box-shadow:inset 0px 0px 85px rgba(0,0,0,.5);
+    -webkit-box-shadow:inset 0px 0px 85px rgba(0,0,0,.5);
+    -moz-box-shadow:inset 0px 0px 85px rgba(0,0,0,.5);
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.border-inset-grey {
+    border: 1px solid #666666;
+    -webkit-box-shadow: inset 3px 3px 3px #AAAAAA;
+    border-radius: 3px;
+}
+
+.border-shadow-grey {
+    -moz-box-shadow: 3px 3px 4px #444;
+    -webkit-box-shadow: 3px 3px 4px #444;
+    box-shadow: 3px 3px 4px #444;
+    -ms-filter: "progid:DXImageTransform.Microsoft.Shadow(Strength=4, Direction=135, Color='#444444')";
+    filter: progid:DXImageTransform.Microsoft.Shadow(Strength=4, Direction=135, Color='#444444');
+}
+
+\@font-face {
+    font-family: emoji;
+
+    /* Fonts for text outside emoji blocks */
+    src: local('Droid Sans Mono'),
+       local('Lucida Console'),
+       local('Arial Monospaced'),
+       local(Arial);
+    /* Emoji unicode blocks */
+    unicode-range: U+1F300-1F5FF, U+1F680-1F6FF, U+2600-26FF;
+}
+
+.emoji {
+  margin-right:.5em;
+  width:22px;
+  height:22px ;
+  vertical-align: middle ;
+  font-family: emoji;
+}
+
+.emoji-2x {
+  margin-right:.5em;
+  width:44px;
+  height:44px ;
+  vertical-align: middle ;
+}
+
+.material-icons {
+    vertical-align: middle ;
+}
+
+/* all boxed tables will be styled this way */
+table.box
+{
+    margin: 0px;
+    text-align: left;
+    border-collapse: collapse;
+    background: white ;
+}
+table.box tr { vertical-align:top;}
+table.box th
+{
+    padding: 0px 10px 0px 10px;
+    background-color: #ccc;
+    font-weight: bold;
+    text-align: center;
+    border: 1px solid black;
+}
+table.box td
+{
+    padding: 0px 10px 0px 10px;
+    border: 1px solid black;
+}
+
+/* all boxed tables will be styled this way */
+#box table
+{
+    page-break-inside: auto ;
+    text-align: left;
+    border-collapse: collapse;
+}
+#box table tr {
+    vertical-align:top;
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+#box table th
+{
+    padding: 0px 0px 0px 0px;
+    background-color: #81c635;
+    font-weight: bold;
+    text-align: center;
+    border: 1px solid black;
+}
+#box table td
+{
+    padding: 0px 0px 0px 00px;
+    border: 1px solid black;
+}
+#box table p:first-child
+{
+    margin-top: 0px;
+}
+#box table p:last-child
+{
+    margin-bottom: 0px;
+}
+
+/* shadows may not work in PDF, but will in html */
+/* taken from https://css-tricks.com/snippets/css/css-box-shadow/ */
+.grey-shadow {
+    /* -moz-box-shadow:    3px 3px 5px  #ccc;
+     * -webkit-box-shadow: 3px 3px 5px  #ccc;
+     * box-shadow:         3px 3px 5px  #ccc;
+     */
+    filter: drop-shadow(3px 3px 3px #ccc);
+}
+.shadow {
+    /* -moz-box-shadow:    3px 3px 3px #444;
+    * -webkit-box-shadow: 3px 3px 3px #444;
+    * box-shadow:         3px 3px 3px #444;
+    */
+    filter: drop-shadow(3px 3px 3px #444444);
+}
+.inner-shadow {
+    -moz-box-shadow:    inset 0 0 10px #000000;
+    -webkit-box-shadow: inset 0 0 10px #000000;
+    box-shadow:         inset 0 0 10px #000000;
+}
+.bottom-shadow {
+   -webkit-box-shadow: 0 8px 6px -6px black;
+   -moz-box-shadow: 0 8px 6px -6px black;
+   box-shadow: 0 8px 6px -6px black;
+}
+
+.button {
+    border: 0;
+    border-radius: 4px;
+    outline: 0;
+    cursor: pointer;
+    padding: 7px 20px;
+    font-size: .95em;
+}
+.button .small {
+    padding: 3px 10px;
+    font-size: .5em;
+}
+.button .large {
+    padding: 15px 45px;
+    font-size: 1.1em;
+}
+.button .primary {
+    color: #FFF;
+    background: blue700;
+}
+.button .success {
+    color: #FFF;
+    background: green700;
+}
+.button .danger {
+    color: #FFF;
+    background: red700;
+}
+.alert {
+    page-break-inside:avoid;
+    padding: 5px;
+    margin: 3px 0;
+    border-radius: 3px;
+}
+.primary {
+    background: blue50;
+    border: 1px solid #1976D2 ; /*blue700*/
+}
+.success {
+    background: green50;
+    border: 1px solid #388E3C ; /*green700*/
+}
+.warning {
+    background: orange50;
+    border: 1px solid #F57C00 ; /* orange700 */
+}
+.danger {
+    background: red50;
+    border: 1px solid #D32F2F  ; /*red700*/
+}
+.sample {
+    background: purple50;
+    border: 1px solid #7B1FA2  ; /*purple700*/
+}
+.console {
+    background: #222222;
+    border: 1px solid #388E3C ; /*green700*/
+    color: #ffffff
+    font-family: monospace;
+}
+.alert.light {
+    background: white;
+    border: 1px solid #b0b0b0 ;
+}
+.normal {
+    background: #e0e0e0;
+    border: 1px solid #616161 ; /*grey700*/
+}
+.secondary {
+    background: yellow50;
+    border: 1px solid #FBC02D ; /*yellow700 */
+}
+
+.button {
+    border: 0;
+    border-radius: 4px;
+    outline: 0;
+    cursor: pointer;
+}
+.button.small {
+    padding: 7px 20px;
+    font-size: .95em;
+}
+.button.large {
+    padding: 15px 45px;
+    font-size: 1.1em;
+}
+.button.primary {
+    color: #FFF;
+    background: #5f90b0;
+}
+.button.primary:hover {
+    background: #5589ab;
+}
+.button.success {
+    color: #FFF;
+    background: #4daf7c;
+}
+.button.success:hover {
+    background: #48a474;
+}
+.button.danger {
+    color: #FFF;
+    /*background: #e6623c;*/
+    background: crimson;
+}
+.button.danger:hover {
+    background: #e4572e;
+}
+.right {
+    text-align: right;
+}
+.center {
+    text-align: center;
+}
+.centre {
+    text-align: center;
+}
+
+/* tables */
+table.footer { font-size: 10px; width: 100%;}
+table.footer td.commercial {
+    font-weight: bold;
+    font-size: 12px;
+    text-align: center;
+}
+
+/* the next few things are used by critic markup */
+mark {
+    background: yellow400 ;
+}
+
+ins {
+    color: lightgreen900 ;
+    text-decoration: none ;
+}
+/* for deleted items, mark them out with color but less obvious */
+/* hatch pattern from http://www.patternify.com/ */
+.criticgrey {
+    /*background-color: gray200;*/
+    /* color: gray400 ;*/
+    font-weight: 100;
+    font-family: sans-serif ;
+    background:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAG0lEQVQYV2NkYGD4z8DAwMgABXAGNgGwSgwVAFbmAgXQdISfAAAAAElFTkSuQmCC);
+}
+
+/* for critic markup questions, mark them out with color but less obvious */
+/* hatch pattern from http://www.patternify.com/ */
+.criticquestion {
+    border: 1px solid #E65100; /*orange900*/
+    background: orange100;
+}
+.criticquestion::before {
+    content: " ¿ ";
+}
+.criticquestion::after {
+    content: " ? ";
+}
+
+
+span.atuser, span.citation {
+    background: yellow100 ;
+    color: black ; /* option cyan900 #006064 */
+    border: 1px solid #f57f17 ;
+    border-radius: 3px 3px 0 0 ;
+    /* yellow900 */
+}
+
+END_CSS
+
+# fontface for emoticons is not working
+# /* https://css-tricks.com/snippets/css/using-font-face/ */
+# \@font-face {
+#     font-family: OpenSansEmoji;
+#     src: url('https://raw.githubusercontent.com/MorbZ/OpenSansEmoji/master/OpenSansEmoji.ttf') format('ttf');
+# /*Read more : http://www.ehow.com/how_8382072_embed-ttf-fonts-css.html*/
+#  unicode-range:  U+1F600-1F64F;
+# }
+
+# \@font-face {
+#     font-family: Noto;
+#     src: url('https://github.com/googlei18n/noto-emoji/raw/master/fonts/NotoEmoji-Regular.ttf') format('ttf');
+#     unicode-range: U+1F600-1F64F;
+# }
+
+
+# The full set of sourceCode highlight css classes
+# div.sourceCode {    }
+# table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {  }
+# table.sourceCode {  }
+# td.lineNumbers { }
+# td.sourceCode {  }
+# pre, code {  }
+# code > span.kw {  } /* Keyword */
+# code > span.dt {  } /* DataType */
+# code > span.dv {  } /* DecVal */
+# code > span.bn {  } /* BaseN */
+# code > span.fl {  } /* Float */
+# code > span.ch {  } /* Char */
+# code > span.st {  } /* String */
+# code > span.co {  } /* Comment */
+# code > span.ot {  } /* Other */
+# code > span.al {  } /* Alert */
+# code > span.fu {  } /* Function */
+# code > span.er {  } /* Error */
+# code > span.wa {  } /* Warning */
+# code > span.cn {  } /* Constant */
+# code > span.sc {  } /* SpecialChar */
+# code > span.vs {  } /* VerbatimString */
+# code > span.ss {  } /* SpecialString */
+# code > span.im { } /* Import */
+# code > span.va { } /* Variable */
+# code > span.cf {  } /* ControlFlow */
+# code > span.op {  } /* Operator */
+# code > span.bu { } /* BuiltIn */
+# code > span.ex { } /* Extension */
+# code > span.pp {  } /* Preprocessor */
+# code > span.at { } /* Attribute */
+# code > span.do {  } /* Documentation */
+# code > span.an {  } /* Annotation */
+# code > span.cv {  } /* CommentVar */
+# code > span.in {  } /* Information */
+
+
+
 # -----------------------------------------------------------------------------
 
 sub create_defaults
@@ -134,7 +639,7 @@ sub create_defaults
     if ( !-d $default ) {
 
         # create the defaults if they do not exist
-        try { path($default)->mkpath } catch {} ;
+        try { path($default)->mkpath } catch { } ;
         msg_exit("Could not create default templates dir in $dir")
             if ( !-d $default ) ;
     }
@@ -172,12 +677,17 @@ sub read_settings
     $template =~ s/\v//g ;
     my $templatedir = "$dir/templates/$template" ;
     if ( !-d $templatedir ) {
-        debug( "INFO",
-            "Template '$template' does not exist, using default" ) ;
+        debug( "INFO", "Template '$template' does not exist, using default" ) ;
         $templatedir = "$dir/templates/default" ;
     }
-    $settings{config}
-        = App::Basis::Config->new( filename => "$templatedir/config" ) ;
+    my $commoncss = "$dir/css/common.css" ;
+    if ( !-f $commoncss ) {
+        debug( "INFO", "There is no common CSS file '$commoncss' creating..." ) ;
+        path($commoncss)->spew_utf8("/* add any common CSS you want under here */") ;
+    }
+    $settings{commoncss} = $COMMONCSS . "\n/*user commoncss */\n" . path($commoncss)->slurp_utf8() ;
+
+    $settings{config} = App::Basis::Config->new( filename => "$templatedir/config" ) ;
 
     $settings{template}     = $template ;
     $settings{template_dir} = $templatedir ;
@@ -190,30 +700,24 @@ sub read_settings
 # main
 
 my %opt = init_app(
-    help_text =>
-        "Convert my modified markdown text files into other formats, by 
-    default will create HTML in same directory as the input file, will only 
-    process .md or .mdown files. 
-    If there is no output option used the output will be to file of same name 
+    help_text => "Convert my modified markdown text files into other formats, by
+    default will create HTML in same directory as the input file, will only
+    process .md or .mdown files.
+    If there is no output option used the output will be to file of same name
     as the input filename but with an extension (if provided) from the
     document, use format: keyword (pdf html doc).",
     help_cmdline => "filename",
     options      => {
-        'clean|c' => 'Clean up the cache before use',
+        'clean|c'    => 'Clean up the cache before use',
         'output|o=s' => {
-            desc =>
-                'Filename to store the output as, extension will control conversion',
+            desc    => 'Filename to store the output as, extension will control conversion',
             default => "",
         },
-        'prince|p' =>
-            'Convert to PDF using princexml',
-        'template|t=s' => 'name of template to use',
-        'templates'    => 'list available templates',
-        'wkhtmltopdf|w' =>
-            'Convert to PDF using wkhtmltopdf',
-        'verbose|v' => 'verbose mode',
-        'commonmark|m' =>
-            'use commonMark instead of pandoc for markdown processing',
+        'prince|p'      => 'Convert to PDF using princexml',
+        'template|t=s'  => 'name of template to use',
+        'templates'     => 'list available templates',
+        'wkhtmltopdf|w' => 'Convert to PDF using wkhtmltopdf',
+        'verbose|v'     => 'verbose mode',
     }
 ) ;
 
@@ -245,7 +749,7 @@ if (!$opt{filename}
     || ( $opt{filename} ne '-'
         && !( -f $opt{filename} && $opt{filename} =~ /\.md$|\.mdown$/i ) )
     ) {
-    warn "Bad filename '$opt{filename}'" if( $opt{filename}) ;
+    warn "Bad filename '$opt{filename}'" if ( $opt{filename} ) ;
     show_usage("filename must exist and be .md (or .mdown") ;
 }
 
@@ -285,21 +789,30 @@ $settings = read_settings( $template, $opt{config_dir} ) ;
 # add in template defaults if needed
 $replace->{DATE} ||= strftime( "%Y-%m-%d", localtime() ) ;
 $replace->{GENERATED} = strftime( "%Y-%m-%d %H:%M:%S", localtime() ) ;
-$replace->{COPYRIGHT}   ||= $settings->{config}->get("copyright") ;
-$replace->{AUTHOR}      ||= $settings->{config}->get("author") ;
-$replace->{PAGE_SIZE}   ||= $settings->{config}->get("page/size") ;
-$replace->{ORIENTATION} ||= $settings->{config}->get("page/orientation") ;
-$replace->{SUBTITLE}    ||= $settings->{config}->get("subtitle") ;
+# get all top level config values
+for my $k ( keys %{ $settings->{config}->{raw} } ) {
+    # pick simple scalers only
+    if ( ref( $settings->{config}->{raw}->{$k} ) eq "" ) {
+        $replace->{ uc($k) } = $settings->{config}->{raw}->{$k} ;
+    }
+}
+# add in specific multilevel items
+$replace->{PAGE_SIZE}   = $settings->{config}->get("page/size") ;
+$replace->{ORIENTATION} = $settings->{config}->get("page/orientation") ;
+
+# verbose_data( $settings->{config}->{raw} ) ;
+verbose_data($replace) ;
 
 my $format = App::Basis::ConvertText2->new(
     name      => get_program(),
     basedir   => $basedir,
     use_cache => 1,
     cache_dir => $CACHE_DIR,
+    commoncss => $settings->{commoncss},
     template  => $settings->{template},
     replace   => $replace,
-    verbose   => $opt{verbose},
-    filename => $opt{filename}, # add filename even if its '-'
+    commands  => "$opt{config_dir}/commands",
+    filename  => $opt{filename},                # add filename even if its '-'
 ) ;
 $format->clean_cache() if ( $opt{clean} ) ;
 
@@ -308,7 +821,7 @@ $format->clean_cache() if ( $opt{clean} ) ;
 my $current = Path::Tiny->cwd ;
 chdir($basedir) ;
 
-my $data = $format->parse( $story, $opt{commonmark} ) ;
+my $data = $format->parse($story) ;
 
 # decide on output filename from any format keyword
 # all the keywords are in UPPER-CASE
@@ -365,8 +878,8 @@ if ( $opt{output} ) {
 
     my $status = $format->save_to_file( $opt{output}, $pdfconvertor ) ;
 
-    if ( $opt{verbose} && $status ) {
-        say $opt{output} ;
+    if ($status) {
+        verbose( $opt{output} ) ;
     } elsif ( !$status ) {
         say STDERR "Failed to create $opt{output}" ;
     }

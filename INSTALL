@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+# This is everything that is needed on an ubuntu system, likely the packages have similar names
+# on other linux distributions
+
+# ------------ required packages  -------------
+
+sudo apt-get install -y build-essential curl
+sudo apt-get install -y python2.7-dev python-pip nodejs npm
+sudo apt-get install -y libjpeg8-dev libgd2-xpm-dev graphviz ploticus mscgen gnuplot gle-graphics
+sudo apt-get install -y cabal-install
+sudo apt-get install -y libgd-dev libgd
+sudo apt-get install -y texlive-latex-recommended texlive-fonts-recommended
+
+# ------------ python tools -------------
+# http://blockdiag.com/en/
+sudo pip install blockdiag
+sudo pip install seqdiag
+sudo pip install actdiag
+sudo pip install nwdiag
+
+# ------------ haskell tools -------------
+
+sudo cabal update
+# dataflow https://github.com/sonyxperiadev/dataflow
+sudo cabal install dataflow
+sudo cabal install pandoc
+
+# ------------ plantuml tools -------------
+
+# plantuml + uml script
+mkdir ~/bin
+cd ~/bin
+curl http://sourceforge.net/projects/plantuml/files/plantuml.jar/download -o plantuml.jar
+curl https://raw.githubusercontent.com/27escape/bin/master/uml -o uml
+
+# ------------ nodejs tools -------------
+
+sudo npm  install -g phantomjs
+
+# ------------ perl modules -------------
+
+cpanm WebColors
+cpanm  GD
+cpanm  GD::Graph::lines
+cpanm  GD::Graph::lines3d
+cpanm  GD::Graph::bars
+cpanm  GD::Graph::bars3d
+cpanm  GD::Graph::pie
+cpanm  GD::Graph::points
+cpanm  GD::Graph::linespoints
+cpanm  GD::Graph::area
+cpanm  GD::Graph::mixed
+cpanm  GD::Sparkline
+cpanm GD::Barcode
+
+cpanm Image::Resize
+cpanm Venn::Chart
+
+# ------------ my tools -------------
+
+#wbs2md
+#regen

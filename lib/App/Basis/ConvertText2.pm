@@ -1,4 +1,3 @@
-
 =head1 NAME
 
 App::Basis::ConvertText2
@@ -10,7 +9,7 @@ Not really to be used on its own.
 
 =head1 DESCRIPTION
 
-This is a perl module and a script that makes use of %TITLE%
+This is a perl module and a script that makes use of fTITLE%
 
 This is a wrapper for [pandoc] implementing extra fenced code-blocks to allow the
 creation of charts and graphs etc.
@@ -82,6 +81,7 @@ use Module::Pluggable
 use App::Basis ;
 use App::Basis::ConvertText2::Support ;
 use utf8::all ;
+use utf8 ;
 
 # ----------------------------------------------------------------------------
 # this contents string is to be replaced with the body of the markdown file
@@ -91,2148 +91,1047 @@ use constant PANDOC   => 'pandoc' ;
 use constant PRINCE   => 'prince' ;
 use constant WKHTML   => 'wkhtmltopdf' ;
 
+my $BUILT_IN_BLOCKS = "(^buffer\$|^include\$|^ifand\$|^if\$)" ;
+my $FONT_AWESOME_URL =
+    "https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" ;
+my $GOOGLE_ICONS_URL = "https://fonts.googleapis.com/icon?family=Material+Icons" ;
+
+# my $EMOJI_WEBSITE = http://www.emoji-cheat-sheet.com/graphics/emojis ;
+my $EMOJI_WEBSITE = "https://www.webpagefx.com/tools/emoji-cheat-sheet/graphics/emojis" ;
 # ----------------------------------------------------------------------------
 
 # http://www.fileformat.info/info/unicode/category/So/list.htm
 # not great matches in all cases but best that can be done when there is no support
 # for emoji's
+# smiles are the things that are emojis without enclosing ':'
 my %smilies = (
-    '<3'      => ":fa:heart",    # heart
-    ':heart:' => ":fa:heart",    # heart
-    ':)'      => ":fa:smile-o",  # smile
-    ':smile:' => ":fa:smile-o",  # smile
-                                 # ':D'           => "\x{1f601}",    # grin
-                                 # ':grin:'       => "\x{1f601}",    # grin
-                                 # '8-)'     => "\x{1f60e}",      # 😎, cool
-                                 # ':cool:'       => "\x{1f60e}",    # cool
-         # ':P'           => "\x{1f61b}",    # pull tounge
-         # ':tongue:'     => "\x{1f61b}",    # pull tounge
-         # ":'("          => "\x{1f62d}",    # cry
-         # ":cry:"        => "\x{1f62d}",    # cry
-    ':('       => ":fa:frown-o",    # sad
-    ':sad:'    => ":fa:frown-o",    # sad
-                                    # ";)"      => "\x{1f609}",    # wink
-                                    # ":wink:"  => "\x{1f609}",      # wink
-    ":sleep:"  => ":fa:bed",        # sleep
-    ":zzz:"    => ":mi:snooze",     # snooze
-    ":snooze:" => ":mi:snooze",     # snooze
-                                    # ":halo:"       => "\x{1f607}",    # halo
-         # ":devil:"  => "\x{1f608}",     # 😈, devil
-         # ":imp:"  => "\x{1f608}",     # 😈, devil
-         # ":horns:"      => "\x{1f608}",    # devil
-         # ":fear:"  => "\x{1f631}",      # fear
-    "(c)"          => "\x{a9}",                       # copyright
-    ":c:"          => "\x{a9}",                       # copyright
-    ":copyright:"  => "\x{a9}",                       # copyright
-    "(r)"          => "\x{ae}",                       # registered
-    ":r:"          => "\x{ae}",                       # registered
-    ":registered:" => "\x{ae}",                       # registered
-    "(tm)"         => "\x{99}",                       # trademark
-    ":tm:"         => "\x{99}",                       # trademark
-    ":trademark:"  => "\x{99}",                       # trademark
-    ":email:"      => ":fa:envelope-o",               # email
-    ":yes:"        => "\x{2714}",                     # tick / check
-    ":no:"         => "\x{2718}",                     # cross
-    ":beer:"       => ":fa:beer:[fliph]",             # beer
-    ":wine:"       => ":fa:glass",                    # wine
-    ":glass:"      => ":fa:glass",                    # wine
-    ":cake:"       => ":fa:birthday-cake",            # cake
-    ":star:"       => ":fa:star-o",                   # star
-    ":ok:"         => ":fa:thumbs-o-up:[fliph]",      # ok = thumbsup
-    ":thumbsup:"   => ":fa:thumbs-o-up:[fliph]",      # thumbsup
-    ":thumbsdown:" => ":fa:thumbs-o-down:[fliph]",    # thumbsdown
-    ":bad:"        => ":fa:thumbs-o-down:[fliph]",    # bad = thumbsdown
-         # ":ghost:"      => "\x{1f47b}",            # ghost
-         # ":skull:"      => "\x{1f480}",            # skull 1f480
-    ":time:"      => ":fa:clock-o",        # time, watch face
-    ":clock:"     => ":fa:clock-o",        # time, watch face
-    ":hourglass:" => ":fa:hourglass-o",    # hourglass
+    '<3'   => ":heart:",           # :fa:heart",      # heart
+    '</3'  => ":broken_heart:",    # :fa:heart",      # heart
+    ':)'   => ":smile:",           # :fa:smile-o",    # smile
+    ':D'   => "\x{1f601}",         # grin
+    '8-)'  => "\x{1f60e}",         # 😎, cool
+    ':P'   => "\x{1f61b}",         # pull tounge
+    ":'("  => "\x{1f62d}",         # cry
+    ':('   => ":frowning:",        # ":fa:frown-o",    # sad
+    ";)"   => "\x{1f609}",         # wink
+    "(c)"  => "\x{a9}",            # copyright
+    "(r)"  => "\x{ae}",            # registered
+    "(tm)" => "\x{99}",            # trademark
+    "+/-"  => "\x{00b1}",          # +-
+) ;
+# replace unicodes with imgs sugegsted by https://apps.timwhitlock.info/emoji/tables/unicode
+# so in this case twitter ones
+my %unicode_emoji = (
+    "😀" => "1f600",
+    "😁" => "1f601",
+    "😂" => "1f602",
+    "😃" => "1f603",
+    "😄" => "1f604",
+    "😅" => "1f605",
+    "😆" => "1f606",
+    "😇" => "1f607",
+    "😈" => "1f608",
+    "😉" => "1f609",
+    "😊" => "1f60a",
+    "😋" => "1f60b",
+    "😌" => "1f60c",
+    "😍" => "1f60d",
+    "😎" => "1f60e",
+    "😏" => "1f60f",
 
-    ":bowtie:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bowtie.png"> />',
+    "😐" => "1f610",
+    "😑" => "1f611",
+    "😒" => "1f612",
+    "😓" => "1f613",
+    "😔" => "1f614",
+    "😕" => "1f615",
+    "😖" => "1f616",
+    "😗" => "1f617",
+    "😘" => "1f618",
+    "😙" => "1f619",
+    "😚" => "1f61a",
+    "😛" => "1f61b",
+    "😜" => "1f61c",
+    "😝" => "1f61d",
+    "😞" => "1f61e",
+    "😟" => "1f61f",
 
+    "😠" => "1f620",
+    "😡" => "1f621",
+    "😢" => "1f622",
+    "😣" => "1f623",
+    "😤" => "1f624",
+    "😥" => "1f625",
+    "😦" => "1f626",
+    "😧" => "1f627",
+    "😨" => "1f628",
+    "😩" => "1f629",
+    "😪" => "1f62a",
+    "😫" => "1f62b",
+    "😬" => "1f62c",
+    "😭" => "1f62d",
+    "😮" => "1f62e",
+    "😯" => "1f62f",
+
+    "😰" => "1f630",
+    "😱" => "1f631",
+    "😲" => "1f632",
+    "😳" => "1f633",
+    "😴" => "1f634",
+    "😵" => "1f635",
+    "😶" => "1f636",
+    "😷" => "1f637",
+    "😸" => "1f638",
+    "😹" => "1f639",
+    "😺" => "1f63a",
+    "😻" => "1f63b",
+    "😼" => "1f63c",
+    "😽" => "1f63d",
+    "😾" => "1f63e",
+    "😿" => "1f63f",
+
+    "🙀" => "1f640",
+    "🙁" => "1f641",
+    "🙂" => "1f642",
+    "🙃" => "1f643",
+    "🙄" => "1f644",
+    "🙅" => "1f645",
+    "🙆" => "1f646",
+    "🙇" => "1f647",
+    "🙈" => "1f648",
+    "🙉" => "1f649",
+    "🙊" => "1f64a",
+    "🙋" => "1f64b",
+    "🙌" => "1f64c",
+    "🙍" => "1f64d",
+    "🙎" => "1f64e",
+    "🙏" => "1f64f",
 ) ;
 
+# some replacements are shortcuts to the emoji cheatsheet
+my %emoji = (
+    # snowman    => "\x{2603}",
+    # heart      => ":fa:heart",                # heart
+    # smile      => ":fa:smile-o",              # smile
+    sad        => "disappointed",    # sad :fa:frown-o
+    sleep      => ":fa:bed",         # sleep
+                                     # zzz        => ":mi:snooze",               # snooze
+    snooze     => ":mi:snooze",      # snooze
+    halo       => "\x{1f607}",       # halo
+    devil      => "\x{1f608}",       # 😈, devil
+    horns      => "\x{1f608}",       # devil
+    fear       => "\x{1f631}",       # fear
+    c          => "\x{a9}",          # copyright
+                                     # copyright  => "\x{a9}",            # copyright
+    r          => "\x{ae}",          # registered
+                                     # registered => "\x{ae}",            # registered
+    tm         => "\x{99}",          # trademark
+                                     # trademark  => "\x{99}",            # trademark
+                                     # email      => ":fa:envelope-o",           # email
+    yes        => "\x{2714}",        # tick / check
+    no         => "\x{2718}",        # cross
+                                     # beer       => ":fa:beer:[fliph]",             # beer
+    wine       => "wine_glass",      # wine :fa:glass
+    glass      => "wine_glass",      # wine
+                                     # cake       => ":fa:birthday-cake",            # cake
+                                     # star       => ":fa:star-o",               # star
+    ok         => "ok_hand",         # ok = thumbsup :fa:thumbs-o-up:[fliph]
+    thumbsup   => "thumbsup",        # thumbsup :fa:thumbs-o-up:[fliph]
+    thumbsdown => "thumbsdown",      # thumbsdown :fa:thumbs-o-down:[fliph]
+    bad        => "thumbsdown",      # bad = thumbsdown :fa:thumbs-o-down:[fliph]
+    time       => "watch",           # time, watch face :fa:clock-o
+    clock      => "clock2",          # time, watch face :fa:clock-o
+                                     # hourglass  => ":fa:hourglass-o",              # hourglass
+    dm =>
+#        "<img class='emoji' src='http://icons.iconseeker.com/png/fullsize/danger-mouse/danger-mouse-logo.png' alt='' />",
+        "<img class='emoji' src='http://i2.manchestereveningnews.co.uk/incoming/article7166481.ece/ALTERNATES/s1227b/danger-mouse-cover.jpg' alt='' />",
+# "<img class='emoji' src='http://3hky4v206jda3tityl3u622q.wpengine.netdna-cdn.com/wp-content/uploads/2015/09/Danger-Mouse-download.jpg' alt='' />",
+) ;
 
+# _replace_emojis uses these
+# these all come from http://www.emoji-cheat-sheet.com
+# now http://www.webpagefx.com/tools/emoji-cheat-sheet/
 my %emoji_cheatsheet = (
-    ":bowtie:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bowtie.png"> />',
-    ":smile:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/smile.png"> />',
-    ":laughing:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/laughing.png"> />',
-    ":blush:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/blush.png"> />',
-    ":smiley:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/smiley.png"> />',
-    ":relaxed:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/relaxed.png"> />',
-    ":smirk:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/smirk.png"> />',
-    ":heart_eyes:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/heart_eyes.png"> />',
-    ":kissing_heart:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/kissing_heart.png"> />',
-    ":kissing_closed_eyes:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/kissing_closed_eyes.png"> />',
-    ":flushed:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/flushed.png"> />',
-    ":relieved:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/relieved.png"> />',
-    ":satisfied:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/satisfied.png"> />',
-    ":grin:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/grin.png"> />',
-    ":wink:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/wink.png"> />',
-    ":stuck_out_tongue_winking_eye:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/stuck_out_tongue_winking_eye.png"> />',
-    ":stuck_out_tongue_closed_eyes:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/stuck_out_tongue_closed_eyes.png"> />',
-    ":grinning:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/grinning.png"> />',
-    ":kissing:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/kissing.png"> />',
-    ":kissing_smiling_eyes:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/kissing_smiling_eyes.png"> />',
-    ":stuck_out_tongue:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/stuck_out_tongue.png"> />',
-    ":sleeping:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sleeping.png"> />',
-    ":worried:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/worried.png"> />',
-    ":frowning:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/frowning.png"> />',
-    ":anguished:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/anguished.png"> />',
-    ":open_mouth:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/open_mouth.png"> />',
-    ":grimacing:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/grimacing.png"> />',
-    ":confused:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/confused.png"> />',
-    ":hushed:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/hushed.png"> />',
-    ":expressionless:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/expressionless.png"> />',
-    ":unamused:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/unamused.png"> />',
-    ":sweat_smile:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sweat_smile.png"> />',
-    ":sweat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sweat.png"> />',
-    ":disappointed_relieved:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/disappointed_relieved.png"> />',
-    ":weary:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/weary.png"> />',
-    ":pensive:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/pensive.png"> />',
-    ":disappointed:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/disappointed.png"> />',
-    ":confounded:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/confounded.png"> />',
-    ":fearful:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/fearful.png"> />',
-    ":cold_sweat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cold_sweat.png"> />',
-    ":persevere:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/persevere.png"> />',
-    ":cry:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cry.png"> />',
-    ":sob:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sob.png"> />',
-    ":joy:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/joy.png"> />',
-    ":astonished:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/astonished.png"> />',
-    ":scream:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/scream.png"> />',
-    ":neckbeard:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/neckbeard.png"> />',
-    ":tired_face:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/tired_face.png"> />',
-    ":angry:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/angry.png"> />',
-    ":rage:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/rage.png"> />',
-    ":triumph:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/triumph.png"> />',
-    ":sleepy:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sleepy.png"> />',
-    ":yum:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/yum.png"> />',
-    ":mask:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/mask.png"> />',
-    ":sunglasses:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sunglasses.png"> />',
-    ":dizzy_face:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/dizzy_face.png"> />',
-    ":imp:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/imp.png"> />',
-    ":smiling_imp:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/smiling_imp.png"> />',
-    ":neutral_face:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/neutral_face.png"> />',
-    ":no_mouth:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/no_mouth.png"> />',
-    ":innocent:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/innocent.png"> />',
-    ":alien:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/alien.png"> />',
-    ":yellow_heart:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/yellow_heart.png"> />',
-    ":blue_heart:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/blue_heart.png"> />',
-    ":purple_heart:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/purple_heart.png"> />',
-    ":heart:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/heart.png"> />',
-    ":green_heart:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/green_heart.png"> />',
-    ":broken_heart:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/broken_heart.png"> />',
-    ":heartbeat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/heartbeat.png"> />',
-    ":heartpulse:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/heartpulse.png"> />',
-    ":two_hearts:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/two_hearts.png"> />',
-    ":revolving_hearts:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/revolving_hearts.png"> />',
-    ":cupid:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cupid.png"> />',
-    ":sparkling_heart:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sparkling_heart.png"> />',
-    ":sparkles:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sparkles.png"> />',
-    ":star:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/star.png"> />',
-    ":star2:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/star2.png"> />',
-    ":dizzy:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/dizzy.png"> />',
-    ":boom:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/boom.png"> />',
-    ":collision:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/collision.png"> />',
-    ":anger:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/anger.png"> />',
-    ":exclamation:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/exclamation.png"> />',
-    ":question:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/question.png"> />',
-    ":grey_exclamation:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/grey_exclamation.png"> />',
-    ":grey_question:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/grey_question.png"> />',
-    ":zzz:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/zzz.png"> />',
-    ":dash:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/dash.png"> />',
-    ":sweat_drops:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sweat_drops.png"> />',
-    ":notes:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/notes.png"> />',
-    ":musical_note:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/musical_note.png"> />',
-    ":fire:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/fire.png"> />',
-    ":hankey:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/hankey.png"> />',
-    ":poop:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/poop.png"> />',
-    ":shit:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/shit.png"> />',
-    ":+1:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/plus1.png"> />',
-    ":thumbsup:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/thumbsup.png"> />',
-    ":-1:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/-1.png"> />',
-    ":thumbsdown:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/thumbsdown.png"> />',
-    ":ok_hand:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ok_hand.png"> />',
-    ":punch:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/punch.png"> />',
-    ":facepunch:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/facepunch.png"> />',
-    ":fist:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/fist.png"> />',
-    ":v:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/v.png"> />',
-    ":wave:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/wave.png"> />',
-    ":hand:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/hand.png"> />',
-    ":raised_hand:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/raised_hand.png"> />',
-    ":open_hands:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/open_hands.png"> />',
-    ":point_up:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/point_up.png"> />',
-    ":point_down:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/point_down.png"> />',
-    ":point_left:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/point_left.png"> />',
-    ":point_right:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/point_right.png"> />',
-    ":raised_hands:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/raised_hands.png"> />',
-    ":pray:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/pray.png"> />',
-    ":point_up_2:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/point_up_2.png"> />',
-    ":clap:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clap.png"> />',
-    ":muscle:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/muscle.png"> />',
-    ":metal:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/metal.png"> />',
-    ":fu:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/fu.png"> />',
-    ":runner:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/runner.png"> />',
-    ":running:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/running.png"> />',
-    ":couple:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/couple.png"> />',
-    ":family:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/family.png"> />',
-    ":two_men_holding_hands:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/two_men_holding_hands.png"> />',
-    ":two_women_holding_hands:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/two_women_holding_hands.png"> />',
-    ":dancer:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/dancer.png"> />',
-    ":dancers:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/dancers.png"> />',
-    ":ok_woman:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ok_woman.png"> />',
-    ":no_good:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/no_good.png"> />',
-    ":information_desk_person:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/information_desk_person.png"> />',
-    ":raising_hand:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/raising_hand.png"> />',
-    ":bride_with_veil:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bride_with_veil.png"> />',
-    ":person_with_pouting_face:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/person_with_pouting_face.png"> />',
-    ":person_frowning:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/person_frowning.png"> />',
-    ":bow:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bow.png"> />',
-    ":couplekiss:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/couplekiss.png"> />',
-    ":couple_with_heart:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/couple_with_heart.png"> />',
-    ":massage:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/massage.png"> />',
-    ":haircut:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/haircut.png"> />',
-    ":nail_care:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/nail_care.png"> />',
-    ":boy:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/boy.png"> />',
-    ":girl:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/girl.png"> />',
-    ":woman:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/woman.png"> />',
-    ":man:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/man.png"> />',
-    ":baby:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/baby.png"> />',
-    ":older_woman:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/older_woman.png"> />',
-    ":older_man:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/older_man.png"> />',
-    ":person_with_blond_hair:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/person_with_blond_hair.png"> />',
-    ":man_with_gua_pi_mao:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/man_with_gua_pi_mao.png"> />',
-    ":man_with_turban:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/man_with_turban.png"> />',
-    ":construction_worker:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/construction_worker.png"> />',
-    ":cop:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cop.png"> />',
-    ":angel:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/angel.png"> />',
-    ":princess:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/princess.png"> />',
-    ":smiley_cat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/smiley_cat.png"> />',
-    ":smile_cat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/smile_cat.png"> />',
-    ":heart_eyes_cat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/heart_eyes_cat.png"> />',
-    ":kissing_cat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/kissing_cat.png"> />',
-    ":smirk_cat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/smirk_cat.png"> />',
-    ":scream_cat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/scream_cat.png"> />',
-    ":crying_cat_face:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/crying_cat_face.png"> />',
-    ":joy_cat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/joy_cat.png"> />',
-    ":pouting_cat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/pouting_cat.png"> />',
-    ":japanese_ogre:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/japanese_ogre.png"> />',
-    ":japanese_goblin:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/japanese_goblin.png"> />',
-    ":see_no_evil:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/see_no_evil.png"> />',
-    ":hear_no_evil:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/hear_no_evil.png"> />',
-    ":speak_no_evil:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/speak_no_evil.png"> />',
-    ":guardsman:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/guardsman.png"> />',
-    ":skull:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/skull.png"> />',
-    ":feet:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/feet.png"> />',
-    ":lips:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/lips.png"> />',
-    ":kiss:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/kiss.png"> />',
-    ":droplet:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/droplet.png"> />',
-    ":ear:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ear.png"> />',
-    ":eyes:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/eyes.png"> />',
-    ":nose:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/nose.png"> />',
-    ":tongue:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/tongue.png"> />',
-    ":love_letter:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/love_letter.png"> />',
-    ":bust_in_silhouette:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bust_in_silhouette.png"> />',
-    ":busts_in_silhouette:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/busts_in_silhouette.png"> />',
-    ":speech_balloon:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/speech_balloon.png"> />',
-    ":thought_balloon:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/thought_balloon.png"> />',
-    ":feelsgood:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/feelsgood.png"> />',
-    ":finnadie:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/finnadie.png"> />',
-    ":goberserk:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/goberserk.png"> />',
-    ":godmode:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/godmode.png"> />',
-    ":hurtrealbad:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/hurtrealbad.png"> />',
-    ":rage1:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/rage1.png"> />',
-    ":rage2:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/rage2.png"> />',
-    ":rage3:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/rage3.png"> />',
-    ":rage4:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/rage4.png"> />',
-    ":suspect:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/suspect.png"> />',
-    ":trollface:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/trollface.png"> />',
-    ":sunny:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sunny.png"> />',
-    ":umbrella:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/umbrella.png"> />',
-    ":cloud:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cloud.png"> />',
-    ":snowflake:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/snowflake.png"> />',
-    ":snowman:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/snowman.png"> />',
-    ":zap:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/zap.png"> />',
-    ":cyclone:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cyclone.png"> />',
-    ":foggy:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/foggy.png"> />',
-    ":ocean:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ocean.png"> />',
-    ":cat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cat.png"> />',
-    ":dog:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/dog.png"> />',
-    ":mouse:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/mouse.png"> />',
-    ":hamster:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/hamster.png"> />',
-    ":rabbit:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/rabbit.png"> />',
-    ":wolf:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/wolf.png"> />',
-    ":frog:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/frog.png"> />',
-    ":tiger:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/tiger.png"> />',
-    ":koala:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/koala.png"> />',
-    ":bear:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bear.png"> />',
-    ":pig:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/pig.png"> />',
-    ":pig_nose:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/pig_nose.png"> />',
-    ":cow:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cow.png"> />',
-    ":boar:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/boar.png"> />',
-    ":monkey_face:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/monkey_face.png"> />',
-    ":monkey:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/monkey.png"> />',
-    ":horse:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/horse.png"> />',
-    ":racehorse:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/racehorse.png"> />',
-    ":camel:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/camel.png"> />',
-    ":sheep:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sheep.png"> />',
-    ":elephant:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/elephant.png"> />',
-    ":panda_face:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/panda_face.png"> />',
-    ":snake:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/snake.png"> />',
-    ":bird:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bird.png"> />',
-    ":baby_chick:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/baby_chick.png"> />',
-    ":hatched_chick:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/hatched_chick.png"> />',
-    ":hatching_chick:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/hatching_chick.png"> />',
-    ":chicken:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/chicken.png"> />',
-    ":penguin:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/penguin.png"> />',
-    ":turtle:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/turtle.png"> />',
-    ":bug:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bug.png"> />',
-    ":honeybee:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/honeybee.png"> />',
-    ":ant:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ant.png"> />',
-    ":beetle:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/beetle.png"> />',
-    ":snail:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/snail.png"> />',
-    ":octopus:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/octopus.png"> />',
-    ":tropical_fish:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/tropical_fish.png"> />',
-    ":fish:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/fish.png"> />',
-    ":whale:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/whale.png"> />',
-    ":whale2:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/whale2.png"> />',
-    ":dolphin:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/dolphin.png"> />',
-    ":cow2:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cow2.png"> />',
-    ":ram:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ram.png"> />',
-    ":rat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/rat.png"> />',
-    ":water_buffalo:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/water_buffalo.png"> />',
-    ":tiger2:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/tiger2.png"> />',
-    ":rabbit2:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/rabbit2.png"> />',
-    ":dragon:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/dragon.png"> />',
-    ":goat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/goat.png"> />',
-    ":rooster:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/rooster.png"> />',
-    ":dog2:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/dog2.png"> />',
-    ":pig2:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/pig2.png"> />',
-    ":mouse2:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/mouse2.png"> />',
-    ":ox:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ox.png"> />',
-    ":dragon_face:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/dragon_face.png"> />',
-    ":blowfish:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/blowfish.png"> />',
-    ":crocodile:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/crocodile.png"> />',
-    ":dromedary_camel:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/dromedary_camel.png"> />',
-    ":leopard:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/leopard.png"> />',
-    ":cat2:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cat2.png"> />',
-    ":poodle:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/poodle.png"> />',
-    ":paw_prints:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/paw_prints.png"> />',
-    ":bouquet:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bouquet.png"> />',
-    ":cherry_blossom:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cherry_blossom.png"> />',
-    ":tulip:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/tulip.png"> />',
-    ":four_leaf_clover:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/four_leaf_clover.png"> />',
-    ":rose:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/rose.png"> />',
-    ":sunflower:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sunflower.png"> />',
-    ":hibiscus:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/hibiscus.png"> />',
-    ":maple_leaf:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/maple_leaf.png"> />',
-    ":leaves:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/leaves.png"> />',
-    ":fallen_leaf:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/fallen_leaf.png"> />',
-    ":herb:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/herb.png"> />',
-    ":mushroom:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/mushroom.png"> />',
-    ":cactus:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cactus.png"> />',
-    ":palm_tree:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/palm_tree.png"> />',
-    ":evergreen_tree:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/evergreen_tree.png"> />',
-    ":deciduous_tree:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/deciduous_tree.png"> />',
-    ":chestnut:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/chestnut.png"> />',
-    ":seedling:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/seedling.png"> />',
-    ":blossom:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/blossom.png"> />',
-    ":ear_of_rice:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ear_of_rice.png"> />',
-    ":shell:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/shell.png"> />',
-    ":globe_with_meridians:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/globe_with_meridians.png"> />',
-    ":sun_with_face:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sun_with_face.png"> />',
-    ":full_moon_with_face:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/full_moon_with_face.png"> />',
-    ":new_moon_with_face:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/new_moon_with_face.png"> />',
-    ":new_moon:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/new_moon.png"> />',
-    ":waxing_crescent_moon:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/waxing_crescent_moon.png"> />',
-    ":first_quarter_moon:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/first_quarter_moon.png"> />',
-    ":waxing_gibbous_moon:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/waxing_gibbous_moon.png"> />',
-    ":full_moon:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/full_moon.png"> />',
-    ":waning_gibbous_moon:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/waning_gibbous_moon.png"> />',
-    ":last_quarter_moon:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/last_quarter_moon.png"> />',
-    ":waning_crescent_moon:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/waning_crescent_moon.png"> />',
-    ":last_quarter_moon_with_face:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/last_quarter_moon_with_face.png"> />',
-    ":first_quarter_moon_with_face:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/first_quarter_moon_with_face.png"> />',
-    ":crescent_moon:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/crescent_moon.png"> />',
-    ":earth_africa:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/earth_africa.png"> />',
-    ":earth_americas:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/earth_americas.png"> />',
-    ":earth_asia:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/earth_asia.png"> />',
-    ":volcano:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/volcano.png"> />',
-    ":milky_way:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/milky_way.png"> />',
-    ":partly_sunny:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/partly_sunny.png"> />',
-    ":octocat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/octocat.png"> />',
-    ":squirrel:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/squirrel.png"> />',
-    ":bamboo:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bamboo.png"> />',
-    ":gift_heart:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/gift_heart.png"> />',
-    ":dolls:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/dolls.png"> />',
-    ":school_satchel:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/school_satchel.png"> />',
-    ":mortar_board:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/mortar_board.png"> />',
-    ":flags:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/flags.png"> />',
-    ":fireworks:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/fireworks.png"> />',
-    ":sparkler:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sparkler.png"> />',
-    ":wind_chime:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/wind_chime.png"> />',
-    ":rice_scene:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/rice_scene.png"> />',
-    ":jack_o_lantern:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/jack_o_lantern.png"> />',
-    ":ghost:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ghost.png"> />',
-    ":santa:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/santa.png"> />',
-    ":christmas_tree:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/christmas_tree.png"> />',
-    ":gift:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/gift.png"> />',
-    ":bell:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bell.png"> />',
-    ":no_bell:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/no_bell.png"> />',
-    ":tanabata_tree:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/tanabata_tree.png"> />',
-    ":tada:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/tada.png"> />',
-    ":confetti_ball:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/confetti_ball.png"> />',
-    ":balloon:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/balloon.png"> />',
-    ":crystal_ball:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/crystal_ball.png"> />',
-    ":cd:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cd.png"> />',
-    ":dvd:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/dvd.png"> />',
-    ":floppy_disk:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/floppy_disk.png"> />',
-    ":camera:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/camera.png"> />',
-    ":video_camera:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/video_camera.png"> />',
-    ":movie_camera:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/movie_camera.png"> />',
-    ":computer:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/computer.png"> />',
-    ":tv:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/tv.png"> />',
-    ":iphone:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/iphone.png"> />',
-    ":phone:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/phone.png"> />',
-    ":telephone:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/telephone.png"> />',
-    ":telephone_receiver:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/telephone_receiver.png"> />',
-    ":pager:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/pager.png"> />',
-    ":fax:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/fax.png"> />',
-    ":minidisc:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/minidisc.png"> />',
-    ":vhs:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/vhs.png"> />',
-    ":sound:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sound.png"> />',
-    ":speaker:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/speaker.png"> />',
-    ":mute:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/mute.png"> />',
-    ":loudspeaker:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/loudspeaker.png"> />',
-    ":mega:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/mega.png"> />',
-    ":hourglass:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/hourglass.png"> />',
-    ":hourglass_flowing_sand:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/hourglass_flowing_sand.png"> />',
-    ":alarm_clock:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/alarm_clock.png"> />',
-    ":watch:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/watch.png"> />',
-    ":radio:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/radio.png"> />',
-    ":satellite:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/satellite.png"> />',
-    ":loop:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/loop.png"> />',
-    ":mag:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/mag.png"> />',
-    ":mag_right:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/mag_right.png"> />',
-    ":unlock:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/unlock.png"> />',
-    ":lock:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/lock.png"> />',
-    ":lock_with_ink_pen:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/lock_with_ink_pen.png"> />',
-    ":closed_lock_with_key:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/closed_lock_with_key.png"> />',
-    ":key:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/key.png"> />',
-    ":bulb:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bulb.png"> />',
-    ":flashlight:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/flashlight.png"> />',
-    ":high_brightness:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/high_brightness.png"> />',
-    ":low_brightness:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/low_brightness.png"> />',
-    ":electric_plug:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/electric_plug.png"> />',
-    ":battery:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/battery.png"> />',
-    ":calling:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/calling.png"> />',
-    ":email:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/email.png"> />',
-    ":mailbox:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/mailbox.png"> />',
-    ":postbox:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/postbox.png"> />',
-    ":bath:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bath.png"> />',
-    ":bathtub:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bathtub.png"> />',
-    ":shower:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/shower.png"> />',
-    ":toilet:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/toilet.png"> />',
-    ":wrench:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/wrench.png"> />',
-    ":nut_and_bolt:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/nut_and_bolt.png"> />',
-    ":hammer:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/hammer.png"> />',
-    ":seat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/seat.png"> />',
-    ":moneybag:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/moneybag.png"> />',
-    ":yen:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/yen.png"> />',
-    ":dollar:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/dollar.png"> />',
-    ":pound:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/pound.png"> />',
-    ":euro:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/euro.png"> />',
-    ":credit_card:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/credit_card.png"> />',
-    ":money_with_wings:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/money_with_wings.png"> />',
-    ":e-mail:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/e-mail.png"> />',
-    ":inbox_tray:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/inbox_tray.png"> />',
-    ":outbox_tray:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/outbox_tray.png"> />',
-    ":envelope:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/envelope.png"> />',
-    ":incoming_envelope:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/incoming_envelope.png"> />',
-    ":postal_horn:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/postal_horn.png"> />',
-    ":mailbox_closed:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/mailbox_closed.png"> />',
-    ":mailbox_with_mail:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/mailbox_with_mail.png"> />',
-    ":mailbox_with_no_mail:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/mailbox_with_no_mail.png"> />',
-    ":package:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/package.png"> />',
-    ":door:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/door.png"> />',
-    ":smoking:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/smoking.png"> />',
-    ":bomb:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bomb.png"> />',
-    ":gun:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/gun.png"> />',
-    ":hocho:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/hocho.png"> />',
-    ":pill:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/pill.png"> />',
-    ":syringe:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/syringe.png"> />',
-    ":page_facing_up:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/page_facing_up.png"> />',
-    ":page_with_curl:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/page_with_curl.png"> />',
-    ":bookmark_tabs:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bookmark_tabs.png"> />',
-    ":bar_chart:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bar_chart.png"> />',
-    ":chart_with_upwards_trend:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/chart_with_upwards_trend.png"> />',
-    ":chart_with_downwards_trend:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/chart_with_downwards_trend.png"> />',
-    ":scroll:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/scroll.png"> />',
-    ":clipboard:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clipboard.png"> />',
-    ":calendar:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/calendar.png"> />',
-    ":date:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/date.png"> />',
-    ":card_index:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/card_index.png"> />',
-    ":file_folder:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/file_folder.png"> />',
-    ":open_file_folder:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/open_file_folder.png"> />',
-    ":scissors:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/scissors.png"> />',
-    ":pushpin:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/pushpin.png"> />',
-    ":paperclip:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/paperclip.png"> />',
-    ":black_nib:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/black_nib.png"> />',
-    ":pencil2:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/pencil2.png"> />',
-    ":straight_ruler:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/straight_ruler.png"> />',
-    ":triangular_ruler:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/triangular_ruler.png"> />',
-    ":closed_book:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/closed_book.png"> />',
-    ":green_book:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/green_book.png"> />',
-    ":blue_book:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/blue_book.png"> />',
-    ":orange_book:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/orange_book.png"> />',
-    ":notebook:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/notebook.png"> />',
-    ":notebook_with_decorative_cover:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/notebook_with_decorative_cover.png"> />',
-    ":ledger:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ledger.png"> />',
-    ":books:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/books.png"> />',
-    ":bookmark:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bookmark.png"> />',
-    ":name_badge:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/name_badge.png"> />',
-    ":microscope:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/microscope.png"> />',
-    ":telescope:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/telescope.png"> />',
-    ":newspaper:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/newspaper.png"> />',
-    ":football:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/football.png"> />',
-    ":basketball:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/basketball.png"> />',
-    ":soccer:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/soccer.png"> />',
-    ":baseball:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/baseball.png"> />',
-    ":tennis:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/tennis.png"> />',
-    ":8ball:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/8ball.png"> />',
-    ":rugby_football:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/rugby_football.png"> />',
-    ":bowling:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bowling.png"> />',
-    ":golf:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/golf.png"> />',
-    ":mountain_bicyclist:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/mountain_bicyclist.png"> />',
-    ":bicyclist:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bicyclist.png"> />',
-    ":horse_racing:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/horse_racing.png"> />',
-    ":snowboarder:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/snowboarder.png"> />',
-    ":swimmer:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/swimmer.png"> />',
-    ":surfer:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/surfer.png"> />',
-    ":ski:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ski.png"> />',
-    ":spades:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/spades.png"> />',
-    ":hearts:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/hearts.png"> />',
-    ":clubs:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clubs.png"> />',
-    ":diamonds:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/diamonds.png"> />',
-    ":gem:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/gem.png"> />',
-    ":ring:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ring.png"> />',
-    ":trophy:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/trophy.png"> />',
-    ":musical_score:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/musical_score.png"> />',
-    ":musical_keyboard:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/musical_keyboard.png"> />',
-    ":violin:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/violin.png"> />',
-    ":space_invader:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/space_invader.png"> />',
-    ":video_game:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/video_game.png"> />',
-    ":black_joker:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/black_joker.png"> />',
-    ":flower_playing_cards:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/flower_playing_cards.png"> />',
-    ":game_die:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/game_die.png"> />',
-    ":dart:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/dart.png"> />',
-    ":mahjong:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/mahjong.png"> />',
-    ":clapper:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clapper.png"> />',
-    ":memo:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/memo.png"> />',
-    ":pencil:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/pencil.png"> />',
-    ":book:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/book.png"> />',
-    ":art:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/art.png"> />',
-    ":microphone:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/microphone.png"> />',
-    ":headphones:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/headphones.png"> />',
-    ":trumpet:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/trumpet.png"> />',
-    ":saxophone:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/saxophone.png"> />',
-    ":guitar:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/guitar.png"> />',
-    ":shoe:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/shoe.png"> />',
-    ":sandal:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sandal.png"> />',
-    ":high_heel:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/high_heel.png"> />',
-    ":lipstick:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/lipstick.png"> />',
-    ":boot:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/boot.png"> />',
-    ":shirt:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/shirt.png"> />',
-    ":tshirt:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/tshirt.png"> />',
-    ":necktie:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/necktie.png"> />',
-    ":womans_clothes:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/womans_clothes.png"> />',
-    ":dress:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/dress.png"> />',
-    ":running_shirt_with_sash:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/running_shirt_with_sash.png"> />',
-    ":jeans:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/jeans.png"> />',
-    ":kimono:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/kimono.png"> />',
-    ":bikini:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bikini.png"> />',
-    ":ribbon:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ribbon.png"> />',
-    ":tophat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/tophat.png"> />',
-    ":crown:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/crown.png"> />',
-    ":womans_hat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/womans_hat.png"> />',
-    ":mans_shoe:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/mans_shoe.png"> />',
-    ":closed_umbrella:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/closed_umbrella.png"> />',
-    ":briefcase:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/briefcase.png"> />',
-    ":handbag:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/handbag.png"> />',
-    ":pouch:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/pouch.png"> />',
-    ":purse:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/purse.png"> />',
-    ":eyeglasses:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/eyeglasses.png"> />',
-    ":fishing_pole_and_fish:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/fishing_pole_and_fish.png"> />',
-    ":coffee:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/coffee.png"> />',
-    ":tea:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/tea.png"> />',
-    ":sake:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sake.png"> />',
-    ":baby_bottle:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/baby_bottle.png"> />',
-    ":beer:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/beer.png"> />',
-    ":beers:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/beers.png"> />',
-    ":cocktail:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cocktail.png"> />',
-    ":tropical_drink:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/tropical_drink.png"> />',
-    ":wine_glass:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/wine_glass.png"> />',
-    ":fork_and_knife:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/fork_and_knife.png"> />',
-    ":pizza:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/pizza.png"> />',
-    ":hamburger:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/hamburger.png"> />',
-    ":fries:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/fries.png"> />',
-    ":poultry_leg:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/poultry_leg.png"> />',
-    ":meat_on_bone:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/meat_on_bone.png"> />',
-    ":spaghetti:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/spaghetti.png"> />',
-    ":curry:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/curry.png"> />',
-    ":fried_shrimp:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/fried_shrimp.png"> />',
-    ":bento:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bento.png"> />',
-    ":sushi:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sushi.png"> />',
-    ":fish_cake:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/fish_cake.png"> />',
-    ":rice_ball:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/rice_ball.png"> />',
-    ":rice_cracker:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/rice_cracker.png"> />',
-    ":rice:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/rice.png"> />',
-    ":ramen:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ramen.png"> />',
-    ":stew:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/stew.png"> />',
-    ":oden:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/oden.png"> />',
-    ":dango:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/dango.png"> />',
-    ":egg:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/egg.png"> />',
-    ":bread:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bread.png"> />',
-    ":doughnut:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/doughnut.png"> />',
-    ":custard:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/custard.png"> />',
-    ":icecream:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/icecream.png"> />',
-    ":ice_cream:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ice_cream.png"> />',
-    ":shaved_ice:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/shaved_ice.png"> />',
-    ":birthday:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/birthday.png"> />',
-    ":cake:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cake.png"> />',
-    ":cookie:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cookie.png"> />',
-    ":chocolate_bar:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/chocolate_bar.png"> />',
-    ":candy:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/candy.png"> />',
-    ":lollipop:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/lollipop.png"> />',
-    ":honey_pot:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/honey_pot.png"> />',
-    ":apple:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/apple.png"> />',
-    ":green_apple:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/green_apple.png"> />',
-    ":tangerine:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/tangerine.png"> />',
-    ":lemon:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/lemon.png"> />',
-    ":cherries:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cherries.png"> />',
-    ":grapes:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/grapes.png"> />',
-    ":watermelon:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/watermelon.png"> />',
-    ":strawberry:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/strawberry.png"> />',
-    ":peach:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/peach.png"> />',
-    ":melon:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/melon.png"> />',
-    ":banana:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/banana.png"> />',
-    ":pear:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/pear.png"> />',
-    ":pineapple:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/pineapple.png"> />',
-    ":sweet_potato:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sweet_potato.png"> />',
-    ":eggplant:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/eggplant.png"> />',
-    ":tomato:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/tomato.png"> />',
-    ":corn:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/corn.png"> />',
-    ":house:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/house.png"> />',
-    ":house_with_garden:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/house_with_garden.png"> />',
-    ":school:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/school.png"> />',
-    ":office:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/office.png"> />',
-    ":post_office:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/post_office.png"> />',
-    ":hospital:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/hospital.png"> />',
-    ":bank:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bank.png"> />',
-    ":convenience_store:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/convenience_store.png"> />',
-    ":love_hotel:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/love_hotel.png"> />',
-    ":hotel:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/hotel.png"> />',
-    ":wedding:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/wedding.png"> />',
-    ":church:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/church.png"> />',
-    ":department_store:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/department_store.png"> />',
-    ":european_post_office:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/european_post_office.png"> />',
-    ":city_sunrise:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/city_sunrise.png"> />',
-    ":city_sunset:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/city_sunset.png"> />',
-    ":japanese_castle:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/japanese_castle.png"> />',
-    ":european_castle:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/european_castle.png"> />',
-    ":tent:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/tent.png"> />',
-    ":factory:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/factory.png"> />',
-    ":tokyo_tower:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/tokyo_tower.png"> />',
-    ":japan:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/japan.png"> />',
-    ":mount_fuji:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/mount_fuji.png"> />',
-    ":sunrise_over_mountains:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sunrise_over_mountains.png"> />',
-    ":sunrise:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sunrise.png"> />',
-    ":stars:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/stars.png"> />',
-    ":statue_of_liberty:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/statue_of_liberty.png"> />',
-    ":bridge_at_night:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bridge_at_night.png"> />',
-    ":carousel_horse:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/carousel_horse.png"> />',
-    ":rainbow:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/rainbow.png"> />',
-    ":ferris_wheel:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ferris_wheel.png"> />',
-    ":fountain:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/fountain.png"> />',
-    ":roller_coaster:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/roller_coaster.png"> />',
-    ":ship:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ship.png"> />',
-    ":speedboat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/speedboat.png"> />',
-    ":boat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/boat.png"> />',
-    ":sailboat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sailboat.png"> />',
-    ":rowboat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/rowboat.png"> />',
-    ":anchor:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/anchor.png"> />',
-    ":rocket:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/rocket.png"> />',
-    ":airplane:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/airplane.png"> />',
-    ":helicopter:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/helicopter.png"> />',
-    ":steam_locomotive:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/steam_locomotive.png"> />',
-    ":tram:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/tram.png"> />',
-    ":mountain_railway:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/mountain_railway.png"> />',
-    ":bike:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bike.png"> />',
-    ":aerial_tramway:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/aerial_tramway.png"> />',
-    ":suspension_railway:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/suspension_railway.png"> />',
-    ":mountain_cableway:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/mountain_cableway.png"> />',
-    ":tractor:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/tractor.png"> />',
-    ":blue_car:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/blue_car.png"> />',
-    ":oncoming_automobile:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/oncoming_automobile.png"> />',
-    ":car:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/car.png"> />',
-    ":red_car:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/red_car.png"> />',
-    ":taxi:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/taxi.png"> />',
-    ":oncoming_taxi:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/oncoming_taxi.png"> />',
-    ":articulated_lorry:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/articulated_lorry.png"> />',
-    ":bus:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bus.png"> />',
-    ":oncoming_bus:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/oncoming_bus.png"> />',
-    ":rotating_light:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/rotating_light.png"> />',
-    ":police_car:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/police_car.png"> />',
-    ":oncoming_police_car:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/oncoming_police_car.png"> />',
-    ":fire_engine:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/fire_engine.png"> />',
-    ":ambulance:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ambulance.png"> />',
-    ":minibus:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/minibus.png"> />',
-    ":truck:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/truck.png"> />',
-    ":train:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/train.png"> />',
-    ":station:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/station.png"> />',
-    ":train2:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/train2.png"> />',
-    ":bullettrain_front:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bullettrain_front.png"> />',
-    ":bullettrain_side:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bullettrain_side.png"> />',
-    ":light_rail:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/light_rail.png"> />',
-    ":monorail:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/monorail.png"> />',
-    ":railway_car:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/railway_car.png"> />',
-    ":trolleybus:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/trolleybus.png"> />',
-    ":ticket:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ticket.png"> />',
-    ":fuelpump:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/fuelpump.png"> />',
-    ":vertical_traffic_light:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/vertical_traffic_light.png"> />',
-    ":traffic_light:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/traffic_light.png"> />',
-    ":warning:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/warning.png"> />',
-    ":construction:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/construction.png"> />',
-    ":beginner:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/beginner.png"> />',
-    ":atm:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/atm.png"> />',
-    ":slot_machine:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/slot_machine.png"> />',
-    ":busstop:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/busstop.png"> />',
-    ":barber:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/barber.png"> />',
-    ":hotsprings:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/hotsprings.png"> />',
-    ":checkered_flag:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/checkered_flag.png"> />',
-    ":crossed_flags:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/crossed_flags.png"> />',
-    ":izakaya_lantern:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/izakaya_lantern.png"> />',
-    ":moyai:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/moyai.png"> />',
-    ":circus_tent:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/circus_tent.png"> />',
-    ":performing_arts:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/performing_arts.png"> />',
-    ":round_pushpin:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/round_pushpin.png"> />',
-    ":triangular_flag_on_post:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/triangular_flag_on_post.png"> />',
-    ":jp:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/jp.png"> />',
-    ":kr:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/kr.png"> />',
-    ":cn:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cn.png"> />',
-    ":us:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/us.png"> />',
-    ":fr:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/fr.png"> />',
-    ":es:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/es.png"> />',
-    ":it:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/it.png"> />',
-    ":ru:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ru.png"> />',
-    ":gb:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/gb.png"> />',
-    ":uk:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/uk.png"> />',
-    ":de:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/de.png"> />',
-    ":one:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/one.png"> />',
-    ":two:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/two.png"> />',
-    ":three:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/three.png"> />',
-    ":four:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/four.png"> />',
-    ":five:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/five.png"> />',
-    ":six:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/six.png"> />',
-    ":seven:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/seven.png"> />',
-    ":eight:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/eight.png"> />',
-    ":nine:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/nine.png"> />',
-    ":keycap_ten:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/keycap_ten.png"> />',
-    ":1234:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/1234.png"> />',
-    ":zero:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/zero.png"> />',
-    ":hash:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/hash.png"> />',
-    ":symbols:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/symbols.png"> />',
-    ":arrow_backward:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/arrow_backward.png"> />',
-    ":arrow_down:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/arrow_down.png"> />',
-    ":arrow_forward:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/arrow_forward.png"> />',
-    ":arrow_left:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/arrow_left.png"> />',
-    ":capital_abcd:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/capital_abcd.png"> />',
-    ":abcd:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/abcd.png"> />',
-    ":abc:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/abc.png"> />',
-    ":arrow_lower_left:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/arrow_lower_left.png"> />',
-    ":arrow_lower_right:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/arrow_lower_right.png"> />',
-    ":arrow_right:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/arrow_right.png"> />',
-    ":arrow_up:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/arrow_up.png"> />',
-    ":arrow_upper_left:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/arrow_upper_left.png"> />',
-    ":arrow_upper_right:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/arrow_upper_right.png"> />',
-    ":arrow_double_down:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/arrow_double_down.png"> />',
-    ":arrow_double_up:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/arrow_double_up.png"> />',
-    ":arrow_down_small:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/arrow_down_small.png"> />',
-    ":arrow_heading_down:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/arrow_heading_down.png"> />',
-    ":arrow_heading_up:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/arrow_heading_up.png"> />',
-    ":leftwards_arrow_with_hook:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/leftwards_arrow_with_hook.png"> />',
-    ":arrow_right_hook:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/arrow_right_hook.png"> />',
-    ":left_right_arrow:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/left_right_arrow.png"> />',
-    ":arrow_up_down:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/arrow_up_down.png"> />',
-    ":arrow_up_small:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/arrow_up_small.png"> />',
-    ":arrows_clockwise:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/arrows_clockwise.png"> />',
-    ":arrows_counterclockwise:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/arrows_counterclockwise.png"> />',
-    ":rewind:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/rewind.png"> />',
-    ":fast_forward:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/fast_forward.png"> />',
-    ":information_source:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/information_source.png"> />',
-    ":ok:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ok.png"> />',
-    ":twisted_rightwards_arrows:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/twisted_rightwards_arrows.png"> />',
-    ":repeat:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/repeat.png"> />',
-    ":repeat_one:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/repeat_one.png"> />',
-    ":new:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/new.png"> />',
-    ":top:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/top.png"> />',
-    ":up:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/up.png"> />',
-    ":cool:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cool.png"> />',
-    ":free:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/free.png"> />',
-    ":ng:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ng.png"> />',
-    ":cinema:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cinema.png"> />',
-    ":koko:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/koko.png"> />',
-    ":signal_strength:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/signal_strength.png"> />',
-    ":u5272:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/u5272.png"> />',
-    ":u5408:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/u5408.png"> />',
-    ":u55b6:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/u55b6.png"> />',
-    ":u6307:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/u6307.png"> />',
-    ":u6708:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/u6708.png"> />',
-    ":u6709:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/u6709.png"> />',
-    ":u6e80:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/u6e80.png"> />',
-    ":u7121:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/u7121.png"> />',
-    ":u7533:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/u7533.png"> />',
-    ":u7a7a:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/u7a7a.png"> />',
-    ":u7981:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/u7981.png"> />',
-    ":sa:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sa.png"> />',
-    ":restroom:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/restroom.png"> />',
-    ":mens:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/mens.png"> />',
-    ":womens:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/womens.png"> />',
-    ":baby_symbol:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/baby_symbol.png"> />',
-    ":no_smoking:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/no_smoking.png"> />',
-    ":parking:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/parking.png"> />',
-    ":wheelchair:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/wheelchair.png"> />',
-    ":metro:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/metro.png"> />',
-    ":baggage_claim:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/baggage_claim.png"> />',
-    ":accept:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/accept.png"> />',
-    ":wc:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/wc.png"> />',
-    ":potable_water:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/potable_water.png"> />',
-    ":put_litter_in_its_place:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/put_litter_in_its_place.png"> />',
-    ":secret:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/secret.png"> />',
-    ":congratulations:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/congratulations.png"> />',
-    ":m:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/m.png"> />',
-    ":passport_control:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/passport_control.png"> />',
-    ":left_luggage:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/left_luggage.png"> />',
-    ":customs:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/customs.png"> />',
-    ":ideograph_advantage:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ideograph_advantage.png"> />',
-    ":cl:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cl.png"> />',
-    ":sos:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sos.png"> />',
-    ":id:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/id.png"> />',
-    ":no_entry_sign:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/no_entry_sign.png"> />',
-    ":underage:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/underage.png"> />',
-    ":no_mobile_phones:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/no_mobile_phones.png"> />',
-    ":do_not_litter:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/do_not_litter.png"> />',
-    ":non-potable_water:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/non-potable_water.png"> />',
-    ":no_bicycles:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/no_bicycles.png"> />',
-    ":no_pedestrians:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/no_pedestrians.png"> />',
-    ":children_crossing:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/children_crossing.png"> />',
-    ":no_entry:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/no_entry.png"> />',
-    ":eight_spoked_asterisk:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/eight_spoked_asterisk.png"> />',
-    ":sparkle:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sparkle.png"> />',
-    ":eight_pointed_black_star:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/eight_pointed_black_star.png"> />',
-    ":heart_decoration:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/heart_decoration.png"> />',
-    ":vs:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/vs.png"> />',
-    ":vibration_mode:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/vibration_mode.png"> />',
-    ":mobile_phone_off:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/mobile_phone_off.png"> />',
-    ":chart:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/chart.png"> />',
-    ":currency_exchange:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/currency_exchange.png"> />',
-    ":aries:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/aries.png"> />',
-    ":taurus:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/taurus.png"> />',
-    ":gemini:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/gemini.png"> />',
-    ":cancer:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/cancer.png"> />',
-    ":leo:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/leo.png"> />',
-    ":virgo:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/virgo.png"> />',
-    ":libra:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/libra.png"> />',
-    ":scorpius:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/scorpius.png"> />',
-    ":sagittarius:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/sagittarius.png"> />',
-    ":capricorn:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/capricorn.png"> />',
-    ":aquarius:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/aquarius.png"> />',
-    ":pisces:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/pisces.png"> />',
-    ":ophiuchus:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ophiuchus.png"> />',
-    ":six_pointed_star:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/six_pointed_star.png"> />',
-    ":negative_squared_cross_mark:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/negative_squared_cross_mark.png"> />',
-    ":a:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/a.png"> />',
-    ":b:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/b.png"> />',
-    ":ab:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ab.png"> />',
-    ":o2:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/o2.png"> />',
-    ":diamond_shape_with_a_dot_inside:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/diamond_shape_with_a_dot_inside.png"> />',
-    ":recycle:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/recycle.png"> />',
-    ":end:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/end.png"> />',
-    ":back:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/back.png"> />',
-    ":on:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/on.png"> />',
-    ":soon:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/soon.png"> />',
-    ":clock1:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock1.png"> />',
-    ":clock130:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock130.png"> />',
-    ":clock10:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock10.png"> />',
-    ":clock1030:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock1030.png"> />',
-    ":clock11:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock11.png"> />',
-    ":clock1130:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock1130.png"> />',
-    ":clock12:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock12.png"> />',
-    ":clock1230:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock1230.png"> />',
-    ":clock2:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock2.png"> />',
-    ":clock230:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock230.png"> />',
-    ":clock3:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock3.png"> />',
-    ":clock330:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock330.png"> />',
-    ":clock4:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock4.png"> />',
-    ":clock430:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock430.png"> />',
-    ":clock5:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock5.png"> />',
-    ":clock530:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock530.png"> />',
-    ":clock6:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock6.png"> />',
-    ":clock630:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock630.png"> />',
-    ":clock7:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock7.png"> />',
-    ":clock730:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock730.png"> />',
-    ":clock8:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock8.png"> />',
-    ":clock830:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock830.png"> />',
-    ":clock9:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock9.png"> />',
-    ":clock930:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/clock930.png"> />',
-    ":heavy_dollar_sign:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/heavy_dollar_sign.png"> />',
-    ":copyright:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/copyright.png"> />',
-    ":registered:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/registered.png"> />',
-    ":tm:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/tm.png"> />',
-    ":x:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/x.png"> />',
-    ":heavy_exclamation_mark:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/heavy_exclamation_mark.png"> />',
-    ":bangbang:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/bangbang.png"> />',
-    ":interrobang:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/interrobang.png"> />',
-    ":o:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/o.png"> />',
-    ":heavy_multiplication_x:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/heavy_multiplication_x.png"> />',
-    ":heavy_plus_sign:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/heavy_plus_sign.png"> />',
-    ":heavy_minus_sign:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/heavy_minus_sign.png"> />',
-    ":heavy_division_sign:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/heavy_division_sign.png"> />',
-    ":white_flower:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/white_flower.png"> />',
-    ":100:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/100.png"> />',
-    ":heavy_check_mark:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/heavy_check_mark.png"> />',
-    ":ballot_box_with_check:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/ballot_box_with_check.png"> />',
-    ":radio_button:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/radio_button.png"> />',
-    ":link:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/link.png"> />',
-    ":curly_loop:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/curly_loop.png"> />',
-    ":wavy_dash:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/wavy_dash.png"> />',
-    ":part_alternation_mark:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/part_alternation_mark.png"> />',
-    ":trident:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/trident.png"> />',
-    ":black_small_square:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/black_small_square.png"> />',
-    ":white_small_square:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/white_small_square.png"> />',
-    ":black_medium_small_square:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/black_medium_small_square.png"> />',
-    ":white_medium_small_square:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/white_medium_small_square.png"> />',
-    ":black_medium_square:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/black_medium_square.png"> />',
-    ":white_medium_square:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/white_medium_square.png"> />',
-    ":black_large_square:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/black_square.png"> />',
-    ":white_large_square:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/white_large_square.png"> />',
-    ":white_check_mark:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/white_check_mark.png"> />',
-    ":black_square_button:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/black_square_button.png"> />',
-    ":white_square_button:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/white_square_button.png"> />',
-    ":black_circle:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/black_circle.png"> />',
-    ":white_circle:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/white_circle.png"> />',
-    ":red_circle:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/red_circle.png"> />',
-    ":large_blue_circle:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/large_blue_circle.png"> />',
-    ":large_blue_diamond:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/large_blue_diamond.png"> />',
-    ":large_orange_diamond:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/large_orange_diamond.png"> />',
-    ":small_blue_diamond:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/small_blue_diamond.png"> />',
-    ":small_orange_diamond:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/small_orange_diamond.png"> />',
-    ":small_red_triangle:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/small_red_triangle.png"> />',
-    ":small_red_triangle_down:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/small_red_triangle_down.png"> />',
-    ":shipit:" =>
-        '<img class="emoji" alt="" src="http://www.emoji-cheat-sheet.com/graphics/emojis/shipit.png"> />'
+    bowtie                          => 1,
+    smile                           => 1,
+    laughing                        => 1,
+    blush                           => 1,
+    smiley                          => 1,
+    relaxed                         => 1,
+    smirk                           => 1,
+    heart_eyes                      => 1,
+    kissing_heart                   => 1,
+    kissing_closed_eyes             => 1,
+    flushed                         => 1,
+    relieved                        => 1,
+    satisfied                       => 1,
+    grin                            => 1,
+    wink                            => 1,
+    stuck_out_tongue_winking_eye    => 1,
+    stuck_out_tongue_closed_eyes    => 1,
+    grinning                        => 1,
+    kissing                         => 1,
+    kissing_smiling_eyes            => 1,
+    stuck_out_tongue                => 1,
+    sleeping                        => 1,
+    worried                         => 1,
+    frowning                        => 1,
+    anguished                       => 1,
+    open_mouth                      => 1,
+    grimacing                       => 1,
+    confused                        => 1,
+    hushed                          => 1,
+    expressionless                  => 1,
+    unamused                        => 1,
+    sweat_smile                     => 1,
+    sweat                           => 1,
+    disappointed_relieved           => 1,
+    weary                           => 1,
+    pensive                         => 1,
+    disappointed                    => 1,
+    confounded                      => 1,
+    fearful                         => 1,
+    cold_sweat                      => 1,
+    persevere                       => 1,
+    cry                             => 1,
+    sob                             => 1,
+    joy                             => 1,
+    astonished                      => 1,
+    scream                          => 1,
+    neckbeard                       => 1,
+    tired_face                      => 1,
+    angry                           => 1,
+    rage                            => 1,
+    triumph                         => 1,
+    sleepy                          => 1,
+    yum                             => 1,
+    mask                            => 1,
+    sunglasses                      => 1,
+    dizzy_face                      => 1,
+    imp                             => 1,
+    smiling_imp                     => 1,
+    neutral_face                    => 1,
+    no_mouth                        => 1,
+    innocent                        => 1,
+    alien                           => 1,
+    yellow_heart                    => 1,
+    blue_heart                      => 1,
+    purple_heart                    => 1,
+    heart                           => 1,
+    green_heart                     => 1,
+    broken_heart                    => 1,
+    heartbeat                       => 1,
+    heartpulse                      => 1,
+    two_hearts                      => 1,
+    revolving_hearts                => 1,
+    cupid                           => 1,
+    sparkling_heart                 => 1,
+    sparkles                        => 1,
+    star                            => 1,
+    star2                           => 1,
+    dizzy                           => 1,
+    boom                            => 1,
+    collision                       => 1,
+    anger                           => 1,
+    exclamation                     => 1,
+    question                        => 1,
+    grey_exclamation                => 1,
+    grey_question                   => 1,
+    zzz                             => 1,
+    dash                            => 1,
+    sweat_drops                     => 1,
+    notes                           => 1,
+    musical_note                    => 1,
+    fire                            => 1,
+    hankey                          => 1,
+    poop                            => 1,
+    shit                            => 1,
+    '+1'                            => 1,
+    thumbsup                        => 1,
+    '-1'                            => 1,
+    thumbsdown                      => 1,
+    ok_hand                         => 1,
+    punch                           => 1,
+    facepunch                       => 1,
+    fist                            => 1,
+    v                               => 1,
+    wave                            => 1,
+    hand                            => 1,
+    raised_hand                     => 1,
+    open_hands                      => 1,
+    point_up                        => 1,
+    point_down                      => 1,
+    point_left                      => 1,
+    point_right                     => 1,
+    raised_hands                    => 1,
+    pray                            => 1,
+    point_up_2                      => 1,
+    clap                            => 1,
+    muscle                          => 1,
+    metal                           => 1,
+    fu                              => 1,
+    runner                          => 1,
+    running                         => 1,
+    couple                          => 1,
+    family                          => 1,
+    two_men_holding_hands           => 1,
+    two_women_holding_hands         => 1,
+    dancer                          => 1,
+    dancers                         => 1,
+    ok_woman                        => 1,
+    no_good                         => 1,
+    information_desk_person         => 1,
+    raising_hand                    => 1,
+    bride_with_veil                 => 1,
+    person_with_pouting_face        => 1,
+    person_frowning                 => 1,
+    bow                             => 1,
+    couplekiss                      => 1,
+    couple_with_heart               => 1,
+    massage                         => 1,
+    haircut                         => 1,
+    nail_care                       => 1,
+    boy                             => 1,
+    girl                            => 1,
+    woman                           => 1,
+    man                             => 1,
+    baby                            => 1,
+    older_woman                     => 1,
+    older_man                       => 1,
+    person_with_blond_hair          => 1,
+    man_with_gua_pi_mao             => 1,
+    man_with_turban                 => 1,
+    construction_worker             => 1,
+    cop                             => 1,
+    angel                           => 1,
+    princess                        => 1,
+    smiley_cat                      => 1,
+    smile_cat                       => 1,
+    heart_eyes_cat                  => 1,
+    kissing_cat                     => 1,
+    smirk_cat                       => 1,
+    scream_cat                      => 1,
+    crying_cat_face                 => 1,
+    joy_cat                         => 1,
+    pouting_cat                     => 1,
+    japanese_ogre                   => 1,
+    japanese_goblin                 => 1,
+    see_no_evil                     => 1,
+    hear_no_evil                    => 1,
+    speak_no_evil                   => 1,
+    guardsman                       => 1,
+    skull                           => 1,
+    feet                            => 1,
+    lips                            => 1,
+    kiss                            => 1,
+    droplet                         => 1,
+    ear                             => 1,
+    eyes                            => 1,
+    nose                            => 1,
+    tongue                          => 1,
+    love_letter                     => 1,
+    bust_in_silhouette              => 1,
+    busts_in_silhouette             => 1,
+    speech_balloon                  => 1,
+    thought_balloon                 => 1,
+    feelsgood                       => 1,
+    finnadie                        => 1,
+    goberserk                       => 1,
+    godmode                         => 1,
+    hurtrealbad                     => 1,
+    rage1                           => 1,
+    rage2                           => 1,
+    rage3                           => 1,
+    rage4                           => 1,
+    suspect                         => 1,
+    trollface                       => 1,
+    sunny                           => 1,
+    umbrella                        => 1,
+    cloud                           => 1,
+    snowflake                       => 1,
+    snowman                         => 1,
+    zap                             => 1,
+    cyclone                         => 1,
+    foggy                           => 1,
+    ocean                           => 1,
+    cat                             => 1,
+    dog                             => 1,
+    mouse                           => 1,
+    hamster                         => 1,
+    rabbit                          => 1,
+    wolf                            => 1,
+    frog                            => 1,
+    tiger                           => 1,
+    koala                           => 1,
+    bear                            => 1,
+    pig                             => 1,
+    pig_nose                        => 1,
+    cow                             => 1,
+    boar                            => 1,
+    monkey_face                     => 1,
+    monkey                          => 1,
+    horse                           => 1,
+    racehorse                       => 1,
+    camel                           => 1,
+    sheep                           => 1,
+    elephant                        => 1,
+    panda_face                      => 1,
+    snake                           => 1,
+    bird                            => 1,
+    baby_chick                      => 1,
+    hatched_chick                   => 1,
+    hatching_chick                  => 1,
+    chicken                         => 1,
+    penguin                         => 1,
+    turtle                          => 1,
+    bug                             => 1,
+    honeybee                        => 1,
+    ant                             => 1,
+    beetle                          => 1,
+    snail                           => 1,
+    octopus                         => 1,
+    tropical_fish                   => 1,
+    fish                            => 1,
+    whale                           => 1,
+    whale2                          => 1,
+    dolphin                         => 1,
+    cow2                            => 1,
+    ram                             => 1,
+    rat                             => 1,
+    water_buffalo                   => 1,
+    tiger2                          => 1,
+    rabbit2                         => 1,
+    dragon                          => 1,
+    goat                            => 1,
+    rooster                         => 1,
+    dog2                            => 1,
+    pig2                            => 1,
+    mouse2                          => 1,
+    ox                              => 1,
+    dragon_face                     => 1,
+    blowfish                        => 1,
+    crocodile                       => 1,
+    dromedary_camel                 => 1,
+    leopard                         => 1,
+    cat2                            => 1,
+    poodle                          => 1,
+    paw_prints                      => 1,
+    bouquet                         => 1,
+    cherry_blossom                  => 1,
+    tulip                           => 1,
+    four_leaf_clover                => 1,
+    rose                            => 1,
+    sunflower                       => 1,
+    hibiscus                        => 1,
+    maple_leaf                      => 1,
+    leaves                          => 1,
+    fallen_leaf                     => 1,
+    herb                            => 1,
+    mushroom                        => 1,
+    cactus                          => 1,
+    palm_tree                       => 1,
+    evergreen_tree                  => 1,
+    deciduous_tree                  => 1,
+    chestnut                        => 1,
+    seedling                        => 1,
+    blossom                         => 1,
+    ear_of_rice                     => 1,
+    shell                           => 1,
+    globe_with_meridians            => 1,
+    sun_with_face                   => 1,
+    full_moon_with_face             => 1,
+    new_moon_with_face              => 1,
+    new_moon                        => 1,
+    waxing_crescent_moon            => 1,
+    first_quarter_moon              => 1,
+    waxing_gibbous_moon             => 1,
+    full_moon                       => 1,
+    waning_gibbous_moon             => 1,
+    last_quarter_moon               => 1,
+    waning_crescent_moon            => 1,
+    last_quarter_moon_with_face     => 1,
+    first_quarter_moon_with_face    => 1,
+    crescent_moon                   => 1,
+    earth_africa                    => 1,
+    earth_americas                  => 1,
+    earth_asia                      => 1,
+    volcano                         => 1,
+    milky_way                       => 1,
+    partly_sunny                    => 1,
+    octocat                         => 1,
+    squirrel                        => 1,
+    bamboo                          => 1,
+    gift_heart                      => 1,
+    dolls                           => 1,
+    school_satchel                  => 1,
+    mortar_board                    => 1,
+    flags                           => 1,
+    fireworks                       => 1,
+    sparkler                        => 1,
+    wind_chime                      => 1,
+    rice_scene                      => 1,
+    jack_o_lantern                  => 1,
+    ghost                           => 1,
+    santa                           => 1,
+    christmas_tree                  => 1,
+    gift                            => 1,
+    bell                            => 1,
+    no_bell                         => 1,
+    tanabata_tree                   => 1,
+    tada                            => 1,
+    confetti_ball                   => 1,
+    balloon                         => 1,
+    crystal_ball                    => 1,
+    cd                              => 1,
+    dvd                             => 1,
+    floppy_disk                     => 1,
+    camera                          => 1,
+    video_camera                    => 1,
+    movie_camera                    => 1,
+    computer                        => 1,
+    tv                              => 1,
+    iphone                          => 1,
+    phone                           => 1,
+    telephone                       => 1,
+    telephone_receiver              => 1,
+    pager                           => 1,
+    fax                             => 1,
+    minidisc                        => 1,
+    vhs                             => 1,
+    sound                           => 1,
+    speaker                         => 1,
+    mute                            => 1,
+    loudspeaker                     => 1,
+    mega                            => 1,
+    hourglass                       => 1,
+    hourglass_flowing_sand          => 1,
+    alarm_clock                     => 1,
+    watch                           => 1,
+    radio                           => 1,
+    satellite                       => 1,
+    loop                            => 1,
+    mag                             => 1,
+    mag_right                       => 1,
+    unlock                          => 1,
+    lock                            => 1,
+    lock_with_ink_pen               => 1,
+    closed_lock_with_key            => 1,
+    key                             => 1,
+    bulb                            => 1,
+    flashlight                      => 1,
+    high_brightness                 => 1,
+    low_brightness                  => 1,
+    electric_plug                   => 1,
+    battery                         => 1,
+    calling                         => 1,
+    email                           => 1,
+    mailbox                         => 1,
+    postbox                         => 1,
+    bath                            => 1,
+    bathtub                         => 1,
+    shower                          => 1,
+    toilet                          => 1,
+    wrench                          => 1,
+    nut_and_bolt                    => 1,
+    hammer                          => 1,
+    seat                            => 1,
+    moneybag                        => 1,
+    yen                             => 1,
+    dollar                          => 1,
+    pound                           => 1,
+    euro                            => 1,
+    credit_card                     => 1,
+    money_with_wings                => 1,
+    'e-mail'                        => 1,
+    inbox_tray                      => 1,
+    outbox_tray                     => 1,
+    envelope                        => 1,
+    incoming_envelope               => 1,
+    postal_horn                     => 1,
+    mailbox_closed                  => 1,
+    mailbox_with_mail               => 1,
+    mailbox_with_no_mail            => 1,
+    package                         => 1,
+    door                            => 1,
+    smoking                         => 1,
+    bomb                            => 1,
+    gun                             => 1,
+    hocho                           => 1,
+    pill                            => 1,
+    syringe                         => 1,
+    page_facing_up                  => 1,
+    page_with_curl                  => 1,
+    bookmark_tabs                   => 1,
+    bar_chart                       => 1,
+    chart_with_upwards_trend        => 1,
+    chart_with_downwards_trend      => 1,
+    scroll                          => 1,
+    clipboard                       => 1,
+    calendar                        => 1,
+    date                            => 1,
+    card_index                      => 1,
+    file_folder                     => 1,
+    open_file_folder                => 1,
+    scissors                        => 1,
+    pushpin                         => 1,
+    paperclip                       => 1,
+    black_nib                       => 1,
+    pencil2                         => 1,
+    straight_ruler                  => 1,
+    triangular_ruler                => 1,
+    closed_book                     => 1,
+    green_book                      => 1,
+    blue_book                       => 1,
+    orange_book                     => 1,
+    notebook                        => 1,
+    notebook_with_decorative_cover  => 1,
+    ledger                          => 1,
+    books                           => 1,
+    bookmark                        => 1,
+    name_badge                      => 1,
+    microscope                      => 1,
+    telescope                       => 1,
+    newspaper                       => 1,
+    football                        => 1,
+    basketball                      => 1,
+    soccer                          => 1,
+    baseball                        => 1,
+    tennis                          => 1,
+    '8ball'                         => 1,
+    rugby_football                  => 1,
+    bowling                         => 1,
+    golf                            => 1,
+    mountain_bicyclist              => 1,
+    bicyclist                       => 1,
+    horse_racing                    => 1,
+    snowboarder                     => 1,
+    swimmer                         => 1,
+    surfer                          => 1,
+    ski                             => 1,
+    spades                          => 1,
+    hearts                          => 1,
+    clubs                           => 1,
+    diamonds                        => 1,
+    gem                             => 1,
+    ring                            => 1,
+    trophy                          => 1,
+    musical_score                   => 1,
+    musical_keyboard                => 1,
+    violin                          => 1,
+    space_invader                   => 1,
+    video_game                      => 1,
+    black_joker                     => 1,
+    flower_playing_cards            => 1,
+    game_die                        => 1,
+    dart                            => 1,
+    mahjong                         => 1,
+    clapper                         => 1,
+    memo                            => 1,
+    pencil                          => 1,
+    book                            => 1,
+    art                             => 1,
+    microphone                      => 1,
+    headphones                      => 1,
+    trumpet                         => 1,
+    saxophone                       => 1,
+    guitar                          => 1,
+    shoe                            => 1,
+    sandal                          => 1,
+    high_heel                       => 1,
+    lipstick                        => 1,
+    boot                            => 1,
+    shirt                           => 1,
+    tshirt                          => 1,
+    necktie                         => 1,
+    womans_clothes                  => 1,
+    dress                           => 1,
+    running_shirt_with_sash         => 1,
+    jeans                           => 1,
+    kimono                          => 1,
+    bikini                          => 1,
+    ribbon                          => 1,
+    tophat                          => 1,
+    crown                           => 1,
+    womans_hat                      => 1,
+    mans_shoe                       => 1,
+    closed_umbrella                 => 1,
+    briefcase                       => 1,
+    handbag                         => 1,
+    pouch                           => 1,
+    purse                           => 1,
+    eyeglasses                      => 1,
+    fishing_pole_and_fish           => 1,
+    coffee                          => 1,
+    tea                             => 1,
+    sake                            => 1,
+    baby_bottle                     => 1,
+    beer                            => 1,
+    beers                           => 1,
+    cocktail                        => 1,
+    tropical_drink                  => 1,
+    wine_glass                      => 1,
+    fork_and_knife                  => 1,
+    pizza                           => 1,
+    hamburger                       => 1,
+    fries                           => 1,
+    poultry_leg                     => 1,
+    meat_on_bone                    => 1,
+    spaghetti                       => 1,
+    curry                           => 1,
+    fried_shrimp                    => 1,
+    bento                           => 1,
+    sushi                           => 1,
+    fish_cake                       => 1,
+    rice_ball                       => 1,
+    rice_cracker                    => 1,
+    rice                            => 1,
+    ramen                           => 1,
+    stew                            => 1,
+    oden                            => 1,
+    dango                           => 1,
+    egg                             => 1,
+    bread                           => 1,
+    doughnut                        => 1,
+    custard                         => 1,
+    icecream                        => 1,
+    ice_cream                       => 1,
+    shaved_ice                      => 1,
+    birthday                        => 1,
+    cake                            => 1,
+    cookie                          => 1,
+    chocolate_bar                   => 1,
+    candy                           => 1,
+    lollipop                        => 1,
+    honey_pot                       => 1,
+    apple                           => 1,
+    green_apple                     => 1,
+    tangerine                       => 1,
+    lemon                           => 1,
+    cherries                        => 1,
+    grapes                          => 1,
+    watermelon                      => 1,
+    strawberry                      => 1,
+    peach                           => 1,
+    melon                           => 1,
+    banana                          => 1,
+    pear                            => 1,
+    pineapple                       => 1,
+    sweet_potato                    => 1,
+    eggplant                        => 1,
+    tomato                          => 1,
+    corn                            => 1,
+    house                           => 1,
+    house_with_garden               => 1,
+    school                          => 1,
+    office                          => 1,
+    post_office                     => 1,
+    hospital                        => 1,
+    bank                            => 1,
+    convenience_store               => 1,
+    love_hotel                      => 1,
+    hotel                           => 1,
+    wedding                         => 1,
+    church                          => 1,
+    department_store                => 1,
+    european_post_office            => 1,
+    city_sunrise                    => 1,
+    city_sunset                     => 1,
+    japanese_castle                 => 1,
+    european_castle                 => 1,
+    tent                            => 1,
+    factory                         => 1,
+    tokyo_tower                     => 1,
+    japan                           => 1,
+    mount_fuji                      => 1,
+    sunrise_over_mountains          => 1,
+    sunrise                         => 1,
+    stars                           => 1,
+    statue_of_liberty               => 1,
+    bridge_at_night                 => 1,
+    carousel_horse                  => 1,
+    rainbow                         => 1,
+    ferris_wheel                    => 1,
+    fountain                        => 1,
+    roller_coaster                  => 1,
+    ship                            => 1,
+    speedboat                       => 1,
+    boat                            => 1,
+    sailboat                        => 1,
+    rowboat                         => 1,
+    anchor                          => 1,
+    rocket                          => 1,
+    airplane                        => 1,
+    helicopter                      => 1,
+    steam_locomotive                => 1,
+    tram                            => 1,
+    mountain_railway                => 1,
+    bike                            => 1,
+    aerial_tramway                  => 1,
+    suspension_railway              => 1,
+    mountain_cableway               => 1,
+    tractor                         => 1,
+    blue_car                        => 1,
+    oncoming_automobile             => 1,
+    car                             => 1,
+    red_car                         => 1,
+    taxi                            => 1,
+    oncoming_taxi                   => 1,
+    articulated_lorry               => 1,
+    bus                             => 1,
+    oncoming_bus                    => 1,
+    rotating_light                  => 1,
+    police_car                      => 1,
+    oncoming_police_car             => 1,
+    fire_engine                     => 1,
+    ambulance                       => 1,
+    minibus                         => 1,
+    truck                           => 1,
+    train                           => 1,
+    station                         => 1,
+    train2                          => 1,
+    bullettrain_front               => 1,
+    bullettrain_side                => 1,
+    light_rail                      => 1,
+    monorail                        => 1,
+    railway_car                     => 1,
+    trolleybus                      => 1,
+    ticket                          => 1,
+    fuelpump                        => 1,
+    vertical_traffic_light          => 1,
+    traffic_light                   => 1,
+    warning                         => 1,
+    construction                    => 1,
+    beginner                        => 1,
+    atm                             => 1,
+    slot_machine                    => 1,
+    busstop                         => 1,
+    barber                          => 1,
+    hotsprings                      => 1,
+    checkered_flag                  => 1,
+    crossed_flags                   => 1,
+    izakaya_lantern                 => 1,
+    moyai                           => 1,
+    circus_tent                     => 1,
+    performing_arts                 => 1,
+    round_pushpin                   => 1,
+    triangular_flag_on_post         => 1,
+    jp                              => 1,
+    kr                              => 1,
+    cn                              => 1,
+    us                              => 1,
+    fr                              => 1,
+    es                              => 1,
+    it                              => 1,
+    ru                              => 1,
+    gb                              => 1,
+    uk                              => 1,
+    de                              => 1,
+    one                             => 1,
+    two                             => 1,
+    three                           => 1,
+    four                            => 1,
+    five                            => 1,
+    six                             => 1,
+    seven                           => 1,
+    eight                           => 1,
+    nine                            => 1,
+    keycap_ten                      => 1,
+    1234                            => 1,
+    zero                            => 1,
+    hash                            => 1,
+    symbols                         => 1,
+    arrow_backward                  => 1,
+    arrow_down                      => 1,
+    arrow_forward                   => 1,
+    arrow_left                      => 1,
+    capital_abcd                    => 1,
+    abcd                            => 1,
+    abc                             => 1,
+    arrow_lower_left                => 1,
+    arrow_lower_right               => 1,
+    arrow_right                     => 1,
+    arrow_up                        => 1,
+    arrow_upper_left                => 1,
+    arrow_upper_right               => 1,
+    arrow_double_down               => 1,
+    arrow_double_up                 => 1,
+    arrow_down_small                => 1,
+    arrow_heading_down              => 1,
+    arrow_heading_up                => 1,
+    leftwards_arrow_with_hook       => 1,
+    arrow_right_hook                => 1,
+    left_right_arrow                => 1,
+    arrow_up_down                   => 1,
+    arrow_up_small                  => 1,
+    arrows_clockwise                => 1,
+    arrows_counterclockwise         => 1,
+    rewind                          => 1,
+    fast_forward                    => 1,
+    information_source              => 1,
+    ok                              => 1,
+    twisted_rightwards_arrows       => 1,
+    repeat                          => 1,
+    repeat_one                      => 1,
+    new                             => 1,
+    top                             => 1,
+    up                              => 1,
+    cool                            => 1,
+    free                            => 1,
+    ng                              => 1,
+    cinema                          => 1,
+    koko                            => 1,
+    signal_strength                 => 1,
+    u5272                           => 1,
+    u5408                           => 1,
+    u55b6                           => 1,
+    u6307                           => 1,
+    u6708                           => 1,
+    u6709                           => 1,
+    u6e80                           => 1,
+    u7121                           => 1,
+    u7533                           => 1,
+    u7a7a                           => 1,
+    u7981                           => 1,
+    sa                              => 1,
+    restroom                        => 1,
+    mens                            => 1,
+    womens                          => 1,
+    baby_symbol                     => 1,
+    no_smoking                      => 1,
+    parking                         => 1,
+    wheelchair                      => 1,
+    metro                           => 1,
+    baggage_claim                   => 1,
+    accept                          => 1,
+    wc                              => 1,
+    potable_water                   => 1,
+    put_litter_in_its_place         => 1,
+    secret                          => 1,
+    congratulations                 => 1,
+    m                               => 1,
+    passport_control                => 1,
+    left_luggage                    => 1,
+    customs                         => 1,
+    ideograph_advantage             => 1,
+    cl                              => 1,
+    sos                             => 1,
+    id                              => 1,
+    no_entry_sign                   => 1,
+    underage                        => 1,
+    no_mobile_phones                => 1,
+    do_not_litter                   => 1,
+    'non-potable_water'             => 1,
+    no_bicycles                     => 1,
+    no_pedestrians                  => 1,
+    children_crossing               => 1,
+    no_entry                        => 1,
+    eight_spoked_asterisk           => 1,
+    sparkle                         => 1,
+    eight_pointed_black_star        => 1,
+    heart_decoration                => 1,
+    vs                              => 1,
+    vibration_mode                  => 1,
+    mobile_phone_off                => 1,
+    chart                           => 1,
+    currency_exchange               => 1,
+    aries                           => 1,
+    taurus                          => 1,
+    gemini                          => 1,
+    cancer                          => 1,
+    leo                             => 1,
+    virgo                           => 1,
+    libra                           => 1,
+    scorpius                        => 1,
+    sagittarius                     => 1,
+    capricorn                       => 1,
+    aquarius                        => 1,
+    pisces                          => 1,
+    ophiuchus                       => 1,
+    six_pointed_star                => 1,
+    negative_squared_cross_mark     => 1,
+    a                               => 1,
+    b                               => 1,
+    ab                              => 1,
+    o2                              => 1,
+    diamond_shape_with_a_dot_inside => 1,
+    recycle                         => 1,
+    end                             => 1,
+    back                            => 1,
+    on                              => 1,
+    soon                            => 1,
+    clock1                          => 1,
+    clock130                        => 1,
+    clock10                         => 1,
+    clock1030                       => 1,
+    clock11                         => 1,
+    clock1130                       => 1,
+    clock12                         => 1,
+    clock1230                       => 1,
+    clock2                          => 1,
+    clock230                        => 1,
+    clock3                          => 1,
+    clock330                        => 1,
+    clock4                          => 1,
+    clock430                        => 1,
+    clock5                          => 1,
+    clock530                        => 1,
+    clock6                          => 1,
+    clock630                        => 1,
+    clock7                          => 1,
+    clock730                        => 1,
+    clock8                          => 1,
+    clock830                        => 1,
+    clock9                          => 1,
+    clock930                        => 1,
+    heavy_dollar_sign               => 1,
+    copyright                       => 1,
+    registered                      => 1,
+    tm                              => 1,
+    x                               => 1,
+    heavy_exclamation_mark          => 1,
+    bangbang                        => 1,
+    interrobang                     => 1,
+    o                               => 1,
+    heavy_multiplication_x          => 1,
+    heavy_plus_sign                 => 1,
+    heavy_minus_sign                => 1,
+    heavy_division_sign             => 1,
+    white_flower                    => 1,
+    100                             => 1,
+    heavy_check_mark                => 1,
+    ballot_box_with_check           => 1,
+    radio_button                    => 1,
+    link                            => 1,
+    curly_loop                      => 1,
+    wavy_dash                       => 1,
+    part_alternation_mark           => 1,
+    trident                         => 1,
+    black_small_square              => 1,
+    white_small_square              => 1,
+    black_medium_small_square       => 1,
+    white_medium_small_square       => 1,
+    black_medium_square             => 1,
+    white_medium_square             => 1,
+    black_large_square              => 1,
+    white_large_square              => 1,
+    white_check_mark                => 1,
+    black_square_button             => 1,
+    white_square_button             => 1,
+    black_circle                    => 1,
+    white_circle                    => 1,
+    red_circle                      => 1,
+    large_blue_circle               => 1,
+    large_blue_diamond              => 1,
+    large_orange_diamond            => 1,
+    small_blue_diamond              => 1,
+    small_orange_diamond            => 1,
+    small_red_triangle              => 1,
+    small_red_triangle_down         => 1,
+    shipit                          => 1
 ) ;
 
-
-
-my $smiles = join( '|', map { quotemeta($_) } keys %smilies ) ;
-# my $smiles = join( '|', map { quotemeta($_) } keys %emoji_cheatsheet ) ;
-
-# ----------------------------------------------------------------------------
-# we want some CSS
-my $default_css = <<END_CSS;
-    /* -------------- ConvertText2.pm css -------------- */
-
-    img {max-width: 100%;}
-    /* setup for print */
-    \@media print {
-        /* this is the normal page style */
-        \@page {
-            size: %PAGE_SIZE%  %ORIENTATION% ;
-            margin: 60pt 30pt 40pt 30pt ;
-        }
-    }
-
-    /* setup for web */
-    \@media screen {
-        #toc a {
-            text-decoration: none ;
-            font-weight: normal;
-        }
-    }            
-
-    table { page-break-inside: auto ;}
-    table { page-break-inside: avoid ;}
-    tr    { page-break-inside:avoid; page-break-after:auto }
-    thead { display:table-header-group }
-    tfoot { display:table-footer-group }
-
-    /* toc */
-    .toc {
-        padding: 0.4em;
-        page-break-after: always;
-    }
-    .toc p {
-        font-size: 24;
-    }
-    .toc h3 { text-align: center }
-    .toc ul {
-        columns: 1;
-    }
-    .toc ul, .toc li {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-        padding-left: 10px ;
-    }
-    .toc a::after {
-        content: leader('.') target-counter(attr(href), page);
-        font-style: normal;
-    }
-    .toc a {
-        text-decoration: none ;
-        font-weight: normal;
-        color: black;
-    }
-
-    /* using pygments style */
-    div.sourceCode {
-        border: solid 1px #d0d0d0;
-        background-color: #f8f8f8 ; 
-        border-radius: 5px;
-        overflow-x: auto;
-    }
-    table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
-        margin: 0; padding: 0; vertical-align: baseline; border: none; 
-    }
-    table.sourceCode { width: 100%; line-height: 100%; }
-    td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
-    td.sourceCode { padding-left: 5px; }
-    code > span.kw { color: #007020; font-weight: bold; } /* Keyword */
-    code > span.dt { color: #902000; } /* DataType */
-    code > span.dv { color: #40a070; } /* DecVal */
-    code > span.bn { color: #40a070; } /* BaseN */
-    code > span.fl { color: #40a070; } /* Float */
-    code > span.ch { color: #4070a0; } /* Char */
-    code > span.st { color: #4070a0; } /* String */
-    code > span.co { color: #60a0b0; font-style: italic; } /* Comment */
-    code > span.ot { color: #007020; } /* Other */
-    code > span.al { color: #ff0000; font-weight: bold; } /* Alert */
-    code > span.fu { color: #06287e; } /* Function */
-    code > span.er { color: #ff0000; font-weight: bold; } /* Error */
-    code > span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
-    code > span.cn { color: #880000; } /* Constant */
-    code > span.sc { color: #4070a0; } /* SpecialChar */
-    code > span.vs { color: #4070a0; } /* VerbatimString */
-    code > span.ss { color: #bb6688; } /* SpecialString */
-    code > span.im { } /* Import */
-    code > span.va { color: #19177c; } /* Variable */
-    code > span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
-    code > span.op { color: #666666; } /* Operator */
-    code > span.bu { } /* BuiltIn */
-    code > span.ex { } /* Extension */
-    code > span.pp { color: #bc7a00; } /* Preprocessor */
-    code > span.at { color: #7d9029; } /* Attribute */
-    code > span.do { color: #ba2121; font-style: italic; font-weight: lighter;} /* Documentation */
-    code > span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
-    code > span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
-    code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
-
-    \@page landscape {
-        prince-rotate-body: 270deg;
-    }
-    .landscape {
-        page: landscape;
-    }
-
-    body {
-        font-family: sans-serif;
-    }
-    code {
-        font-family: monospace;
-    }
-
-    /* we do not want these, headings start from h2 onwards */
-    h1 {
-        display: none;
-    }
-
-    li {
-        padding-left: 0px;
-        margin-left: -2em ;
-    }
-
-    /* enable tooltips on 'title' attributes when using PrinceXML */
-    *[title] { prince-tooltip: attr(title) }
-
-    .rotate-90 {
-      filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=1);
-      -webkit-transform: rotate(90deg);
-      -ms-transform: rotate(90deg);
-      transform: rotate(90deg);
-    }
-    .rotate-180 {
-      filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=2);
-      -webkit-transform: rotate(180deg);
-      -ms-transform: rotate(180deg);
-      transform: rotate(180deg);
-    }
-    .rotate-270 {
-      filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=3);
-      -webkit-transform: rotate(270deg);
-      -ms-transform: rotate(270deg);
-      transform: rotate(270deg);
-    }
-    .flip-horizontal {
-      filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=0, mirror=1);
-      -webkit-transform: scale(-1, 1);
-      -ms-transform: scale(-1, 1);
-      transform: scale(-1, 1);
-    }
-    .flip-vertical {
-      filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=2, mirror=1);
-      -webkit-transform: scale(1, -1);
-      -ms-transform: scale(1, -1);
-      transform: scale(1, -1);
-    }
-
-    .border-grey {
-        border-style: solid;
-        border-width: 1px;
-        border-color: grey300;
-        box-shadow:inset 0px 0px 85px rgba(0,0,0,.5);
-        -webkit-box-shadow:inset 0px 0px 85px rgba(0,0,0,.5);
-        -moz-box-shadow:inset 0px 0px 85px rgba(0,0,0,.5);        
-        box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);        
-    }
-
-    .border-inset-grey {
-        border: 1px solid #666666;
-        -webkit-box-shadow: inset 3px 3px 3px #AAAAAA;
-        border-radius: 3px;
-    }
-
-    .border-shadow-grey {
-        -moz-box-shadow: 3px 3px 4px #444;
-        -webkit-box-shadow: 3px 3px 4px #444;
-        box-shadow: 3px 3px 4px #444;
-        -ms-filter: "progid:DXImageTransform.Microsoft.Shadow(Strength=4, Direction=135, Color='#444444')";
-        filter: progid:DXImageTransform.Microsoft.Shadow(Strength=4, Direction=135, Color='#444444');    
-    }
-
-    .emoji {
-      float:left;
-      margin-right:.5em;
-      width:22px;
-      height:22px
-    }
-    .emoji-2x {
-      float:left;
-      margin-right:.5em;
-      width:44px;
-      height:44px
-    }
-
-    .material-icons {
-        vertical-align: middle ;
-    }
-
-    /* all boxed tables will be styled this way */
-    table.box
-    {
-        margin: 0px;
-        text-align: left;
-        border-collapse: collapse;
-    }
-    table.box tr { vertical-align:top;}
-    table.box th
-    {
-        padding: 0px 10px 0px 10px;
-        background-color: #ccc;
-        font-weight: bold;
-        text-align: center;
-        border: 1px solid black;
-    }
-    table.box td
-    {
-        padding: 0px 10px 0px 10px;
-        border: 1px solid black;
-    }
-
-
-    /* all boxed tables will be styled this way */
-    #box table
-    {
-        page-break-inside: auto ;
-        /*margin: 5px;*/
-        text-align: left;
-        border-collapse: collapse;
-    }
-    #box table tr {
-        vertical-align:top;
-        margin-top: 0px;
-        margin-bottom: 0px;
-    }
-    #box table th
-    {
-        padding: 0px 0px 0px 0px;
-        background-color: #81c635;
-        font-weight: bold;
-        text-align: center;
-        border: 1px solid black;
-    }
-    #box table td
-    {
-        padding: 0px 0px 0px 00px;
-        border: 1px solid black;
-    }
-    #box table p:first-child
-    {
-        margin-top: 0px;
-    }
-    #box table p:last-child
-    {
-        margin-bottom: 0px;
-    }
-
-    /* shadows may not work in PDF, but will in html */
-    /* taken from https://css-tricks.com/snippets/css/css-box-shadow/ */
-    .grey-shadow {
-        -moz-box-shadow:    3px 3px 5px  #ccc;
-        -webkit-box-shadow: 3px 3px 5px  #ccc;
-        box-shadow:         3px 3px 5px  #ccc;
-    }
-    .shadow {
-        -moz-box-shadow:    3px 3px 3px #444;
-        -webkit-box-shadow: 3px 3px 3px #444;
-        box-shadow:         3px 3px 3px #444;
-    }
-    .inner-shadow {
-        -moz-box-shadow:    inset 0 0 10px #000000;
-        -webkit-box-shadow: inset 0 0 10px #000000;
-        box-shadow:         inset 0 0 10px #000000;
-    }
-    .bottom-shadow {
-       -webkit-box-shadow: 0 8px 6px -6px black;
-       -moz-box-shadow: 0 8px 6px -6px black;
-       box-shadow: 0 8px 6px -6px black;
-    }
-
-
-END_CSS
-
-# The full set of sourceCode highlight css classes
-# div.sourceCode {    }
-# table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {  }
-# table.sourceCode {  }
-# td.lineNumbers { }
-# td.sourceCode {  }
-# pre, code {  }
-# code > span.kw {  } /* Keyword */
-# code > span.dt {  } /* DataType */
-# code > span.dv {  } /* DecVal */
-# code > span.bn {  } /* BaseN */
-# code > span.fl {  } /* Float */
-# code > span.ch {  } /* Char */
-# code > span.st {  } /* String */
-# code > span.co {  } /* Comment */
-# code > span.ot {  } /* Other */
-# code > span.al {  } /* Alert */
-# code > span.fu {  } /* Function */
-# code > span.er {  } /* Error */
-# code > span.wa {  } /* Warning */
-# code > span.cn {  } /* Constant */
-# code > span.sc {  } /* SpecialChar */
-# code > span.vs {  } /* VerbatimString */
-# code > span.ss {  } /* SpecialString */
-# code > span.im { } /* Import */
-# code > span.va { } /* Variable */
-# code > span.cf {  } /* ControlFlow */
-# code > span.op {  } /* Operator */
-# code > span.bu { } /* BuiltIn */
-# code > span.ex { } /* Extension */
-# code > span.pp {  } /* Preprocessor */
-# code > span.at { } /* Attribute */
-# code > span.do {  } /* Documentation */
-# code > span.an {  } /* Annotation */
-# code > span.cv {  } /* CommentVar */
-# code > span.in {  } /* Information */
+my $smiles   = join( '|', map { quotemeta($_) } keys %smilies ) ;
+my $unicodes = join( '|', map { quotemeta($_) } keys %unicode_emoji ) ;
 
 # ----------------------------------------------------------------------------
 
@@ -2240,11 +1139,12 @@ my $TITLE = "%TITLE%" ;
 
 # ----------------------------------------------------------------------------
 
-has 'name'    => ( is => 'ro', ) ;
-has 'basedir' => ( is => 'ro', ) ;
+has 'name'     => ( is => 'ro', ) ;
+has 'basedir'  => ( is => 'ro', ) ;
 has 'filename' => ( is => 'ro', ) ;
 
 has 'use_cache' => ( is => 'rw', default => sub { 0 ; } ) ;
+has 'commoncss' => ( is => 'ro', ) ;
 
 has 'cache_dir' => (
     is      => 'ro',
@@ -2283,9 +1183,14 @@ has 'replace' => (
     default => sub { {} },
 ) ;
 
-has 'verbose' => (
+has 'commands' => (
     is      => 'ro',
-    default => sub {0},
+    default => sub {""},
+) ;
+has '_commands' => (
+    is       => 'ro',
+    default  => sub { {} },
+    init_arg => 0
 ) ;
 
 has '_output' => (
@@ -2316,12 +1221,14 @@ Create a new instance of a of a data formating object
 
 B<Parameters>  passed in a HASH
     name        - name of this formatting action - required
+    filename    - name of the file that would be processed
     basedir     - root directory of document being processed
     cache_dir   - place to store cache files - optional
     use_cache   - decide if you want to use a cache or not
     template    - HTML template to use, must contain %_CONTENTS_%
+    commands    - path to find any script commands to run as blocks
+    commoncss   - CSS to use for any template
     replace     - hashref of extra keywords to use as replaceable variables
-    verbose     - be verbose
 
 =cut
 
@@ -2334,8 +1241,7 @@ sub BUILD
     if ( $self->use_cache() ) {
 
         # need to add the name to the cache dirname to make it distinct
-        $self->_set_cache_dir(
-            fix_filename( $self->cache_dir() . "/" . $self->name() ) ) ;
+        $self->_set_cache_dir( fix_filename( $self->cache_dir() . "/" . $self->name() ) ) ;
 
         if ( !-d $self->cache_dir() ) {
 
@@ -2343,10 +1249,26 @@ sub BUILD
             try {
                 path( $self->cache_dir() )->mkpath ;
             }
-            catch {} ;
+            catch { } ;
             die "Could not create cache dir " . $self->cache_dir()
                 if ( !-d $self->cache_dir() ) ;
         }
+    }
+
+    # find any block commands that we can use
+    if ( $self->{commands} && -d $self->{commands} ) {
+        path( $self->{commands} )->visit(
+            sub {
+                my ( $path, $state ) = @_ ;
+                # needs to be a file and executable
+                return if ( !$path->is_file || !-x $path ) ;
+                my $c = $path->basename ;
+                # cannot use buffer or include as its a built in
+                next if ( $c =~ /$BUILT_IN_BLOCKS/ ) ;
+                $self->{_commands}->{$c} = $path->stringify ;
+            },
+            { recurse => 0, follow_symlinks => 1 },
+        ) ;
     }
 
     # work out what plugins do what
@@ -2364,15 +1286,26 @@ sub BUILD
         }
         foreach my $h ( @{ $obj->handles } ) {
             $h = lc($h) ;
-            if ( $h eq 'buffer' ) {
-                die
+
+            if ( $self->{_commands}->{$h} ) {
+                warn
+                    "Plugin $plug cannot provide a handler for $h, as a block command has been defined with the same name"
+                    ;
+                next ;
+            }
+
+            if ( $h =~ /(^buffer$|^include)$/ ) {
+                warn
                     "Plugin $plug cannot provide a handler for $h, as this is already provided for internally"
                     ;
+                next ;
             }
+
             if ( has_block($h) ) {
-                die
+                warn
                     "Plugin $plug cannot provide a handler for $h, as this has already been provided by another plugin"
                     ;
+                next ;
             }
 
             # all handlers are lower case
@@ -2381,7 +1314,8 @@ sub BUILD
     }
 
     # buffer is a special internal handler
-    add_block( 'buffer', 1 ) ;
+    add_block( 'buffer',  1 ) ;
+    add_block( 'include', 1 ) ;
 }
 
 # ----------------------------------------------------------------------------
@@ -2437,14 +1371,15 @@ sub _get_cache
     my $f = $self->cache_dir() . "/" . path($filename)->basename ;
 
     my $result ;
-    if ( -f $f ) {
-        if ($utf8) {
-            $result = path($f)->slurp_utf8 ;
-        } else {
-            $result = path($f)->slurp_raw ;
+    try {
+        if ( -f $f ) {
+            if ($utf8) {
+                $result = path($f)->slurp_utf8 ;
+            } else {
+                $result = path($f)->slurp_raw ;
+            }
         }
-    }
-
+    } ;
     return $result ;
 }
 
@@ -2512,15 +1447,18 @@ sub _extract_args
 
 # ----------------------------------------------------------------------------
 # add/append into the replacements list
+# ifnot will only allow add to the buffer if the buffer is empty
 sub _add_replace
 {
     my $self = shift ;
-    my ( $key, $val, $append ) = @_ ;
+    my ( $key, $val, $append, $ifnot ) = @_ ;
 
     if ($append) {
         $self->{replace}->{ uc($key) } .= "$val\n" ;
     } else {
-        $self->{replace}->{ uc($key) } = $val ;
+        if ( !$ifnot || ( $ifnot && !$self->{replace}->{ uc($key) } ) ) {
+            $self->{replace}->{ uc($key) } = $val ;
+        }
     }
 }
 
@@ -2536,8 +1474,8 @@ sub _do_replacements
 
             # in the text the variables to be replaced are surrounded by %
             # zero width look behind to make sure the variable name has
-            # not been escaped _%VARIABLE% should be left alone
-            $content =~ s/(?<!_)%$k%/$self->{replace}->{$k}/gsm ;
+            # not been escaped \%VARIABLE% should be left alone
+            $content =~ s/(?<!\\)%$k%/$self->{replace}->{$k}/gsm ;
         }
     }
 
@@ -2545,25 +1483,118 @@ sub _do_replacements
 }
 
 # ----------------------------------------------------------------------------
+# run the command associated with the block
+# will return undef if there were issues, ideally write to STDOUT too
+sub _pipe_command
+{
+    my $self = shift ;
+    my ( $block, $content, $params, $linenum ) = @_ ;
+
+    return undef
+        if ( !$self->{_commands}->{$block}
+        || !-f $self->{_commands}->{$block}
+        || !-x $self->{_commands}->{$block} ) ;
+
+    # remove some params that may already have been used
+    map { delete $params->{$_} ; } qw{ from to from_buffer to_buffer file include} ;
+    my $command = "$self->{_commands}->{$block} --linenum=$linenum" ;
+    # pass in verbose option if needed, eg for testing commands
+    $command .= ( is_verbose() ? " -v" : "" ) ;
+    # add in the arguments, taken from the parameters
+    foreach my $k ( keys %{$params} ) {
+        my $c = " " ;
+        $params->{$k} //= "" ;
+        # assuming that single letter params are short args
+        $params->{$k} =~ s/'/\'/g ;      # escape all double quotes
+        $params->{$k} =~ s/\$'/\$/g ;    # escape dollar to ensure its not an environment variable
+        if ( length($k) == 1 ) {
+            $c .= "-$k '$params->{$k}'" ;
+        } else {
+            $c .= "--$k='$params->{$k}'" ;
+        }
+        $command .= "$c " ;
+    }
+
+    # so the child_stdin piping does not like LFs, it thinks its the end of the data
+    # we need to escape it
+    #$content =~ s/\n/\n/g ;
+    # shell code blocks get replaces by our fenced ones
+    #$content =~ s/^`{4}/~~~~/gsm ;
+    if ($content) {
+        $content =~ s/\n/\n/g ;
+        # shell code blocks get replaces by our fenced ones
+        $content =~ s/^`{4}/~~~~/gsm ;
+        $command .= ' --has_content=1' ;
+        $content .= "\n" ;                 # need to make sure of trailing LF
+                                           # prep for printing
+        utf8::encode($content) ;
+    }
+    # add in some useful things for the script
+    $command
+        .= " --doc_ref='" . $self->filename . "' " . "--cachedir='" . $self->cache_dir() . "' " ;
+    # verbose("running $command") ;
+    my ($resp) = execute_cmd(
+        command     => $command,
+        timeout     => 60,
+        child_stdin => $content
+    ) ;
+    my $out ;
+    if ( !$resp->{exit_code} ) {
+        $out = $resp->{stdout} ;
+        # remove trailing CR in case we are being used inline in something like a .table construct
+        chomp $out ;
+        # continue with the verbosity
+        if ( is_verbose() && $resp->{stderr} ) {
+            verbose( $resp->{stderr} ) ;
+        }
+    } else {
+        warn "Issue runing $block: $resp->{stderr}" ;
+        $out = $resp->{stderr} ;
+    }
+
+    return $out ;
+}
+
+# ----------------------------------------------------------------------------
 sub _call_function
 {
     my $self = shift ;
-    my ( $block, $params, $content, $linepos ) = @_ ;
+    my ( $block, $params, $content, $linenum ) = @_ ;
     my $out ;
+    my $content_removed = 0 ;
+    my $conditional     = 0 ;
 
-    if ( !has_block($block) ) {
-        debug( "ERROR:", "no valid handler for $block" ) ;
-    } else {
+    $content ||= "" ;
+
+    if ( has_block($block) || $self->{_commands}->{$block} ) {
         try {
 
-         # buffer is a special construct to allow us to hold output of content
-         # for later, allows multiple use of content or adding things to
-         # markdown tables that otherwise we could not do
+            # buffer is a special construct to allow us to hold output of content
+            # for later, allows multiple use of content or adding things to
+            # markdown tables that otherwise we could not do
+
+            # we can use variables in the parameter values, lets find out
+            foreach my $k ( keys %$params ) {
+                $params->{$k} = $self->_do_replacements( $params->{$k} ) ;
+            }
 
             # over-ride content with buffered content
             my $from = $params->{from} || $params->{from_buffer} ;
             if ($from) {
-                $content = $self->{replace}->{ uc($from) } ;
+                $from = uc($from) ;
+                # merge the content with things from a buffer
+                if ( $params->{merge} ) {
+                    if ( $params->{merge} eq 'before' ) {
+                        $content .= "\n" . $self->{replace}->{$from} ;
+                    } else {
+                        $self->{replace}->{$from} ||= "" ;
+                        $content = $self->{replace}->{$from} . ( $content ? "\n$content" : "" ) ;
+                    }
+                    # do not pass this on to other block handlers
+                    delete $params->{merge} ;
+                } else {
+                    $content = $self->{replace}->{$from} ;
+                }
             }
 
             # get the content from the args, useful for short blocks
@@ -2571,7 +1602,12 @@ sub _call_function
                 $content = $params->{content} ;
             }
             if ( $params->{file} ) {
-                $content = _include_file("file='$params->{file}'") ;
+                if ( $block eq 'include' ) {
+                    my $pstr = join( " ", map { "$_='$params->{$_}'" ; } keys %$params ) ;
+                    $out = $self->_include_file($pstr) ;
+                } else {
+                    $content = $self->_include_file("file='$params->{file}' nodiv=1") ;
+                }
             }
 
             my $to = $params->{to} || $params->{to_buffer} ;
@@ -2579,46 +1615,98 @@ sub _call_function
             if ( $block eq 'buffer' ) {
                 if ($to) {
                     # we could be appending to a named buffer also
-                    $self->_add_replace( $to, $content, $params->{add} ) ;
+                    $self->_add_replace( $to, $content, $params->{add}, $params->{ifnot} ) ;
                 }
+            } elsif ( $block eq 'include' ) {
+                # this has already been handled above, need to make sure nothing else going on too
             } else {
                 # do any replacements we know about in the content block
                 $content = $self->_do_replacements($content) ;
 
                 # run the plugin with the data we have
-                $out = run_block( $block, $content, $params,
-                    $self->cache_dir() ) ;
+                my $explain = $params->{explain} ;
+                delete $params->{explain} ;
 
-                if ( !$out ) {
+                # test if we have conditional display of the block
+                my $before = $content ;
+                for my $cond (qw/if ifand/) {
+                    if ( $params->{$cond} ) {
+                        $conditional++ ;
+                        $content = $self->_conditional_text( $cond, $params->{$cond}, $content ) ;
+                    }
+                }
+                if ( $content ne $before ) {
+                    $content_removed = 1 ;
+                }
 
-       # if we could not generate any output, lets put the block back together
-                    $out .= "~~~~{.$block "
-                        . join( " ",
-                        map {"$_='$params->{$_}'"} keys %{$params} )
-                        . " }\n"
-                        . "~~~~\n" ;
-                } elsif ($to) {
+                if ( !$content_removed ) {
+                    if ( $self->{_commands}->{$block} ) {
+                        # run the plugin with the data we have
+                        $out = $self->_pipe_command( $block, $content, $params, $linenum ) ;
+                    } else {
+                        $out =
+                            run_block( $block, $content, $params, $self->cache_dir(), $linenum ) ;
+                    }
+                }
 
-                    # do we want to buffer the output?
-                    $self->_add_replace( $to, $out ) ;
+                if ($explain) {
+                    my $title = "Explain: $block" ;
+                    if ( $explain ne '1' ) {
+                        $title .= " $explain" ;
+                    }
+                    $explain = $content ;
+                    $explain =~ s/^/ /gsm ;
+                    my $pstring =
+                        join( " ",
+                        map { $params->{$_} ? "$_='$params->{$_}'" : "" } keys %$params ) ;
+                    $pstring =~ s/\s*$// ;
+                    $explain =
+                          "<div class='ol_wrapper'><div class='ol_left'>&nbsp;$title</div>\n"
+                        . "\n~~~~{.box}\n<pre> ~~~~{.$block $pstring}\n$explain\n ~~~~</pre>\n~~~~\n\n"
+                        . "</div>\n\n" ;
+                    # put explanation first
+                    $out = "$explain\n\n$out" ;
+                }
 
-                    # option not to show the output
-                    $out = "" if ( $params->{no_output} ) ;
+                if ( !$content_removed ) {
+                    # we are only concerned about doing the right thing if there was content
+                    if ( !defined $out ) {
+                        # if we could not generate any output, lets put the block back together,
+                        #make sure is on a clean line
+                        $out .= "\n~~~~{.$block "
+                            . join( " ",
+                            map { $params->{$_} ||= "" ; "$_='$params->{$_}'" } keys %{$params} )
+                            . " }\n"
+                            . "~~~~\n" ;
+                    } elsif ($to) {
+                        # do we want to buffer the output?
+                        $self->_add_replace( $to, $out ) ;
+
+                        # option not to show the output
+                        # $out = "" if ( $params->{no_output} ) ;
+                        # now the default, if we are using to or to_buffer
+                        # then there is no output
+                        $out = "" ;
+                    }
+                } else {
+                    $out = "" ;
                 }
             }
             # $self->_append_output("$out\n") if ( defined $out ) ;
         }
         catch {
-            debug( "ERROR",
-                "failed processing $block near line $linepos, $_" ) ;
-            warn "Issue processing $block around line $linepos" ;
+            debug( "ERROR", "failed processing $block near line $linenum, $_" ) ;
+            warn "Issue processing $block around line $linenum ($_)" ;
+# if we could not generate any output, lets put the block back together, make sure is on a clean line
             $out
-                = "~~~~{.$block "
-                . join( " ", map {"$_='$params->{$_}'"} keys %{$params} )
+                .= "\n~~~~{.$block "
+                . join( " ", map { $params->{$_} ||= "" ; "$_='$params->{$_}'" } keys %{$params} )
                 . " }\n"
                 . "~~~~\n" ;
             # $self->_append_output($out) ;
         } ;
+    } else {
+        debug( "ERROR:", "no valid handler for $block" ) ;
     }
     return $out ;
 }
@@ -2633,12 +1721,16 @@ sub _rewrite_short_block
     my $out ;
     my $params = _extract_args($attributes) ;
 
-    if ( has_block($block) ) {
-        return $self->_call_function( $block, $params, $params->{content},
-            0 ) ;
-    } else {
-        # build the short block back together, if we do not have a match
-        $out = "{{.block $attributes}}" ;
+    eval {
+        if ( $self->{_commands}->{$block} || has_block($block) ) {
+            $out = $self->_call_function( $block, $params, $params->{content}, 0 ) || "" ;
+        } else {
+            # build the short block back together, if we do not have a match
+            $out = "{{.block $attributes}}" ;
+        }
+    } ;
+    if ($@) {
+        verbose("something died - $block") ;
     }
     return $out ;
 }
@@ -2648,36 +1740,48 @@ sub _rewrite_short_block
 # parse the passed data
 sub _parse_lines
 {
-    my $self      = shift ;
-    my $lines     = shift ;
+    my $self = shift ;
+    my ( $data, $pass ) = @_ ;
     my $count     = 0 ;
     my $curr_line = "" ;
 
-    return if ( !$lines ) ;
+    return if ( !$data ) ;
+
+    # replace Admonition paragraphs with a proper block
+    $data
+        =~ s/^(BOX|NOTE|INFO|TIP|IMPORTANT|CAUTION|WARN|WARNING|DANGER|TODO|ASIDE|QUESTION|FIXME|ERROR|READ|SAMPLE|CONSOLE)(\(\N*\))?:(.*?)\n\n/_rewrite_admonitions( $1, $2, $3)/egsm
+        ;
+    # need to do include replacements after any additional YAML header items are found
+    $data =~ s/\{\{.(include|import)\s+(\N*?)\}\}/$self->_include_file($2)/iesgm ;
+    $data =~ s/^~~~~\{.(include|import)\s+(\N*?)\}.*?~~~~/$self->_include_file($2)/iesgm ;
+
+    # have conditional blocks like normal ones .if .ifand
+    # $data =~ s/\{\{.(if|ifand)\s+(.*?)\}\}/$self->_conditional_text($1, $2)/iesgm ;
+    # $data =~ s/^~~~~\{.(if|ifand)\s+(.*?)\}(.*?)~~~~/$self->_conditional_text($1, $2, $3)/iesgm ;
+    # conditional blocks as  <if> <ifand> so we can inline ~~~~ blocks
+    $data =~ s/^<(if|ifand)\s+(.*?)>(.*?)<\/\1>/$self->_conditional_text($1, $2, $3)/iesgm ;
 
     my ( $class, $block, $content, $attributes ) ;
     my ( $buildline, $simple ) ;
     try {
-        foreach my $line ( @{$lines} ) {
+        foreach my $line ( split( /\n/, $data ) ) {
             $curr_line = $line ;
             $count++ ;
 
             # header lines may have been removed
             if ( !defined $line ) {
-           # we may want a blank line to space out things like indented blocks
+                # we may want a blank line to space out things like indented blocks
                 $self->_append_output("\n") ;
                 next ;
             }
 
-         # a short block is {{.tag arguments}}
-         # or {{.tag}}
-         # can have multiple ones on a single line like {{.tag1}} {{.tag_two}}
-         # short tags cannot have the form
-         # {{.class .tag args=123}}
-         # replace all tags on this line
-            $line
-                =~ s/\{\{\.(\w+)(\b.*?)\}\}/$self->_rewrite_short_block( $1, $2)/egs
-                ;
+            # a short block is {{.tag arguments}}
+            # or {{.tag}}
+            # can have multiple ones on a single line like {{.tag1}} {{.tag_two}}
+            # short tags cannot have the form
+            # {{.class .tag args=123}}
+            # replace all tags on this line
+            $line =~ s/\{\{\.(\w+)(\b.*?)\}\}/$self->_rewrite_short_block( $1, $2)/egs ;
 
             if ( defined $simple ) {
                 if ( $line =~ /^~{4,}\s?$/ ) {
@@ -2686,11 +1790,10 @@ sub _parse_lines
                 } else {
                     $simple .= "$line\n" ;
                 }
-
                 next ;
             }
 
-# we may need to add successive lines together to get a completed fenced code block
+            # we may need to add successive lines together to get a completed fenced code block
             if ( !$block && $buildline ) {
                 $buildline .= " $line" ;
                 if ( $line =~ /\}\s*$/ ) {
@@ -2730,33 +1833,43 @@ sub _parse_lines
                 } else {
                     my $params = _extract_args($attributes) ;
 
+                    if ( $params->{unindent} ) {
+                        $content =~ s/^\s{4}//gsm ;
+                    }
+
                     # must have reached the end of a block
-                    if ( has_block($block) ) {
+                    if ( $self->{_commands}->{$block} || has_block($block) ) {
                         chomp $content if ($content) ;
-                        my $out = $self->_call_function( $block, $params,
-                            $content, $count ) ;
+                        my $out = $self->_call_function( $block, $params, $content, $count ) ;
                         # not all blocks output things, eg buffer operations
                         if ($out) {
-       # add extra line to make sure things are spaced away from other content
+                            # add extra line to make sure things are spaced away from other content
                             $self->_append_output("$out\n\n") ;
                         }
                     } else {
                         if ( !$block ) {
-
-                            # put it back
+                            # put it back, if not on second pass
                             $content ||= "" ;
-                            $self->_append_output(
-                                "~~~~\n$content\n~~~~\n\n") ;
-
+                            if ( $pass <= 1 ) {
+                                $self->_append_output("~~~~\n$content\n~~~~\n\n") ;
+                            }
                         } else {
                             $content    ||= "" ;
                             $attributes ||= "" ;
                             $block      ||= "" ;
 
-                            # put it back
-                            $self->_append_output(
-                                "~~~~{ $class .$block $attributes}\n$content\n~~~~\n\n"
-                            ) ;
+                            # only rebuild the block if it was not meant to be conditional
+                            if ( !( $params->{if} || $params->{ifand} || $params->{ifnot} ) ) {
+                                if ( $pass == 2 ) {
+                           # nre pandoc builds codeblocks slightly differently so we need to wrap it
+                                    $self->_append_output(
+                                        "<div class='codeblock'>\n\n~~~~ {$class .$block $attributes}\n$content\n~~~~\n\n</div>\n\n"
+                                    ) ;
+                                } else {
+                                    $self->_append_output(
+                                        "~~~~{$class.$block $attributes}\n$content\n~~~~\n\n") ;
+                                }
+                            }
                         }
                     }
                     $content    = "" ;
@@ -2775,6 +1888,15 @@ sub _parse_lines
     catch {
         die "Issue at line $count $_ ($curr_line)" ;
     } ;
+
+    # this allows us to put short blocks as output of other blocks or inline
+    # with things that might otherwise not allow them
+    # we use the single line parse version too
+    # short tags cannot have the form
+    # {{.class .tag args=123}}
+
+    $self->{output} =~ s/\{\{\.(\w+)(\b.*?)\}\}/$self->_rewrite_short_block( $1, $2)/egs
+        if ( $self->{output} ) ;
 }
 
 # ----------------------------------------------------------------------------
@@ -2821,8 +1943,7 @@ sub _rewrite_imgsrc
                         path($img)->copy($cachefile) ;
                     }
                     catch {
-                        debug( "ERROR",
-                            "failed to copy $img to $cachefile" ) ;
+                        debug( "ERROR", "failed to copy $img to $cachefile" ) ;
                     } ;
 
                     $img = $cachefile if ( -f $cachefile ) ;
@@ -2857,28 +1978,28 @@ sub _rewrite_imgsrc
                 if ($image) {
                     $post =~ s/\/>$// ;
                     $post
-                        .= " height='"
-                        . $image->height()
-                        . "' width='"
-                        . $image->width()
-                        . "' />" ;
+                        .= " height='" . $image->height() . "' width='" . $image->width() . "' />" ;
                 }
             }
 
- # do we need to embed the images, if we do this then libreoffice may be pants
- # however 'prince' is happy
+            # do we need to embed the images, if we do this then libreoffice may be pants
+            # however princexml is happy
 
-# we encode the image as base64 so that the HTML document can be moved with all images
-# intact
-            my $base64 = MIME::Base64::encode( path($img)->slurp_raw ) ;
-            $img = "data:image/$ext;base64,$base64" ;
+            # we encode the image as base64 so that the HTML document can be moved with all images
+            # intact
+            # it is possible that we failed to download the file, double check the img URL
+            if ( $img !~ m|\w+://| ) {
+                # if the file does not exist we don't want to break badly
+                try {
+                    my $base64 = MIME::Base64::encode( path($img)->slurp_raw ) ;
+                    $img = "data:image/$ext;base64,$base64" ;
+                } ;    # ignore the catch, nothing is getting changed
+            }
         }
 
     }
     return $pre . $img . $post ;
 }
-
-
 
 # ----------------------------------------------------------------------------
 # fetch any img references and copy into the cache, if the image is already
@@ -2922,8 +2043,7 @@ sub _build_toc
 # $html =~ m|<h([23456])(?!.*?(toc_skip|skiptoc).*?).*?><a name=['"](.*?)['"]>(.*?)</a></h\1>|gsmi ;
 
     # we grab 3 items per header
-    my @items = ( $html
-            =~ m|<h([23456]).*?><a name=['"](.*?)['"]>(.*?)</a></h\1>|gsmi ) ;
+    my @items = ( $html =~ m|<h([23456]).*?><a name=['"](.*?)['"]>(.*?)</a></h\1>|gsmi ) ;
 
     my $toc = "<p>Contents</p>\n<ul>\n" ;
     for ( my $i = 0; $i < scalar(@items); $i += 3 ) {
@@ -2966,16 +2086,7 @@ sub _rewrite_hdrs
         debug( "ERROR", "something odd happening in _rewrite_hdrs" ) ;
     } elsif ( $lvl > $last_lvl ) {
 
-  # if we are stepping back up a level then we need to reset the counter below
-  # if ( $lvl == 4 ) {
-  #     $counters->{5} = 0;
-  # }
-  # elsif ( $lvl == 3 ) {
-  #     $counters->{4} = 0;
-  # }
-  # elsif ( $lvl == 2 ) {
-  #     map { $counters->{$_} = 0 ;} (3..6) ;
-  # }
+        # if we are stepping back up a level then we need to reset the counter below
 
         if ( $lvl == 2 ) {
             map { $counters->{$_} = 0 ; } ( 3 .. 6 ) ;
@@ -2992,9 +2103,7 @@ sub _rewrite_hdrs
     } elsif ( $lvl == 5 ) {
         $pre = "$counters->{2}.$counters->{3}.$counters->{4}.$counters->{5}" ;
     } elsif ( $lvl == 6 ) {
-        $pre
-            = "$counters->{2}.$counters->{3}.$counters->{4}.$counters->{5}.$counters->{6}"
-            ;
+        $pre = "$counters->{2}.$counters->{3}.$counters->{4}.$counters->{5}.$counters->{6}" ;
     }
 
     $ref =~ s/\s/_/gsm ;
@@ -3014,19 +2123,33 @@ sub _rewrite_hdrs
 
 sub _pandoc_html
 {
-    my ( $input, $commonmark ) = @_ ;
+    my ( $input, $highlite ) = @_ ;
+
+    $highlite ||= 'kate' ;
 
     my $paninput  = Path::Tiny->tempfile("pandoc.in.XXXX") ;
     my $panoutput = Path::Tiny->tempfile("pandoc.out.XXXX") ;
+    # new pandoc does nasty things with &nbsp; for some reason, better to replace them like this
+    $input =~ s|&nbsp;|\\ |gsm ;
     path($paninput)->spew_utf8($input) ;
     # my $debug_file = "/tmp/pandoc.$$.md" ;
     # path( $debug_file)->spew_utf8($input) ;
 
-    my $command
-        = PANDOC
-        . " --ascii --email-obfuscation=none -S -R --normalize -t html5 "
-        . " --highlight-style='kate' "
+    my $markdown_mode = "markdown" ;
+    # make the mode do what we want markdown to be like
+
+    # now add in nice extras we want
+    $markdown_mode .= "+fancy_lists+example_lists+startnum+superscript+subscript+grid_tables" ;
+
+    my $command =
+          PANDOC
+        . " -s --ascii --email-obfuscation=none"
+        . " -f $markdown_mode"
+        . " --strip-comments -t html5 "
+        . " --highlight-style='$highlite' --mathml "
         . " '$paninput' -o '$panoutput'" ;
+
+    verbose($command) ;
 
     my $resp = execute_cmd(
         command => $command,
@@ -3035,40 +2158,28 @@ sub _pandoc_html
 
     my $html ;
 
-    if ( !$commonmark ) {
-        debug( "Pandoc: " . $resp->{stderr} ) if ( $resp->{stderr} ) ;
-        if ( !$resp->{exit_code} ) {
+    debug( "Pandoc: " . $resp->{stderr} ) if ( $resp->{stderr} ) ;
+    if ( !$resp->{exit_code} ) {
+        try {
             $html = path($panoutput)->slurp_utf8() ;
+        } ;
 
-            # path( "/tmp/pandoc.html")->spew_utf8($html) ;
+        # path("/tmp/pandoc.html")->spew_utf8($html) ;
 
-            # this will have html headers and footers, we need to dump these
-            $html =~ s/<!DOCTYPE.*?<body>//gsm ;
-            $html =~ s/^<\/body>\n<\/html>//gsm ;
-            # remove any footnotes hr
-            $html
-                =~ s/(<section class="footnotes">)\n<hr \/>/<h2>Footnotes<\/h2>\n$1/gsm
-                ;
-        } else {
-            my $err = $resp->{stderr} || "" ;
-            chomp $err ;
-            # debug( "INFO", "cmd [$command]") ;
-            debug( "ERROR",
-                "Could not parse with pandoc, using Markdown, $err" ) ;
-            warn "Could not parse with pandoc, using Markdown "
-                . $resp->{stderr} ;
-        }
-    }
-    if ( $commonmark || !$html ) {
-        # markdown would prefer this for fenced code blocks
-        $input =~ s/^~~~~.*$/\`\`\`\`/gm ;
-
-        $html = convert_md($input) ;
-        # do markdown in HTML elements too
-        # $html = CommonMark->markdown_to_html($input) ;
+        # this will have html headers and footers, and style information, we need to dump these
+        $html =~ s/(<!DOCTYPE.*?<body>)//gsm ;
+        $html =~ s/^<\/body>\n<\/html>//gsm ;
+        # remove any footnotes hr
+        $html =~ s/(<section class="footnotes">)\n<hr \/>/<h2>Footnotes<\/h2>\n$1/gsm ;
+    } else {
+        my $err = $resp->{stderr} || "" ;
+        chomp $err ;
+        # debug( "INFO", "cmd [$command]") ;
+        debug( "ERROR", "Could not parse with pandoc, using Markdown, $err" ) ;
+        warn "Could not parse with pandoc, using Markdown " . $resp->{stderr} ;
     }
 
-    # strip out any HTML comments that may have come in from template
+    # strip out any HTML comments that may have come in from templates etc
     $html =~ s/<!--.*?-->//gsm ;
 
     return $html ;
@@ -3084,7 +2195,6 @@ sub _pandoc_format
     my $status = 1 ;
 
     my $resp = execute_cmd(
-
         command => PANDOC . " '$input' -o '$output'",
         timeout => 30,
     ) ;
@@ -3120,15 +2230,15 @@ sub _convert_file
     $outfile = $file ;
     $outfile =~ s/\.(\w+)$/.pdf/ ;
 
-# we can use prince to do PDF conversion, its faster and better, but not free for commercial use
-# you would have to ignore the P symbol on the resultant document
+    # we can use prince to do PDF conversion, its faster and better, but not free for commercial use
+    # you would have to ignore the P symbol on the resultant document
     if ( $format =~ /pdf/i && $pdfconvertor ) {
         my $cmd ;
 
         if ( $pdfconvertor =~ /^prince/i ) {
-            $cmd = PRINCE
-                . " --javascript --input=html5 "
-                ;    # so we can do some clever things if needed
+            # so we can do some clever things if needed
+            # hopefully the user is only using serif, sans-serif and monotype fonts
+            $cmd = PRINCE . " --no-embed-fonts --javascript --input=html5 " ;
             $cmd .= "--pdf-title='$self->{replace}->{TITLE}' "
                 if ( $self->{replace}->{TITLE} ) ;
             my $subj = $self->{replace}->{SUBJECT}
@@ -3140,9 +2250,9 @@ sub _convert_file
                 if ( $self->{replace}->{AUTHOR} ) ;
             $cmd .= "--pdf-keywords='$self->{replace}->{KEYWORDS}' "
                 if ( $self->{replace}->{KEYWORDS} ) ;
-# seems to create smaller files if we embed fonts!
-# $cmd .= " --no-embed-fonts --no-subset-fonts --media=print $file -o $outfile" ;
-# $cmd .= "  --no-artificial-fonts --no-embed-fonts " ;
+            # seems to create smaller files if we embed fonts!
+            # $cmd .= " --no-embed-fonts --no-subset-fonts --media=print $file -o $outfile" ;
+            # $cmd .= "  --no-artificial-fonts --no-embed-fonts " ;
             $cmd .= " --media=print '$file' -o '$outfile'" ;
         } elsif ( $pdfconvertor =~ /^wkhtmltopdf/i ) {
             $cmd = WKHTML . " -q --print-media-type " ;
@@ -3156,7 +2266,7 @@ sub _convert_file
         } else {
             warn "Unknown PDF converter ($pdfconvertor), using pandoc" ;
 
-           # otherwise lets use pandoc to create the file in the other formats
+            # otherwise lets use pandoc to create the file in the other formats
             $exit = _pandoc_format( $file, $outfile ) ;
         }
         if ($cmd) {
@@ -3186,10 +2296,22 @@ sub _convert_file
 # convert Admonition paragraphs to tagged blocks
 sub _rewrite_admonitions
 {
-    my ( $tag, $content ) = @_ ;
+    my ( $tag, $title, $content ) = @_ ;
+    if ($title) {
+        # remove brackets
+        $title =~ s/^\(|\)//g ;
+        $title = " title='$title' " ;
+    } else {
+        $title = "" ;
+    }
+    # say STDERR "title is $title, content is $content" ;
+
     $content =~ s/^\s+|\s+$//gsm ;
 
-    my $out = "\n~~~~{." . lc($tag) . " icon=1}\n$content\n~~~~\n\n" ;
+    # same same
+    $tag = 'warning' if ( $tag eq 'WARN' ) ;
+
+    my $out = "\n~~~~{." . lc($tag) . "$title icon=1}\n$content\n~~~~\n\n" ;
 
     return $out ;
 }
@@ -3213,19 +2335,18 @@ sub _fontawesome
             $class =~ s/\bflipv\b/fa-flip-vertical/ ;
             $class =~ s/\bfliph\b/fa-flip-horizontal/ ;
 
-            if ( $class =~ s/#((\w+)?\.?(\w+)?)// ) {
+            if ( $class =~ s/#(([\w\-]+)?\.?([\w\-]+)?)// ) {
                 my ( $fg, $bg ) = ( $2, $3 ) ;
                 $style .= "color:" . to_hex_color($fg) . ";" if ($fg) ;
                 $style .= "background-color:" . to_hex_color($bg) . ";"
                     if ($bg) ;
             }
-        # things changed and anything left in class must be a real class thing
+            # things changed and anything left in class must be a real class thing
             $class =~ s/^\s+|\s+$//g ;
         } else {
             $class = "" ;
         }
-        $out = "<i class='fa fa-$icon $class'"
-            . ( $style ? " style='$style'" : "" ) ;
+        $out = "<i class='fa fa-$icon $class'" . ( $style ? " style='$style'" : "" ) ;
         $out .= "></i>" ;
     } else {
         if ( $icon eq '\\' ) {
@@ -3246,6 +2367,7 @@ sub _fontmaterial
 {
     my ( $demo, $icon, $class ) = @_ ;
     my $out ;
+    my $base_em = 0.7 ;
 
     $icon =~ s/^mi-// if ($icon) ;
     if ( !$demo ) {
@@ -3255,31 +2377,33 @@ sub _fontmaterial
             $class =~ s/^\[|\]$//g ;
             # $class =~ s/\b(fw|lg|border)\b/mi-$1/ ;
             if ( $class =~ /\blg\b/ ) {
-                $style .= "font-size:1.75em;" ;
+                my $em = $base_em * 1.5 ;
+                $style .= "font-size:$em" . "em;" ;
                 $class =~ s/\blg\b// ;
             } elsif ( $class =~ /\b([2345])x\b/ ) {
-                $style .= "font-size:$1" . "em;" ;
+                my $em = $base_em * $1 ;
+                $style .= "font-size:$em" . "em;" ;
                 $class =~ s/\b[2345]x\b// ;
             }
             $class =~ s/\b(90|180|270)\b/rotate-$1/ ;
             $class =~ s/\bflipv\b/flip-vertical/ ;
             $class =~ s/\bfliph\b/flip-horizontal/ ;
 
-            if ( $class =~ s/#((\w+)?\.?(\w+)?)// ) {
+            if ( $class =~ s/#(([\w\-]+)?\.?([\w\-]+)?)// ) {
                 my ( $fg, $bg ) = ( $2, $3 ) ;
                 $style .= "color:" . to_hex_color($fg) . ";" if ($fg) ;
                 $style .= "background-color:" . to_hex_color($bg) . ";"
                     if ($bg) ;
             }
-        # things changed and anything left in class must be a real class thing
+            # things changed and anything left in class must be a real class thing
             $class =~ s/^\s+|\s+$//g ;
         } else {
             $class = "" ;
+            $style .= "font-size:$base_em" . "em;" ;
         }
         # names are actually underscore spaced
         $icon =~ s/[-| ]/_/g ;
-        $out = "<i class='material-icons $class'"
-            . ( $style ? " style='$style'" : "" ) ;
+        $out = "<i class='material-icons $class'" . ( $style ? " style='$style'" : "" ) ;
         $out .= ">$icon</i>" ;
     } else {
         if ( $icon eq '\\' ) {
@@ -3295,7 +2419,7 @@ sub _fontmaterial
 }
 
 # ----------------------------------------------------------------------------
-# handle all font replacers
+# handle all replacers
 sub _icon_replace
 {
     my ( $demo, $type, $icon, $class ) = @_ ;
@@ -3316,7 +2440,8 @@ sub _icon_replace
 }
 
 # ----------------------------------------------------------------------------
-# do some private stuff
+# do some private stuff, shonky cos should be class variables
+# TODO: make it so
 {
     my $_yaml_counter = 0 ;
 
@@ -3325,18 +2450,52 @@ sub _icon_replace
         $_yaml_counter = 0 ;
     }
 
-   # remove the first yaml from the first 20 lines, pass anything else through
+    # remove the first yaml from the first 20 lines, pass anything else through
     sub _remove_yaml
     {
         my ( $line, $count ) = @_ ;
 
         $count ||= 20 ;
         if ( ++$_yaml_counter < $count ) {
-            $line =~ s/^\w+:.*// ;
+            if ( $line eq "" ) {
+                # blank line is the end of the yaml block
+                $_yaml_counter = $count ;
+            } else {
+                $line =~ s/^\w+:.*// ;
+            }
         }
 
         return $line ;
     }
+
+    my $_ex_yaml_counter = 0 ;
+    # -----------------------------------------------------------------------------
+    # get any "key: value" item on a line, save it
+    # remove from the line
+    sub _extract_yaml
+    {
+        my $self = shift ;
+        my ( $line, $count ) = @_ ;
+
+        $count ||= 20 ;
+        if ( ++$_ex_yaml_counter < $count ) {
+            if ( !$line ) {
+                # blank line is the end of the yaml block
+                $_ex_yaml_counter = $count ;
+            } else {
+                my ( $k, $v ) = ( $line =~ /^(\w+):\s+(.*?)$/ ) ;
+                if ($k) {
+                    $line = "" ;    # do the remove
+                    if ( !( $k eq 'date' && $v eq '%DATE%' ) ) {
+                        $self->_add_replace( $k, $v ) ;
+                    }
+                }
+            }
+        }
+
+        return $line ;
+    }
+
 }
 
 # ----------------------------------------------------------------------------
@@ -3351,15 +2510,22 @@ sub _icon_replace
 #  class - optional class to wrap around import
 #  style - optional style to wrap around import
 #  date  - optional note the date of the imported file
+#  nodiv - do not wrap the output in a div
 
 sub _include_file
 {
+    my $self         = shift ;
     my ($attributes) = @_ ;
-    my $out = "" ;
+    my $out          = "" ;
 
-    my $params = _extract_args($attributes) ;
-
+    my $params = _extract_args( $self->_do_replacements($attributes) ) ;
     $params->{file} = fix_filename( $params->{file} ) ;
+    # if file is relative, add in basedir so we can process files in other directories
+    if ( $params->{file} !~ /^\// ) {
+        # TODO: fix with Path::Tiny
+        $params->{file} = "$self->{basedir}/$params->{file}" ;
+    }
+
     if ( -f $params->{file}
         && ( $out = path( $params->{file} )->slurp_utf8() ) ) {
         if ( $params->{markdown} ) {
@@ -3386,24 +2552,85 @@ sub _include_file
         my $div = "<div" ;
         $div .= " class='$params->{class}'" if ( $params->{class} ) ;
         $div .= " style='$params->{style}'" if ( $params->{style} ) ;
-  # make sure we have some space before we add stuff to the end - just in case
-  # it ends with ~~~~ etc
-        $out = "$div>$out\n</div>" ;
+        # make sure we have some space before we add stuff to the end
+        # - just in case it ends with ~~~~ etc
+        if ( !$params->{nodiv} ) {
+            $out = "$div>$out\n</div>" ;
+        }
     }
     return $out ;
 }
 
 # ----------------------------------------------------------------------------
+# _check_conditionals
+# test if ifand
+# TODO: add ifnot
+
+sub _check_conditionals
+{
+    my $self = shift ;
+    my ( $block, $params ) = @_ ;
+    my $matched = 0 ;
+    my $passed  = 1 ;
+
+    foreach my $k ( keys %$params ) {
+        my $rep = $self->{replace}->{ uc($k) } ;
+        if ( defined $rep && $rep eq $params->{$k} ) {
+            $matched++ ;
+        }
+    }
+    # and conditions requires all to match
+    if ( !$matched || ( $block eq 'ifand' && $matched != scalar( keys %$params ) ) ) {
+        $passed = 0 ;
+    }
+
+    return $passed ;
+}
+
+# ----------------------------------------------------------------------------
+# _conditional_text
+# include text if a condition or set of confitions is true
+
+# parameters
+# block - name of the calling block
+# various key=value pairs
+
+sub _conditional_text
+{
+    my $self = shift ;
+    my ( $block, $attributes, $content ) = @_ ;
+    my $params  = _extract_args( $self->_do_replacements($attributes) ) ;
+    my $matched = 0 ;
+    # inline content replaces
+    if ( $params->{content} ) {
+        $content = $params->{content} ;
+        delete $params->{content} ;
+    }
+
+    foreach my $k ( keys %$params ) {
+        my $rep = $self->{replace}->{ uc($k) } ;
+        if ( defined $rep && $rep eq $params->{$k} ) {
+            $matched++ ;
+        }
+    }
+    # and conditions requires all to match
+    if ( !$matched || ( $block eq 'ifand' && $matched != scalar( keys %$params ) ) ) {
+        $content = "" ;
+    }
+    return $content ;
+}
+
+# ----------------------------------------------------------------------------
 sub _replace_material
 {
-    my ( $operator, $value ) = @_ ;
+    my ( $type, $operator, $value ) = @_ ;
     my $quote = "" ;
     if ( $value =~ /^(["'"])/ ) {
         $quote = $1 ;
         $value =~ s/^["'"]// ;
     }
 
-    return "color" . $operator . $quote . to_hex_color($value) ;
+    return $type . $operator . $quote . to_hex_color($value) ;
 }
 
 # ----------------------------------------------------------------------------
@@ -3442,6 +2669,108 @@ sub _replace_colors
 }
 
 # ----------------------------------------------------------------------------
+# check on a smiley replace if we have it
+# can do :emoji: and :emoji:[2x]
+
+sub _replace_emojis
+{
+    my ( $smile, $size ) = @_ ;
+
+    # do the font icon ones first then the emoji cheatsheet
+    if ( $emoji{$smile} ) {
+        $smile = $emoji{$smile} ;
+    }
+    # the emojio replacement may generate one from the cheatsheet
+    if ( $emoji_cheatsheet{$smile} ) {
+        $smile =~ s/://g ;
+        # the URLs are quite specific and match the name, so we can contruct
+        # the URL rather than keeping them in mapping
+        # alternate suggestion http://emoji.fileformat.info/gemoji
+        $smile =
+            "<img class='emoji' alt='Emoji $smile' " . "src='$EMOJI_WEBSITE/$smile" . ".png' />" ;
+    }
+
+    # size is not working so ignoring it for now
+    # if( $size) {
+    #     $size =~ s/.*?(\d).*/$1/ ;
+    #     $smile = "<span style='font-size:$size" . "em;'>$smile</span>" ;
+    # }
+
+    return $smile ;
+}
+
+# -----------------------------------------------------------------------------
+sub _replace_unicodes
+{
+    my ($unicode) = @_ ;
+    my $code      = $unicode_emoji{$unicode} ;
+    my $size      = "16px" ;
+    my $style     = "style='max-width:$size;max-height:$size;'" ;
+
+    # class='emoji twitter'
+    # "<img height='1em' width='1em' src='https://abs.twimg.com/emoji/v2/72x72/$code.png' />" ;
+    my $img =
+        "<img height='$size' width='$size' $style src='https://abs.twimg.com/emoji/v2/72x72/$code.png' />"
+        ;
+# "<img height='16px' width='16px' src='https://raw.githubusercontent.com/googlei18n/noto-emoji/f2a4f72bffe0212c72949a22698be235269bfab5/svg/emoji_u$code.svg' />" ;
+# verbose("replacing $unicode - $code with $img") ;
+
+    return $img ;
+}
+
+
+# -----------------------------------------------------------------------------
+# give a @user a style
+sub _addstyle
+{
+    my ( $element, $text, $class ) = @_ ;
+
+    $text =~ s/^\s+|\s+$//gsm ;
+
+    $text =~ s/(\@\w[-_\w\.]+)/<span class='atuser'>$1<\/span>/gsm ;
+
+    return "<$element" . ( $class ? " class='$class'" : "" ) . ">$text</$element>" ;
+}
+
+sub _style_insdel
+{
+    my ( $ins, $del ) = @_ ;
+
+    return _addstyle( 'del', $ins ) . _addstyle( 'ins', $del ) ;
+
+}
+
+# -----------------------------------------------------------------------------
+#  critic markup  http://criticmarkup.com/spec.php
+sub _critic_markup
+{
+    my ($text) = @_ ;
+
+    # using \N to match any character that is NOT a linebreak
+    # also cos CriticMarkup is not meant to span linebreaks
+    # hilite {== ==}
+    $text =~ s/\{(={2,2})(\N*?)\1\}/_addstyle('mark',$2)/egsm ;
+    # addition / insert {++ ++}
+    $text =~ s/\{(\+{2,2})(\N*?)\1\}/_addstyle('ins',$2)/egsm ;
+    # substitution {~~ ~> ~~}
+    $text =~ s/\{(~{2,2})(\N*?)~>(\N*?)\1\}/_style_insdel( $2, $3)/egsm ;
+    # deletion {-- --}
+    $text =~ s/\{(-{2,2})(\N*?)\1\}/_addstyle('del',$2)/egsm ;
+    # special - grayed out
+    $text =~ s/\{(:{2,2})(\N*?)\1\}/_addstyle('span',$2,'criticgrey')/egsm ;
+    # special - questionbox
+    $text =~ s/\{(\?{2,2})(\N*?)\1\}/_addstyle('span',$2,'criticquestion')/egsm ;
+
+    # comment {>> <<} - text is removed
+    $text =~ s/\{(>{2,2})(\N*?)<<\}//gsm ;
+
+    # small
+    $text =~ s/(\-{2,2})(\N*?)\1/_addstyle('small',$2)/egsm ;
+
+    return $text ;
+}
+
+# ----------------------------------------------------------------------------
 
 =item parse
 
@@ -3460,24 +2789,23 @@ sub parse
     die "Nothing to parse" if ( !$data ) ;
 
     # big cheat to get this link in ahead of the main CSS
-    add_javascript( '<link rel="stylesheet" type="text/css" '
-            . ' href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">'
-    ) ;
+    add_javascript("<link rel=\"stylesheet\" type=\"text/css\" href=\"$FONT_AWESOME_URL\">") ;
 
-    add_javascript(
-        '<link href="https://fonts.googleapis.com/icon?family=Material+Icons"
-      rel="stylesheet">'
-    ) ;
+    add_javascript("<link href=\"$GOOGLE_ICONS_URL\" rel=\"stylesheet\">") ;
 
     # add in our basic CSS
-    add_css($default_css) ;
+    add_css( $self->{commoncss} ) ;
 
-    # my $id = md5_hex( encode_utf8($data) ) ;
-    # base the hash on the filename as that will not change and will overwrite
-    # previouse versions
-    my $id = md5_hex( $self->{filename} ) ;
+    my $id ;
+    if ( $self->{filename} ) {
+        # base the hash on the filename as that will not change and
+        # will overwrite previouse versions
+        $id = md5_hex( $self->{filename} ) ;
+    } else {
+        # when building for test we may not have a filename, so do it the old way
+        $id = md5_hex( encode_utf8($data) ) ;
+    }
 
-    # my $id = md5_hex( $data );
     $self->_set_md5id($id) ;
     $self->_set_input($data) ;
 
@@ -3494,90 +2822,63 @@ sub parse
     } else {
         $self->{output} = "" ;        # blank the output
 
-        # replace Admonition paragraphs with a proper block
-        $data
-            =~ s/^(NOTE|INFO|TIP|IMPORTANT|CAUTION|WARNING|DANGER|TODO|ASIDE):(.*?)\n\n/_rewrite_admonitions( $1, $2)/egsm
-            ;
-
-        $data =~ s/\{\{.(include|import)\s+(.*?)\}\}/_include_file($2)/iesgm ;
-        $data
-            =~ s/^~~~~\{.(include|import)\s+(.*?)\}.*?~~~~/_include_file($2)/iesgm
-            ;
-
-        my @lines = split( /\n/, $data ) ;
-
-        # process top 20 lines for keywords
-        # maybe replace this with some YAML processor?
-        for ( my $i = 0; $i < 20; $i++ ) {
-            ## if there is no keyword separator then we must have done the keywords
-            last if ( $lines[$i] !~ /:/ ) ;
-
-            # allow keywords to be :keyword or keyword:
-            my ( $k, $v ) = ( $lines[$i] =~ /^:?(\w+):?\s+(.*?)\s?$/ ) ;
-            next if ( !$k ) ;
-
-            # date/DATE is a special one as it may be that they want to use
-            # the current date so we will ignore it
-            if ( !( $k eq 'date' && $v eq '%DATE%' ) ) {
-                $self->_add_replace( $k, $v ) ;
-            }
-            $lines[$i] = undef ;    # essentially remove the line
-        }
+        # grab the yaml from the start of the document, first 20 lines
+        $data =~ s/^(.*)?$/$self->_extract_yaml($1,20)/egm ;
 
         # parse the data find all fenced blocks we can handle
-        $self->_parse_lines( \@lines ) ;
+        $self->_parse_lines( $data, 1 ) ;
+
+        # do a second pass to allow things that output fenced blocks etc
+        # to have them processed too, lets start with admonitions, in case these have been added
+        # help with debug as its a 2 pass process
+        $self->_store_cache( $self->cache_dir() . "/$id.pass1.md", $self->{output}, 1 ) ;
+
+        $data = $self->{output} ;
+        # remove output as _parse_lines appends to it
+        delete $self->{output} ;
+        $self->_parse_lines( $data, 2 ) ;
 
         # store the markdown before parsing
         # $self->_store_cache( $self->cache_dir() . "/$id.md",
         #     encode_utf8( $self->{output} ), 1 ) ;
-        $self->_store_cache( $self->cache_dir() . "/$id.md",
-            $self->{output}, 1 ) ;
+        $self->_store_cache( $self->cache_dir() . "/$id.md", $self->{output}, 1 ) ;
 
+        $self->{output} //= "" ;
         # we have a special replace for '---' alone on a line which is used to
         # signifiy a page break
 
-        $self->{output}
-            =~ s|^-{3,}\s?$|<div style='page-break-before: always;'></div>\n\n|gsm
-            ;
-
-      # this allows us to put short blocks as output of other blocks or inline
-      # with things that might otherwise not allow them
-      # we use the single line parse version too
-      # short tags cannot have the form
-      # {{.class .tag args=123}}
-
-        $self->{output}
-            =~ s/\{\{\.(\w+)(\b.*?)\}\}/$self->_rewrite_short_block( $1, $2)/egs
-            ;
+        $self->{output} =~ s|^-{3,}\s?$|<div style='page-break-before: always;'></div>\n\n|gsm ;
 
         # add in some smilies
         $self->{output} =~ s/(?<!\w)($smiles)(?!\w)/$smilies{$1}/g ;
+        # and emojis
+        $self->{output} =~ s/(?<!\w):(\w+):(\[[2345]x\])?(?!\w)/_replace_emojis( $1,$2)/egsi ;
+        # and unicodes
+        $self->{output} =~ s/(?<!\w)($unicodes)(?!\w)/_replace_unicodes( $1)/egsi ;
 
         # do the font replacements, awesome or material
         # :fa:icon,  :mi:icon,
         $self->{output}
-            =~ s/(\\)?:(\w{2}):([\w|-]+):?(\[(.*?)\])?/_icon_replace( $1, $2, $3, $4)/egsi
-            ;
+            =~ s/(\\)?:(\w{2}):([\w|-]+):?(\[(\N*?)\])?/_icon_replace( $1, $2, $3, $4)/egsi ;
 
-        $self->{output}
-            =~ s/<c(\\)?:+(.*?)>(.*?)<\/c>/_replace_colors( $1, $2, $3)/egsi ;
+        $self->{output} =~ s/<c(\\)?:+(.*?)>(\N*?)<\/c>/_replace_colors( $1, $2, $3)/egsi ;
+
+        $self->{output} = _critic_markup( $self->{output} ) ;
 
         # we have created something so we can cache it, if use_cache is off
         # then this will not happen lower down
-        # now we convert the parsed output into HTML
-        my $pan = _pandoc_html( $self->{output} ) ;
+        # now we convert the parsed output into HTML, use any highlighting that may be available
+        my $pan = _pandoc_html( $self->{output},
+            $self->{replace}->{HIGHLITE} || $self->{replace}->{HIGHLIGHT} ) ;
 
         # add the converted markdown into the template
         my $html = $self->template ;
         # lets do the includes in the templates to, gives us some flexibility
-        $html =~ s/\{\{.include file=(.*?)\}\}/_include_file($1)/esgm ;
-        $html
-            =~ s/^~~~~\{.include file=(.*?)\}.*?~~~~/_include_file($1)/esgm ;
+        $html =~ s/\{\{.include nodiv=1 file=(\N*?)\}\}/$self->_include_file($1)/esgm ;
+        $html =~ s/^~~~~\{.include nodiv=1 file=(\N*?)\}.*?~~~~/$self->_include_file($1)/esgm ;
 
         my $program = get_program() ;
-        $html
-            =~ s/(<head.*?>)/$1\n<meta name="generator" content="$program" \/>/i
-            ;
+        $html =~ s/(<head.*?>)/$1\n<meta name="generator" content="$program" \/>/i ;
 
         my $rep = "%" . CONTENTS . "%" ;
         $html =~ s/$rep/$pan/gsm ;
@@ -3599,11 +2900,9 @@ sub parse
 
         # do we need to add a table of contents
         if ( $html =~ /%TOC%/ ) {
-            $html
-                =~ s|(<h([23456]).*?>)(.*?)(</h\2>)|_rewrite_hdrs( $1, $3, $4)|egsi
-                ;
-            $self->{replace}->{TOC}
-                = "<div class='toc'>" . _build_toc($html) . "</div>" ;
+            $html =~ s|(<h([23456]).*?>)(.*?)(</h\2>)|_rewrite_hdrs( $1, $3, $4)|egsi ;
+            $self->{replace}->{TOC} =
+                "<div class='toc'>" . _build_toc($html) . "</div>" ;
         }
 
         $self->{replace}->{CSS}        = get_css() ;
@@ -3612,50 +2911,44 @@ sub parse
         # replace things we have saved
         $html = $self->_do_replacements($html) ;
 
-    # # this allows us to put short blocks as output of other blocks or inline
-    # # with things that might otherwise not allow them
-    # # we use the single line parse version too
-    # # short tags cannot have the form
-    # # {{.class .tag args=123}}
+        # # this allows us to put short blocks as output of other blocks or inline
+        # # with things that might otherwise not allow them
+        # # we use the single line parse version too
+        # # short tags cannot have the form
+        # # {{.class .tag args=123}}
 
-#   $html
-#       =~ s/\{\{\.(\w+)(\b.*?)\}\}/$self->_rewrite_short_block( $1, $2)/egs
-#       ;
-# and without arguments
-# $html =~ s/\{\{\.(\w+)\s?\}\}/$self->_rewrite_short_block( '', $1, {})/egs ;
+        #   $html
+        #       =~ s/\{\{\.(\w+)(\b.*?)\}\}/$self->_rewrite_short_block( $1, $2)/egs
+        #       ;
+        # and without arguments
+        # $html =~ s/\{\{\.(\w+)\s?\}\}/$self->_rewrite_short_block( '', $1, {})/egs ;
 
         # and remove any uppercased %word% things that are not processed
         $html =~ s/(?<!_)%[A-Z-_]+\%//gsm ;
         $html =~ s/_(%.*?%)/$1/gsm ;
 
-# fetch any images and store to the cache, make sure they have sizes too
-# $html
-#     =~ s/(<img.*?src=['"])(.*?)(['"].*?>)/$self->_rewrite_imgsrc_local( $1, $2, $3)/egs
-#     ;
+        # fetch any images and store to the cache, make sure they have sizes too
+        # $html
+        #     =~ s/(<img.*?src=['"])(.*?)(['"].*?>)/$self->_rewrite_imgsrc_local( $1, $2, $3)/egs
+        #     ;
 
-# # write any css url images and store to the cache
-# $html
-#     =~ s/(url\s*\(['"]?)(.*?)(['"]?\))/$self->_rewrite_imgsrc_local( $1, $2, $3)/egs
-#     ;
+        # # write any css url images and store to the cache
+        # $html
+        #     =~ s/(url\s*\(['"]?)(.*?)(['"]?\))/$self->_rewrite_imgsrc_local( $1, $2, $3)/egs
+        #     ;
 
-        $html
-            =~ s/(<img.*?src=['"])(.*?)(['"].*?>)/$self->_rewrite_imgsrc( $1, $2, $3, 1)/egs
-            ;
+        $html =~ s/(<img.*?src=['"])(.*?)(['"].*?>)/$self->_rewrite_imgsrc( $1, $2, $3, 1)/egs ;
 
         # write any css url images and store to the cache
-        $html
-            =~ s/(url\s*\(['"]?)(.*?)(['"]?\))/$self->_rewrite_imgsrc( $1, $2, $3, 0)/egs
-            ;
+        $html =~ s/(url\s*\(['"]?)(.*?)(['"]?\))/$self->_rewrite_imgsrc( $1, $2, $3, 0)/egs ;
 
-# replace any escaped \{ braces when needing to explain short code blocks in examples
+        # replace any escaped \{ braces when needing to explain short code blocks in examples
         $html =~ s/\\\{/{/gsm ;
 
-# we should have everything here, so lets do any final replacements for material colors
+        # we should have everything here, so lets do any final replacements for material colors
+        # specials for color and background eg: gray200, bluea100, green50
         $html
-            =~ s/color(=|:)\s?(["']?\w+[50]0\b)/_replace_material( $1,$2)/egsm
-            ;
-        $html
-            =~ s/background(=|:)\s?(["']?\w+[50]0\b)/_replace_material_bg( $1,$2)/egsm
+            =~ s/(color|background|background-color)(=|:)\s?(["']?\w+\d{2,3}\b)/_replace_material( $1, $2, $3)/egsm
             ;
 
         $self->{output} = $html ;
@@ -3682,7 +2975,7 @@ sub save_to_file
     state $counter = 0 ;
     my $self = shift ;
     my ( $filename, $pdfconvertor ) = @_ ;
-    my ($format) = ( $filename =~ /\.(\w+)$/ ) ;  # get last thing after a '.'
+    my ($format) = ( $filename =~ /\.(\w+)$/ ) ;    # get last thing after a '.'
     if ( !$format ) {
         warn "Could not determine output file format, using PDF" ;
         $format = '.pdf' ;
@@ -3726,8 +3019,7 @@ sub save_to_file
             # if we failed to convert, then clear the filename
             if ( !$outfile || !-f $outfile ) {
                 $outfile = undef ;
-                debug( "ERROR",
-                    "failed to create output file from cached file $cf" ) ;
+                debug( "ERROR", "failed to create output file from cached file $cf" ) ;
             }
         }
     }

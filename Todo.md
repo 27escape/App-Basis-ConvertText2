@@ -1,3 +1,24 @@
+* use Const::Fast
+
+* fix google charts, new loader GOOGLE in GoogleChart.pm
+* needs adding to each thing https://developers.google.com/chart/interactive/docs/basic_load_libs#update-library-loader-code
+
+* if table=1 in links, then rebuild the data and use the table method, thus allowing extra styling
+* if calc=1 in spreadsheet, read table data into Spreadsheet::Engine and use functions!
+
+* more icons **NOT DOING**
+    - https://github.com/vorillaz/devicons
+    - aws https://aws.amazon.com/architecture/icons/
+    - https://github.com/milo-minderbinder/AWS-PlantUML
+    - https://github.com/tupadr3/plantuml-icon-font-sprites
+    - http://tupadr3.de/plantuml-icon-font-sprites/
+    - https://useiconic.com/open/
+    - evilicons https://github.com/evil-icons/evil-icons#readme
+
+* Gantt in HTML/CSS - DONE with plantuml
+    * http://www.jlion.com/docs/gantt.aspx
+
+
 * support for Text::Xslate ?
 * SVG::Sparkline ?
 * SVG::Calendar ?
@@ -37,13 +58,13 @@
 
 new command internal to ConvertText2
 
-## macros
+## macros - DONE
 
 for things that are not matched, can we find them in the $HOME/.ct2/macros directory
 if so run the command if executeable passing the args on the command line
 if it is not executable, treat it as an include
 
-## hero
+## hero - DONE
 
 create a hero block
 
@@ -51,7 +72,23 @@ create a hero block
 
 lorem inserts that number of lorem ipsum words into the content
 
-## mockup
+## alternate syntax highlights
+
+--highlight-style=
+
+* pygments
+* tango
+* espresso
+* zenburn
+* kate
+* monochrome
+* breezedark
+* haddock
+
+need to capture style output of pandoc when using -s command
+
+
+## mockup - DONE as wireframe, inview only
 
 create web page mockups easily
 
@@ -169,9 +206,9 @@ image: |.2 .img300x200 | [upload] \n [delete]
 
 Implement same as fontawesome https://useiconic.com/open/
 
-## Extra markup
+## Extra markup - DONE
 
-Creole (in plantuml does http://www.plantuml.com/creole.html) allowes you to specify color and underlines etc. it would be simple to add something similar
+Creole (in plantuml does http://www.plantuml.com/creole.html) allows you to specify color and underlines etc. it would be simple to add something similar
 
 <c:#fg.bg>word</c> inline with other coloring methods
 

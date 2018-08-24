@@ -6,7 +6,7 @@ App::Basis::ConvertText::Plugin::Barcode
 =head1 SYNOPSIS
 
     my $content = "12345678" ;
-    my $params = { 
+    my $params = {
         type   => "EAN8"
     } ;
     my $obj = App::Basis::ConvertText2::Plugin::Barcode->new() ;
@@ -56,7 +56,7 @@ create a qrcode image, just use default options for now
 
 
  parameters
-    filename - filename to save the created image as 
+    filename - filename to save the created image as
 
  hashref params of
         size    - size of image, widthxheight - optional
@@ -82,7 +82,7 @@ sub process {
     return "" if ( !$content || !$params->{type});
 
     $params->{type} = lc($params->{type}) ;
-    # get the type as BG::Barcode understands it    
+    # get the type as BG::Barcode understands it
     my $type = $valid_barcodes{ $params->{type} } ;
     # check if we can process this barcode
     if ( !$type ) {
@@ -95,7 +95,7 @@ sub process {
 
     # we can use the cache or process everything ourselves
     my $sig = create_sig( $content, $params );
-    my $filename = cachefile( $cachedir, "$tag.$sig.png" );
+    my $filename = cachefile( $cachedir, "$tag.$sig.jpg" );
     if ( !-f $filename ) {
         my $gdb ;
         # sometimes it throws out some warnings, lets hide them
@@ -107,7 +107,7 @@ sub process {
             return undef;
         }
         my $gd = $gdb->plot( NoText => $params->{notext}, Height => $params->{height} );
-        path($filename)->spew_raw( $gd->png );
+        path($filename)->spew_raw( $gd->jpeg );
 
         # my $cmd = QRCODE . " -o$filename '$content'";
         # my ( $exit, $stdout, $stderr ) = run_cmd($cmd);
@@ -119,7 +119,7 @@ sub process {
 
             # overwrite original file with resized version
             if ($gd) {
-                path($filename)->spew_raw( $gd->png );
+                path($filename)->spew_raw( $gd->jpeg );
             }
         }
     }

@@ -63,8 +63,8 @@ use constant GNUPLOT => "gnuplot" ;
 create a simple gnuplot image
 
  parameters
-    data   - gnuplot text      
-    filename - filename to save the created image as 
+    data   - gnuplot text
+    filename - filename to save the created image as
 
  hashref params of
         title   - title to use for image alt attribute
@@ -117,7 +117,7 @@ sub process
 
         #     # overwrite original file with resized version
         #     if ($gd) {
-        #         path($filename)->spew_raw( $gd->png );
+        #         path($filename)->spew_raw( $gd->jpeg );
         #     }
         # }
     }

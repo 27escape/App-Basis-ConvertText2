@@ -28,6 +28,7 @@ use Path::Tiny ;
 use Moo ;
 use App::Basis::ConvertText2::Support ;
 use feature 'state' ;
+use WebColors ;
 use namespace::autoclean ;
 
 has handles => (
@@ -40,31 +41,32 @@ BEGIN {
     add_css( "
     /* -------------- button.pm css -------------- */
 
-    span.button { vertical-align: center; text-align: center;}
+    span.button { vertical-align: middle; text-align: center;}
 
-    span.button span.subject { 
-        color: white; 
+    span.button span.subject {
+        /*color: white;*/
         background-color: purple300;
         border-radius: 7px;
     }
-    
+
 " ) ;
 }
 
 # -----------------------------------------------------------------------------
 
-=item button 
+=item button
 
-Create a button 
+Create a button
 
  parameters
 
     hashref params of
         subject - whats the button for
-        color   - what color should it be, defaults to purple300
+        class   - additionally add this class to the button span
+        color   - what color should it be, defaults to brown50
         size    - change the font-size from the CSS one to this
-        border  - add a 1px border, if param looks like a color will color the border
-        icon    - choose an icon to prefix the subject with, 
+        border  - add a 1px border, if param looks like a color will color the border, default 1
+        icon    - choose an icon to prefix the subject with,
                   :fa: will be added to default to a font-awesome icon if needed
 
 =cut
@@ -78,16 +80,23 @@ sub button
     my $bg ;
     my $subject = $params->{subject} ;
     my $out ;
+    my $class = $params->{class} // "" ;
 
+    # default it to on
+    $params->{border} ||= "1" ;
+    $params->{border} .= "" ;
+
+    $params->{color} ||= 'brown50' ;
     if ( $params->{color} && $params->{color} =~ /#(\w+)?\.(\w+)/ ) {
         ( $fg, $bg ) = ( $1, $2 ) ;
-        $fg = to_hex_color($fg) ;
         $bg = to_hex_color($bg) ;
+        $fg = to_hex_color($fg) ;
     } else {
-        $bg = $params->{color} ;
+        $bg = to_hex_color($params->{color}) ;
+        # lets make the text darker than the boder would be
+        $fg = "#" . darken( $bg, 4 ) ;
     }
 
-    $params->{color} //= 'purple300' ;
     my $style = $bg ? "background-color: $bg; " : "" ;
     $style .= "color: $fg; " if ($fg) ;
     $subject //= 'Missing subject' ;
@@ -96,28 +105,36 @@ sub button
         $params->{size} =~ s/%//g ;
         $style .= "font-size: $params->{size}%; " ;
     }
-    if( $params->{border}) {
-        my $c = $params->{border} eq "1" ? 'black' : to_hex_color($params->{border}) ;
-        $style .= "border: 1px solid $c; ";
+    if ( $params->{border} ) {
+        my $c ;
+        if ( $params->{border} eq "1" && $bg ) {
+            $c = "#" . darken( $bg, 2 ) ;
+        } else {
+            $c = $params->{border} eq "1" ? 'black' : to_hex_color( $params->{border} ) ;
+        }
+        $style .= "border: 1px solid $c; " ;
     }
 
     # Icon always preceeds the text
-    if( $params->{icon}) {
+    if ( $params->{icon} ) {
         $params->{icon} =~ s/^\s?|\s?$//g ;
         # default to font awesome if no prefix
-        if( $params->{icon} !~ /^:/) {
+        if ( $params->{icon} !~ /^:/ ) {
             $params->{icon} = ":fa:$params->{icon}" ;
         }
-        # if( $params->{icon} !~ /[:|\]]$/) {
-        #     $params->{icon} .= ":" ;
-        # }
         $subject = "$params->{icon} $subject" ;
     }
 
+    # class trumps style
+    if ($class) {
+        $style = "" ;
+    }
+
     # create something suitable for the HTML, no spaces, no extra lines
-    $out
-        = "<span class='button'>"
-        . "<span class='subject' style='$style'>&nbsp;"
+    $style = " style='$style'" if ($style) ;
+    $out =
+          "<span class='button$class'>"
+        . "<span class='subject'$style>&nbsp;"
         . $subject
         . "&nbsp;</span></span>" ;
 

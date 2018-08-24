@@ -1,0 +1,74 @@
+#!/bin/bash
+# run plantuml
+# moodfarm@cpan.org
+
+# we assume that the plantuml.jar file is in the same directory as this executable
+EXEC_DIR=`dirname $0`
+PLANTUML="$EXEC_DIR/plantuml.jar"
+SVG=""
+
+function show_usage  {
+    arg=$1
+    err=$2
+
+    if [ "$err" == "" ] ; then
+        err=1
+    fi
+
+    echo "Create a UML diagram from an input text file (see http://plantuml.sourceforge.net/ for reference)
+
+    usage: $0 [-s] inputfile outputfile
+
+        -s    create SVG output
+
+"
+    if [ "$arg" != "" ] ; then
+        echo "$arg
+"
+    fi
+    exit $err
+}
+
+# process command line args
+
+while getopts “hs” OPTION
+do
+  case $OPTION in
+    h) show_usage
+      exit 1
+      ;;
+    s) SVG="-tsvg"
+      ;;
+    *) show_usage
+      exit 1
+      ;;
+  esac
+done
+# remove the options we used
+shift $(($OPTIND -1))
+
+# now assign the files
+INPUT=$1
+OUTPUT=$2
+
+if [ ! -f $PLANTUML ] ; then 
+    show_usage "Could not find plantuml.jar, expecting it to be $PLANTUML" 2
+fi
+
+
+if [ "$INPUT" == "-help" ] ; then
+    show_usage "" 0
+fi
+
+if [ ! -f "$INPUT" ] ; then
+    show_usage "ERROR: Could not find input file $1"
+fi
+
+if [ "$OUTPUT" == "" ] ; then
+    show_usage "ERROR: No output file specified"
+fi
+
+# we use the pipe option to control output into the file we want
+
+cat "$INPUT" | java -Djava.awt.headless=true -jar $PLANTUML $SVG -nbthread auto -pipe >$OUTPUT
+# exit 0 

@@ -14,147 +14,145 @@ test App::Basis::Convert::Plugins
 
 =cut
 
-use v5.10;
-use strict;
-use warnings;
-use Path::Tiny;
-use Data::Printer;
+use v5.10 ;
+use strict ;
+use warnings ;
+use Path::Tiny ;
 
-use Test::More tests => 37;
+use Test::More tests => 35 ;
 
 BEGIN {
     # the first set of tests either use other perl modules
     # of have everything they need
-    use_ok('App::Basis::ConvertText2::Plugin::Barcode');
-    use_ok('App::Basis::ConvertText2::Plugin::Chart');
-    use_ok('App::Basis::ConvertText2::Plugin::Sparkline');
-    use_ok('App::Basis::ConvertText2::Plugin::Venn');
-    use_ok('App::Basis::ConvertText2::Plugin::Text');
-    use_ok('App::Basis::ConvertText2::Plugin::Badge');
-    use_ok('App::Basis::ConvertText2::Plugin::Glossary');
-    use_ok('App::Basis::ConvertText2::Plugin::Badge');
-    use_ok('App::Basis::ConvertText2::Plugin::Polaroid');
-    use_ok('App::Basis::ConvertText2::Plugin::GoogleChart');
-    use_ok('App::Basis::ConvertText2::Plugin::Mermaid');
+    use_ok('App::Basis::ConvertText2::Plugin::Barcode') ;
+    use_ok('App::Basis::ConvertText2::Plugin::Chart') ;
+    use_ok('App::Basis::ConvertText2::Plugin::Sparkline') ;
+    use_ok('App::Basis::ConvertText2::Plugin::Venn') ;
+    use_ok('App::Basis::ConvertText2::Plugin::Text') ;
+    use_ok('App::Basis::ConvertText2::Plugin::Badge') ;
+    use_ok('App::Basis::ConvertText2::Plugin::Glossary') ;
+    use_ok('App::Basis::ConvertText2::Plugin::Polaroid') ;
 
     # tests that require external programs can only be tested
     # by the author
 SKIP: {
         if ( $ENV{AUTHOR_TESTING} ) {
-            use_ok('App::Basis::ConvertText2::Plugin::Uml');
-            use_ok('App::Basis::ConvertText2::Plugin::Ditaa');
-            use_ok('App::Basis::ConvertText2::Plugin::Graphviz');
-            use_ok('App::Basis::ConvertText2::Plugin::Mscgen');
-            use_ok('App::Basis::ConvertText2::Plugin::Gle');
-            use_ok('App::Basis::ConvertText2::Plugin::Gnuplot');
-            use_ok('App::Basis::ConvertText2::Plugin::Ploticus');
-            use_ok('App::Basis::ConvertText2::Plugin::Blockdiag');
-            use_ok('App::Basis::ConvertText2::Plugin::Dataflow');
-        }
-        else {
-            skip "Author external programs", 6;
+            use_ok('App::Basis::ConvertText2::Plugin::Uml') ;
+            use_ok('App::Basis::ConvertText2::Plugin::Graphviz') ;
+            use_ok('App::Basis::ConvertText2::Plugin::Mscgen') ;
+            use_ok('App::Basis::ConvertText2::Plugin::Gle') ;
+            use_ok('App::Basis::ConvertText2::Plugin::Gnuplot') ;
+            use_ok('App::Basis::ConvertText2::Plugin::Ploticus') ;
+            use_ok('App::Basis::ConvertText2::Plugin::Blockdiag') ;
+            use_ok('App::Basis::ConvertText2::Plugin::Dataflow') ;
+        } else {
+            skip "Author external programs", 8 ;
         }
     }
 }
 
-my ( $obj, $out, $content, $params );
-my $TEST_DIR = "/tmp/convert_text_$$";
-path($TEST_DIR)->mkpath;
+my ( $obj, $out, $content, $params ) ;
+my $TEST_DIR = "/tmp/convert_text_$$" ;
+path($TEST_DIR)->mkpath ;
 
 # -----------------------------------------------------------------------------
 
-sub has_file {
-    my ($data) = @_;
-    return 0 if ( !$data );
-    my ($file) = ( $data =~ /<img src='(.*?)'/ );
+sub has_file
+{
+    my ($data) = @_ ;
+    return 0 if ( !$data ) ;
+    my ($file) = ( $data =~ /<img src='(.*?)'/ ) ;
 
-    return $file ? -f $file : 0;
+    return $file ? -f $file : 0 ;
 }
 
 # ----------------------------------------------------------------------------
 # _extract_args
-sub extract_args {
-    my $buf = shift;
-    my ( %attr, $eaten );
-    return \%attr if ( !$buf );
+sub extract_args
+{
+    my $buf = shift ;
+    my ( %attr, $eaten ) ;
+    return \%attr if ( !$buf ) ;
 
     while ( $buf =~ s|^\s?(([a-zA-Z][a-zA-Z0-9\.\-_]*)\s*)|| ) {
-        $eaten .= $1;
-        my $attr = lc $2;
-        my $val;
+        $eaten .= $1 ;
+        my $attr = lc $2 ;
+        my $val ;
 
         # The attribute might take an optional value (first we
         # check for an unquoted value)
         if ( $buf =~ s|(^=\s*([^\"\'>\s][^>\s]*)\s*)|| ) {
-            $eaten .= $1;
-            $val = $2;
+            $eaten .= $1 ;
+            $val = $2 ;
 
             # or quoted by " or '
-        }
-        elsif ( $buf =~ s|(^=\s*([\"\'])(.*?)\2\s*)||s ) {
-            $eaten .= $1;
-            $val = $3;
+        } elsif ( $buf =~ s|(^=\s*([\"\'])(.*?)\2\s*)||s ) {
+            $eaten .= $1 ;
+            $val = $3 ;
 
             # truncated just after the '=' or inside the attribute
-        }
-        elsif ($buf =~ m|^(=\s*)$|
-            or $buf =~ m|^(=\s*[\"\'].*)|s )
-        {
-            $buf = "$eaten$1";
-            last;
-        }
-        else {
+        } elsif ( $buf =~ m|^(=\s*)$|
+            or $buf =~ m|^(=\s*[\"\'].*)|s ) {
+            $buf = "$eaten$1" ;
+            last ;
+        } else {
             # assume attribute with implicit value
-            $val = $attr;
+            $val = $attr ;
         }
-        $attr{$attr} = $val;
+        $attr{$attr} = $val ;
     }
 
-    return \%attr;
+    return \%attr ;
 }
 
 # -----------------------------------------------------------------------------
 
 # barcodes
-$obj     = App::Basis::ConvertText2::Plugin::Barcode->new();
-$content = '12345678';
-$params  = { type => 'ean8' };
-$out     = $obj->process( 'barcode', $content, $params, $TEST_DIR );
-ok( has_file($out), 'barcode created a file' );
-$content = 'http://news.bbc.co.uk';
-$params  = { height => 50, version => 2 };
-$out     = $obj->process( 'qrcode', $content, $params, $TEST_DIR );
-ok( has_file($out), 'qrcode created a file' );
+$obj     = App::Basis::ConvertText2::Plugin::Barcode->new() ;
+$content = '12345678' ;
+$params  = { type => 'ean8' } ;
+$out     = $obj->process( 'barcode', $content, $params, $TEST_DIR ) ;
+ok( has_file($out), 'barcode created a file' ) ;
+$content = 'http://news.bbc.co.uk' ;
+$params  = { height => 50, version => 2 } ;
+$out     = $obj->process( 'qrcode', $content, $params, $TEST_DIR ) ;
+ok( has_file($out), 'qrcode created a file' ) ;
 
 # chart
-$obj     = App::Basis::ConvertText2::Plugin::Chart->new();
+$obj     = App::Basis::ConvertText2::Plugin::Chart->new() ;
 $content = "apples,bananas,cake,cabbage,edam,fromage,tomatoes,chips
 1,2,3,5,11,22,33,55
 1,2,3,5,11,22,33,55
 1,2,3,5,11,22,33,55
-1,2,3,5,11,22,33,55";
-$params = extract_args('title="chart1" size="400x400" xaxis="things xways" yaxis="Vertical things" format="pie" legends="a,b,c,d,e,f,g,h"');
-$out = $obj->process( 'chart', $content, $params, $TEST_DIR );
-ok( has_file($out), 'chart created a file' );
+1,2,3,5,11,22,33,55" ;
+$params
+    = extract_args(
+    'title="chart1" size="400x400" xaxis="things xways" yaxis="Vertical things" format="pie" legends="a,b,c,d,e,f,g,h"'
+    ) ;
+$out = $obj->process( 'chart', $content, $params, $TEST_DIR ) ;
+ok( has_file($out), 'chart created a file' ) ;
 
 # sparkline
-$content = '1,4,5,20,4,5,3,1';
-$obj     = App::Basis::ConvertText2::Plugin::Sparkline->new();
-$params  = extract_args("title='sparkline' scheme='blue'");
-$out     = $obj->process( 'sparkline', $content, $params, $TEST_DIR );
-ok( has_file($out), 'sparkline created a file' );
+$content = '1,4,5,20,4,5,3,1' ;
+$obj     = App::Basis::ConvertText2::Plugin::Sparkline->new() ;
+$params  = extract_args("title='sparkline' scheme='blue'") ;
+$out     = $obj->process( 'sparkline', $content, $params, $TEST_DIR ) ;
+ok( has_file($out), 'sparkline created a file' ) ;
 
 # venn
 $content = 'abel edward momo albert jack julien chris
 edward isabel antonio delta albert kevin jake
-gerald jake kevin lucia john edward';
-$obj    = App::Basis::ConvertText2::Plugin::Venn->new();
-$params = extract_args("title='sample venn diagram' legends='team1 team2 team3' scheme='rgb' explain='1'");
-$out    = $obj->process( 'sparkline', $content, $params, $TEST_DIR );
-ok( has_file($out), 'venn created a file' );
+gerald jake kevin lucia john edward' ;
+$obj = App::Basis::ConvertText2::Plugin::Venn->new() ;
+$params
+    = extract_args(
+    "title='sample venn diagram' legends='team1 team2 team3' scheme='rgb' explain='1'"
+    ) ;
+$out = $obj->process( 'sparkline', $content, $params, $TEST_DIR ) ;
+ok( has_file($out), 'venn created a file' ) ;
 
 # links
-$obj     = App::Basis::ConvertText2::Plugin::Text->new();
+$obj     = App::Basis::ConvertText2::Plugin::Text->new() ;
 $content = "pandoc    | http://johnmacfarlane.net/pandoc
     PrinceXML | http://www.princexml.com
     markdown  | http://daringfireball.net/projects/markdown
@@ -165,42 +163,42 @@ $content = "pandoc    | http://johnmacfarlane.net/pandoc
     graphviz  | http://graphviz.org
     JSON      | https://en.wikipedia.org/wiki/Json
     YAML      | https://en.wikipedia.org/wiki/Yaml
-";
-$params = undef;
-$out = $obj->process( 'links', $content, $params, $TEST_DIR );
-ok( $out && $out =~ /<ul/, 'links created some content' );
+" ;
+$params = undef ;
+$out = $obj->process( 'links', $content, $params, $TEST_DIR ) ;
+ok( $out && $out =~ /<ul/, 'links created some content' ) ;
 
 # yamlasjson
-$content = 'epg:
-  - triplet: [1,2,3,7]
-    channel: BBC3
+$content = 'first:
+  - array: [1,2,3,7]
+    string: BBC3
     date: 2013-10-20
     time: 20:30
-    crid: dvb://112.4a2.5ec;2d22~20131020T2030000Z—PT01H30M
-  - triplet: [1,2,3,9]
-    channel: BBC4
+    url: https://www.bbc.com
+  - array: [1,2,3,9]
+    string: BBC4
     date: 2013-11-20
     time: 21:00
-    crid: dvb://112.4a2.5ec;2d22~20131120T2100000Z—PT01H30M
-';
+    url: https://www.plantuml.com
+' ;
 
 # page
-$params = undef;
-$obj    = App::Basis::ConvertText2::Plugin::Text->new();
-$out    = $obj->process( 'yamlasjson', $content, $params, $TEST_DIR );
-ok( $out && $out =~ /~~~~\{\.json/, 'yamlasjson created some content' );
+$params = undef ;
+$obj    = App::Basis::ConvertText2::Plugin::Text->new() ;
+$out    = $obj->process( 'yamlasjson', $content, $params, $TEST_DIR ) ;
+ok( $out && $out =~ /~~~~ \{\.json/, 'yamlasjson created some content' ) ;
 
 # table
 $content = 'apples,bananas,cake,cabbage,edam,fromage,tomatoes,chips
 1,2,3,5,11,22,33,55
 1,2,3,5,11,22,33,55
 1,2,3,5,11,22,33,55
-1,2,3,5,11,22,33,55';
-$params = undef;
-$obj    = App::Basis::ConvertText2::Plugin::Text->new();
-$out    = $obj->process( 'table', $content, $params, $TEST_DIR );
+1,2,3,5,11,22,33,55' ;
+$params = undef ;
+$obj    = App::Basis::ConvertText2::Plugin::Text->new() ;
+$out    = $obj->process( 'table', $content, $params, $TEST_DIR ) ;
 # print STDERR  "out is $out" ;
-ok( $out && $out =~ /<table.*?>\s?<tr.*?><td.*?>apples/sm, 'table created' );
+ok( $out && $out =~ /<table.*?>\s?<tr.*?><td.*?>apples/sm, 'table created' ) ;
 
 # version
 $content = '5 2015-04-12
@@ -209,44 +207,39 @@ $content = '5 2015-04-12
   * changed to use pandoc fences ~~~~{.tag} rather than xml format <tag>
 4 2014-04-10
   * first release to github
-';
-$params = undef;
-$obj    = App::Basis::ConvertText2::Plugin::Text->new();
-$out    = $obj->process( 'version', $content, $params, $TEST_DIR );
-ok( $out && $out =~ /<table.*?>\s?<tr><th.*?>Version/sm && $out =~ m|<tr><td.*?>5</td><td.*?>2015?|sm, 'version created a table' );
+' ;
+$params = undef ;
+$obj    = App::Basis::ConvertText2::Plugin::Text->new() ;
+
+$out    = $obj->process( 'version', $content, $params, $TEST_DIR ) ;
+ok( $out
+        && $out =~ /<table.*?>\s?<tr><th.*?>Version/sm
+        && $out =~ m|<tr><td.*?>5</td><td.*?>2015?|sm,
+    'version created a table'
+) ;
 # limit to one row of version info
-$params = { items=>1 };
-$out    = $obj->process( 'version', $content, $params, $TEST_DIR );
-ok( $out && $out =~ /<table.*?>\s?<tr><th.*?>Version/sm && $out !~ m|<tr><td.*?>4</td><td.*?>2014?|sm, 'version created a limited table' );
+$params = { items => 1 } ;
+
+$out = $obj->process( 'version', $content, $params, $TEST_DIR ) ;
+ok( $out
+        && $out =~ /<table.*?>\s?<tr><th.*?>Version/sm
+        && $out !~ m|<tr><td.*?>4</td><td.*?>2014?|sm,
+    'version created a limited table'
+) ;
 
 # badge
-$obj    = App::Basis::ConvertText2::Plugin::Badge->new();
+$obj     = App::Basis::ConvertText2::Plugin::Badge->new() ;
 $content = '' ;
-$params = { subject => 'test subject', status => 'test status'} ;
-$out    = $obj->process( 'badge', $content, $params, $TEST_DIR );
-ok($out && $out =~ /class='badge'/, ' badge works') ;
-$out    = $obj->process( 'shield', $content, $params, $TEST_DIR );
-ok($out && $out =~ /class='badge'/, ' shield as badge alternate works') ;
+$params  = { subject => 'test subject', status => 'test status' } ;
+
+$out     = $obj->process( 'badge', $content, $params, $TEST_DIR ) ;
+ok( $out && $out =~ /class='badge'/, 'badge works' ) ;
+
+$out = $obj->process( 'shield', $content, $params, $TEST_DIR ) ;
+ok( $out && $out =~ /class='badge'/, 'shield as badge alternate works' ) ;
 
 SKIP: {
     if ( $ENV{AUTHOR_TESTING} ) {
-
-        # ditaa
-        $content = 'Full example
-+--------+   +-------+    +-------+
-|        +---+ ditaa +--->|       |
-|  Text  |   +-------+    |diagram|
-|Document|   |!magic!|    |       |
-|     {d}|   |       |    |       |
-+---+----+   +-------+    +-------+
-    :                         ^
-    |       Lots of work      |
-    \-------------------------+
-~~~~';
-        $obj    = App::Basis::ConvertText2::Plugin::Ditaa->new();
-        $params = undef;
-        $out    = $obj->process( 'ditaa', $content, $params, $TEST_DIR );
-        ok( has_file($out), 'ditaa created a file' );
 
         # graphviz
         $content = 'graph G {
@@ -264,11 +257,11 @@ SKIP: {
     new -- runmem;
     sleep -- runmem;
 }
-';
-        $obj    = App::Basis::ConvertText2::Plugin::Graphviz->new();
-        $params = undef;
-        $out    = $obj->process( 'graphviz', $content, $params, $TEST_DIR );
-        ok( has_file($out), 'graphviz created a file' );
+' ;
+        $obj    = App::Basis::ConvertText2::Plugin::Graphviz->new() ;
+        $params = undef ;
+        $out    = $obj->process( 'graphviz', $content, $params, $TEST_DIR ) ;
+        ok( has_file($out), 'graphviz created a file' ) ;
 
         # mscgen
         $content = '# Fictional client-server protocol
@@ -286,11 +279,12 @@ msc {
  a<=b [label="ack3"];
  |||;
 }
-';
-        $obj    = App::Basis::ConvertText2::Plugin::Mscgen->new();
-        $params = undef;
-        $out    = $obj->process( 'mscgen', $content, $params, $TEST_DIR );
-        ok( has_file($out), 'mscgen created a file' );
+' ;
+        $obj    = App::Basis::ConvertText2::Plugin::Mscgen->new() ;
+        $params = undef ;
+
+        $out    = $obj->process( 'mscgen', $content, $params, $TEST_DIR ) ;
+        ok( has_file($out), 'mscgen created a file' ) ;
 
         # uml
         $content = "'start/enduml tags are optional
@@ -306,11 +300,29 @@ rectangle checkout {
   (help) .> (checkout) : extends
   (checkout) -- clerk
 }
-\@enduml";
-        $obj    = App::Basis::ConvertText2::Plugin::Uml->new();
-        $params = undef;
-        $out    = $obj->process( 'uml', $content, $params, $TEST_DIR );
-        ok( has_file($out), 'uml created a file' );
+\@enduml" ;
+        $obj    = App::Basis::ConvertText2::Plugin::Uml->new() ;
+        $params = undef ;
+
+        $out    = $obj->process( 'uml', $content, $params, $TEST_DIR ) ;
+        ok( has_file($out), 'uml created a file' ) ;
+
+        # ditaa re-uses the UML object
+        $content = 'Full example
++--------+   +-------+    +-------+
+|        +---+ ditaa +--->|       |
+|  Text  |   +-------+    |diagram|
+|Document|   |!magic!|    |       |
+|     {d}|   |       |    |       |
++---+----+   +-------+    +-------+
+    :                         ^
+    |       Lots of work      |
+    \-------------------------+
+~~~~' ;
+        $params = undef ;
+
+        $out = $obj->process( 'ditaa', $content, $params, $TEST_DIR ) ;
+        ok( has_file($out), 'ditaa created a file' ) ;
 
         # gle
         $content = 'size 10 9
@@ -342,11 +354,12 @@ end object
 
 amove pagewidth()/2 0.2
 draw "saddle.bc"
-';
-        $obj    = App::Basis::ConvertText2::Plugin::Gle->new();
-        $params = undef;
-        $out    = $obj->process( 'gle', $content, $params, $TEST_DIR );
-        ok( has_file($out), 'gle created a file' );
+' ;
+        $obj    = App::Basis::ConvertText2::Plugin::Gle->new() ;
+        $params = undef ;
+
+        $out    = $obj->process( 'gle', $content, $params, $TEST_DIR ) ;
+        ok( has_file($out), 'gle created a file' ) ;
 
         # gnuplot
         $content = '#
@@ -368,11 +381,12 @@ set arrow 4 from -10,-5,120 to 0,-10,0 nohead
 set xrange [-10:10]
 set yrange [-10:10]
 splot x*y
-';
-        $obj    = App::Basis::ConvertText2::Plugin::Gnuplot->new();
-        $params = undef;
-        $out    = $obj->process( 'gnuplot', $content, $params, $TEST_DIR );
-        ok( has_file($out), 'gnuplot created a file' );
+' ;
+        $obj    = App::Basis::ConvertText2::Plugin::Gnuplot->new() ;
+        $params = undef ;
+
+        $out    = $obj->process( 'gnuplot', $content, $params, $TEST_DIR ) ;
+        ok( has_file($out), 'gnuplot created a file' ) ;
 
         # ploticus
         $content = '//  specify data using proc getdata
@@ -399,19 +413,18 @@ colors: oceanblue
 outlinedetails: color=white
 labelfarout: 1.3
 total: 256
-';
-        $obj    = App::Basis::ConvertText2::Plugin::Ploticus->new();
-        $params = undef;
-        $out    = $obj->process( 'ploticus', $content, $params, $TEST_DIR );
-        ok( has_file($out), 'ploticus created a file' );
-    }
-    else {
-        skip "Author testing programs", 8;
+' ;
+        $obj    = App::Basis::ConvertText2::Plugin::Ploticus->new() ;
+        $params = undef ;
 
+        $out    = $obj->process( 'ploticus', $content, $params, $TEST_DIR ) ;
+        ok( has_file($out), 'ploticus created a file' ) ;
+    } else {
+        skip "Author testing programs", 7 ;
     }
 }
 
-path($TEST_DIR)->remove_tree;
+path($TEST_DIR)->remove_tree ;
 
 # -----------------------------------------------------------------------------
 # completed all the tests

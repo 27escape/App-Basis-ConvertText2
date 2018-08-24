@@ -64,10 +64,11 @@ use warnings ;
 use YAML qw(Load) ;
 use JSON::MaybeXS ;
 use XML::Simple qw(XMLout) ;
-
 use Moo ;
 use App::Basis::ConvertText2::Support ;
 use namespace::clean ;
+
+local $YAML::Preserve = 1 ;
 
 use feature 'state' ;
 
@@ -77,7 +78,7 @@ has handles => (
     default  => sub {
         [   qw{yamlasjson yamlasxml table spreadsheet version page
                 columns links tree
-                box note info tip important caution warning danger todo aside
+                box note info tip important caution warn warning danger todo aside question fixme error sample read console
                 quote
                 appendix
                 counter
@@ -92,9 +93,9 @@ has handles => (
 # ----------------------------------------------------------------------------
 # these things are the same as a box
 
-my %as_box
-    = map { $_ => 'box' }
-    qw (note info tip important caution warning danger todo aside) ;
+my %as_box = map { $_ => 'box' }
+    qw (note info tip important caution warn warning danger todo aside question fixme error sample read console)
+    ;
 
 # ----------------------------------------------------------------------------
 
@@ -105,8 +106,13 @@ my $default_css = <<END_CSS;
     tr.odd { background: white;}
     tr.even {background: whitesmoke;}
 
+/* drop-shadow filter applied to anything in the class, we need a background color to make sure it
+ * gets used properly for the entire table and not the contents
+ */
+
     table.spreadsheet td {
         border: 1px solid #ccc;
+        background: white ;
     }
     table.spreadsheet th {
         border: 1px solid #ccc;
@@ -117,27 +123,10 @@ my $default_css = <<END_CSS;
         background: grey200;
         color: black ;
     }
-
-    span.glossary {
-      display: inline-block;
-      position: relative;
-      color: green ;
-    }
-    span.glossary:before {
-      content: "~~~~~~~~~~~~";
-      font-size: 0.6em;
-      font-weight: 700;
-      font-family: Times New Roman, Serif;
-      color: green;
-      width: 100%;
-      position: absolute;
-      top: 12px;
-      left: -1px;
-      overflow: hidden;
-    }
-    table.glossary td.key {
-      font-weight: bold;
-      color: gree;
+    table.spreadsheet td.cell.active {
+        background: #5f90b0;
+        /*border: 1px solid #5f90b0;*/
+        color: white ;
     }
 
     blockquote {
@@ -146,7 +135,7 @@ my $default_css = <<END_CSS;
         font-size: 14px;
         margin: 1em 3em;
         padding: .5em 1em;
-        border-left: 5px solid #666666;
+        border-left: 4px solid #666666;
         background-color: #eeeeee;
     }
 
@@ -160,9 +149,9 @@ my $default_css = <<END_CSS;
         font-size: 14px;
         margin: 1em 3em;
         padding: .5em 1em;
-        border-left: 5px solid #fce27c;
-        border-right: 5px solid #fce27c;
-        background-color: #f6ebc1;
+        border-left: 4px solid #FCC02D; /* yellow700*/
+        border-right: 4px solid #FCC02D; /* yellow700*/
+        background-color: #FFFDE7; /*yellow50 */
     }
 
     blockquote.quote p {
@@ -181,19 +170,16 @@ my $default_css = <<END_CSS;
 
     blockquote.quote:after {
         content: close-quote;
-
     }
 
     div.quote {
-        background-color: blue;
         margin-left: auto ;
         margin-right: auto ;
-        width: 50%;
+        width: 100%;
     }
     div.quote > p {
         text-align: center;
         font-size: 130%;
-        color: white;
     }
 
     .percent {
@@ -213,6 +199,21 @@ my $default_css = <<END_CSS;
         padding: 0px;
         text-align: right;
         mix-blend-mode:darken;
+    }
+    /* standard 'title' captions on top */
+    caption, caption.title {
+        caption-side: top;
+        font-size: 70%;
+    }
+    /* 'footer' captions underneath */
+    caption.footer {
+        caption-side: bottom ;
+        font-size: 70%;
+    }
+
+    ul.version {
+        margin-top: 0 ;
+        margin-bottom: 0;
     }
 
 END_CSS
@@ -236,10 +237,19 @@ sub _make_numbers
             ${$item}[$i] = _make_numbers( ${$item}[$i] ) ;
         }
     } elsif ( ref($item) eq '' || ref($item) eq 'SCALAR' ) {
-        if ( $item && $item =~ /^\d+(\.\d+)?$/ ) {
-
-            # force numbers to be numbers
-            $item += 0 ;
+        if ($item) {
+            if ( $item =~ /^\d+(\.\d+)?$/ ) {
+                # force numbers to be numbers
+                $item += 0 ;
+            } elsif ( $item eq 'true' ) {
+                # boolean true
+                # $item = Types::Serialiser::true ;
+                $item = \1 ;
+            } elsif ( $item eq 'false' ) {
+                # boolean false
+                # $item = Types::Serialiser::false ;
+                $item = \0 ;
+            }
         }
     }
 
@@ -273,10 +283,7 @@ sub yamlasjson
     if ($data) {
         $data = _make_numbers($data) ;
         my $json = JSON::MaybeXS->new( utf8 => 1, pretty => 1 ) ;
-        $str
-            .= "\n\n~~~~{.json wrap='72'}\n"
-            . $json->encode($data)
-            . "\n~~~~\n\n" ;
+        $str .= "\n\n~~~~ {.json wrap='72'}\n" . $json->encode($data) . "\n~~~~\n\n" ;
     }
 
     return $str ;
@@ -309,62 +316,12 @@ sub yamlasxml
     if ($data) {
         $data = _make_numbers($data) ;
         my $xml = XMLout( $data, RootName => "", NoAttr => 1 ) ;
-        $str .= "\n\n~~~~{.xml wrap='72'}\n$xml\n~~~~\n\n\n" ;
+        $str .= "\n\n~~~~ {.xml wrap='72'}\n$xml\n~~~~\n\n\n" ;
     }
 
     return $str ;
 }
 
-# ----------------------------------------------------------------------------
-
-sub _split_csv_data
-{
-    my ( $data, $separator ) = @_ ;
-    my @d = () ;
-
-    $separator ||= ',' ;
-
-    my $j = 0 ;
-    foreach my $line ( split( /\n/, $data ) ) {
-        last if ( !$line ) ;
-        my @row = split( /$separator/, $line ) ;
-
-        for ( my $i = 0; $i <= $#row; $i++ ) {
-            undef $row[$i] if ( $row[$i] eq 'undef' ) ;
-
-            # dont' bother with any zero values either
-            # undef $row[$i] if ( $row[$i] =~ /^0\.?0?$/ ) ;
-            push @{ $d[$j] }, $row[$i] ;
-        }
-        $j++ ;
-    }
-
-    return @d ;
-}
-
-# ----------------------------------------------------------------------------
-# sort data on column number optionally reverse it
-
-sub _sort_data
-{
-    my ( $d, $column ) = @_ ;
-    my @data = @{$d} ;
-    my $reverse ;
-
-    if ( $column =~ /r/ ) {
-        $reverse = 1 ;
-    }
-
-    # just the number
-    $column =~ s/^.*?([0-9]).*?$/$1/ ;
-
-    @data = sort { $a->[$column] cmp $b->[$column] } @data ;
-
-    if ($reverse) {
-        @data = reverse @data ;
-    }
-    return @data ;
-}
 
 # ----------------------------------------------------------------------------
 # get the style and class data from the passed table cell
@@ -375,37 +332,53 @@ sub _sort_data
 # align things need to have a space between them
 #  ^ valign top, - valign centre, _ valign bottom
 #  < align left, = align center,  > align right
-#  #fg.bg
+# #foreground.background   - set colors
+# 30% - number to set a width percentage
+# 30px - set width to number of pixels
+# c2 - colspan a number of columns, 2 in this case
 # }
 
 sub _split_cell_data
 {
     my ($cell) = @_ ;
-    my ( $class, $style ) ;
+    my ( $class, $style, $colspan ) ;
 
     while ( $cell =~ s/\{(.*?)\}\s*$// ) {
         my $cs = $1 ;
+        $cs =~ s/^\s+|\s+$//g ;    # trim whitespace
 
         # cell color may contain a period so lets do that first
-        if ( $cs =~ s/#((\w+)?\.?(\w+)?)$// ) {
+        if ( $cs =~ s/#(([\w\-]+)?\.?([\w\-]+)?)$// ) {
             my ( $fg, $bg ) = ( $2, $3 ) ;
             $style .= "color: " . to_hex_color($fg) . ";" if ($fg) ;
             $style .= "background-color: " . to_hex_color($bg) . ";"
                 if ($bg) ;
         }
 
+        # any colspan
+        if ( $cs =~ s/\bc(\d+)\b// ) {
+            $colspan = $1 ;
+        }
+        # do rowspans??
+
         # any class
         if ( $cs =~ s/\.([\w\-_]+)// ) {
             $class .= "$1 " ;
         }
+        if ( $cs =~ s/(\d+%|\d+px)// ) {
+            $style .= "width: $1;" ;
+        }
 
+        # we can have one horizontal align
         if ( $cs =~ /=/ ) {
             $style .= "text-align: center;" ;
         } elsif ( $cs =~ /</ ) {
             $style .= "text-align: left;" ;
         } elsif ( $cs =~ />/ ) {
             $style .= "text-align: right;" ;
-        } elsif ( $cs =~ /\^/ ) {
+        }
+        # and one vertical align
+        if ( $cs =~ /\^/ ) {
             $style .= "vertical-align: top;" ;
         } elsif ( $cs =~ /-/ ) {
             $style .= "vertical-align: middle;" ;
@@ -414,7 +387,13 @@ sub _split_cell_data
         }
     }
 
-    return ( $class, $style, $cell ) ;
+    # if we really want 0 lets have it
+    $cell =~ s/^\s+|\s+$//g ;
+    if ( defined $cell && $cell =~ /^0$/ ) {
+        # make sure zero is a string
+        $cell .= "" ;
+    }
+    return ( $class, $style, $cell, $colspan ) ;
 }
 
 # ----------------------------------------------------------------------------
@@ -429,6 +408,8 @@ create a basic html table
     hashref params of
         class   - HTML/CSS class name
         id      - HTML/CSS class
+        title   - describe table above it
+        caption - describe table below it
         width   - width of the table
         style   - style the table if not doing anything else
         legends - flag to indicate that the top row is the legends
@@ -450,18 +431,23 @@ sub table
     # note if we are really a spreadsheet table
     my $spreadsheet = $tag eq 'spreadsheet' ;
 
-    $params->{title} ||= "" ;
-    $params->{class} ||= "" ;
+    $params->{legends} ||= $params->{legend} ;    # aka just in case
+    $params->{title}   ||= "" ;
+    $params->{caption} ||= "" ;
+    $params->{class}   ||= "" ;
     $content =~ s/^\n//gsm ;
     $content =~ s/\n$//gsm ;
 
     # open the csv file, read contents, calc max, add into data array
-    my @data = _split_csv_data( $content, $params->{separator} ) ;
+    # inline {{.tag }} constructs need to be protected
+    $content =~ s/\{{2}/_BR_O_/gsm ;
+    $content =~ s/\}{2}/_BR_C_/gsm ;
+    my @data = split_csv_data( $content, $params->{separator} ) ;
 
     if ( defined $params->{sort} ) {
         my $legends ;
         $legends = shift @data if ( $params->{legends} ) ;
-        @data = _sort_data( \@data, $params->{sort} ) ;
+        @data = sort_column_data( \@data, $params->{sort} ) ;
 
         # add legends back to start
         unshift @data, $legends if ($legends) ;
@@ -489,6 +475,14 @@ sub table
     }
     $out .= ">\n" ;
 
+    # tables can have a title AND a caption
+    if ( $params->{title} ) {
+        $out .= "<caption class='title'>$params->{title}</caption>\n" ;
+    }
+    if ( $params->{caption} ) {
+        $out .= "<caption class='footer'>$params->{caption}</caption>\n" ;
+    }
+
     my $maxcol = 0 ;
     for ( my $i = 0; $i < scalar(@data); $i++ ) {
         $maxcol = scalar @{ $data[$i] }
@@ -507,7 +501,7 @@ sub table
             # first entry is blank to accomodate the row counter, has no class
             $value
                 ? "**" . chr( ord('A') + $value - 1 ) . "** {.cell =}"
-                : " {.cell}" ;
+                : ":fa:table: {.cell =}" ;
         } 0 .. $maxcol ;
 
         unshift @data, \@tmp ;
@@ -517,12 +511,27 @@ sub table
 
     # add in the row counters
     my $rcount = 1 ;
+    my $w      = '15px' ;
+
+    if ( scalar(@data) > 100 ) {
+        $w = '30px' ;
+    } elsif ( scalar(@data) > 10 ) {
+        $w = '20px' ;
+    }
+    my $colclass ;
+    my $colstyle ;
     for ( my $i = 0; $i < scalar(@data); $i++ ) {
         my @col = @{ $data[$i] } ;
+        # for a spreadsheet we need to add a new cell to the start of the list
+        # to hold the row number, this has a width dependant on the max number
+        # the rows get up to
         if ( $i && $spreadsheet ) {
-
-            # add in a row count and class the cell
-            unshift @col, "$rcount {.cell}" ;
+            my $c = "$rcount {.cell =" ;
+            # only need width on first row
+            if ( $i == 1 ) {
+                $c .= " $w" ;
+            }
+            unshift @col, "$c}" ;
             $rcount++ ;
         }
         my $class = $params->{zebra} ? ( $i & 1 ? 'odd' : 'even' ) : '' ;
@@ -530,8 +539,8 @@ sub table
         my $last  = pop @col ;
 
         # row color last thing on the line after class removed
-        if ( $last =~ s/#((\w+)?\.?(\w+)?)$// ) {
-            my ( $fg, $bg ) = ( $2, $3 ) ;
+        if ( $last && $last =~ s/#(([\w\-]+)?\.?([\w\-]+)?)\s?$// ) {
+            my ( $fg, $bg ) = ( $2 || "", $3 || "" ) ;
             $style .= "color: " . to_hex_color($fg) . ";" if ($fg) ;
             $style .= "background-color: " . to_hex_color($bg) . ";"
                 if ($bg) ;
@@ -540,8 +549,7 @@ sub table
 
         # pad columns if needed
         if ( @{ $data[$i] } < $maxcol ) {
-            push @col,
-                map {"&nbsp;"} scalar( @{ $data[$i] } ) .. $maxcol - 1 ;
+            push @col, map {"&nbsp;"} scalar( @{ $data[$i] } ) .. $maxcol - 1 ;
         }
         $out .= "<tr" ;
         $out .= " class='$class'" if ($class) ;
@@ -549,24 +557,55 @@ sub table
         $out .= ">" ;
 
         # decide if the top row has the legends
-        my $pos = 0 ;
-        map {
-            $_ =~ s/^\s+|\s+$//g ;
-            $_ ||= '&nbsp;' ;
+        my $pos    = 0 ;
+        my $ccount = 0 ;
+        # ccount keeps track of the number of columns and counts spans
+        for ( my $j = 0; $ccount < scalar(@col); $j++ ) {
+            my $cell = $col[$j] ;
+            $cell //= '&nbsp;' ;    # only add the space if the value is undefined, ie not 0
+            $cell =~ s/^\s+|\s+$//g ;
 
-            # need to make sure the row number is not a heading if legends being used
-            my $tag = ( $params->{legends} && ( $i == $leg_row ) && $pos ) ? 'th' : 'td' ;
+            my $tag = 'td' ;
+            # gets messy trying to do this in a single line, so for clarity ...
+            if ( $params->{legends} ) {
+                if ($spreadsheet) {
+                    # need to make sure the row number is not a heading
+                    if ( $i == $leg_row && $pos ) {
+                        $tag = 'th' ;
+                    }
+                } elsif ( $i == $leg_row ) {
+                    $tag = 'th' ;
+                }
+            }
 
-            my ( $class, $style, $data ) = _split_cell_data($_) ;
+            my ( $class, $style, $data, $colspan ) = _split_cell_data($cell) ;
+            if ( $tag eq 'th' ) {
+                # save col class and style so it can be used as default for element
+                $colclass->[$pos] = $class ;
+                $colstyle->[$pos] = $style ;
+            } else {
+                # use column styling if there is nothing specific
+                $class ||= $colclass->[$pos] ;
+                $style ||= $colstyle->[$pos] ;
+            }
             $out .= "<$tag" ;
             $out .= " class='$class'" if ($class) ;
             $out .= " style='$style'" if ($style) ;
+            $out .= " colspan='$colspan'" if ($colspan) ;
             $out .= ">$data</$tag>" ;
+            if ($colspan) {
+                $ccount += $colspan ;
+            } else {
+                $ccount++ ;
+            }
             $pos++ ;
-        } @col ;
+        }
         $out .= "</tr>\n" ;
     }
     $out .= "</table>\n" ;
+
+    $out =~ s/_BR_O_/{{/gsm ;
+    $out =~ s/_BR_C_/}}/gsm ;
 
     return $out ;
 }
@@ -583,13 +622,16 @@ a special version of table
     hashref params of
         class   - HTML/CSS class name
         id      - HTML/CSS class
-        width   - width of the table
+        title   - describe table above it
+        caption - describe table below it
+        width   - width of the table, default 100%
         style   - style the table if not doing anything else
         legends - flag to indicate that the top row is the legends
         separator - characters to be used to separate the fields
-        align   - option, set alignment of entire table
+        align   - option, set alignment of entire table, default left
         sort    - sort on a column number, "1", "1r"
         columns - columns to be included in the output "1,2,3,4"
+        worksheets - csv of worksheets for this spreadsheet, 1st bold is the active one
 
 =cut
 
@@ -602,13 +644,44 @@ sub spreadsheet
 
     # make sure we are a spreadsheet, also have a shadow (on html output) to
     # make it stand out
-    $params->{class} = "spreadsheet shadow"
-        . ( $params->{class} ? " $params->{class}" : "" ) ;
+    $params->{class} = "spreadsheet shadow" . ( $params->{class} ? " $params->{class}" : "" ) ;
     # no zebra for spreadsheet
     $params->{zebra} = 0 ;
+    $params->{align} ||= "left" ;
+    $params->{width} ||= "100%" ;
 
-    # exit via the standard table call
-    return $self->table( "spreadsheet", $content, $params, $cachedir ) ;
+    # add in any workbooks, sheets is the same
+    $params->{worksheets} ||= $params->{sheets} ;
+    # set a default now for all spreadsheets
+    # $params->{worksheets} ||= '!Sheet1' ;
+    if ( $params->{worksheets} ) {
+        my $sep = $params->{separator} || "," ;
+        # add a couple of blank rows to the spreadsheet to make it look nicer
+        $content .= "\n" . ( " $sep\n" x 2 ) ;
+    }
+
+    my $sheet =
+        "<div class='spreadsheet'>" . $self->table( "spreadsheet", $content, $params, $cachedir ) ;
+    if ( $params->{worksheets} ) {
+        $sheet .= "<table class='$params->{class}' style='margin-left: 0;margin-top:0;'><tr>" ;
+        my $has_active = 0 ;
+        foreach my $ws ( split( ',', $params->{worksheets} ) ) {
+            # active sheet starts with '!'
+            my $class = "cell" ;
+            if ( $ws =~ /\s?!(.*)/ && !$has_active ) {
+                $ws = $1 ;
+                $class .= " active" ;
+
+                $has_active = 1 ;
+            }
+            $sheet .= "<td class='$class'>$ws</td>" ;
+        }
+
+        $sheet .= "</tr></table>" ;
+    }
+    $sheet .= "</div>" ;
+
+    return $sheet ;
 }
 
 # ----------------------------------------------------------------------------
@@ -646,6 +719,7 @@ sub version
     $content =~ s/^\n//gsm ;
     $content =~ s/\n$//gsm ;
     $params->{class} ||= "" ;
+    $params->{width} ||= "100%" ;
 
     my $out = "<div class='version'>"
         . (
@@ -660,18 +734,19 @@ sub version
     $out .= "style='$params->{style}' " if ( $params->{style} ) ;
     $out .= ">\n" ;
 
-    $out .= "<tr><th>Version</th><th>Date</th><th>Changes</th></tr>\n" ;
+    $out .= "<tr><th width='20%'>Version</th><th width='20%'>Date</th><th>Changes</th></tr>\n" ;
 
     # my $section = '^(.*?)\s+(\d{2,4}[-\/]\d{2}[-\/]\d{2,4})\s?$' ;
-    my $section = '^([\d|v].*?)\s+(\d{2,4}[-\/]\d{2}[-\/]\d{2,4})\s?$' ;
+    my $section = '^([\d|v].*?)\s+(\d{2,4}[-\/]\d{2}[-\/]\d{2,4})(.*)?$' ;
 
     my @data = split( /\n/, $content ) ;
     for ( my $i = 0; $i < scalar(@data); $i++ ) {
         if ( $data[$i] =~ /$section/ ) {
-            my $vers = $1 ;
-            my $date = $2 ;
+            my ( $vers, $date, $extra ) = ( $1, $2, $3 ) ;
+
             $i++ ;
             my $c = "" ;
+            $c = "* $extra\n" if ($extra) ;
 
             # get all the lines in this section
             while ( $i < scalar(@data) && $data[$i] !~ /$section/ ) {
@@ -680,17 +755,18 @@ sub version
                 $i++ ;
             }
 
-            if ( !$params->{items} || int( $params->{items} ) > $item_count )
-            {
+            if ( !$params->{items} || int( $params->{items} ) > $item_count ) {
                 # convert any of the data with markdown
+                my $list = convert_md($c) ;
+                $list =~ s/<ul>/<ul class=version>/gsm ;
                 $out
-                    .= "<tr><td valign='top'>$vers</td><td valign='top'>$date</td><td valign='top'>"
-                    . convert_md($c)
+                    .= "<tr><td valign='top' align=center>$vers</td><td valign='top' align=center>$date</td><td valign='top'>"
+                    . $list
                     . "</td></tr>\n" ;
             }
             $item_count++ ;
 
- # adjust $i back so we are either at the end correctly or on the next section
+            # adjust $i back so we are either at the end correctly or on the next section
             $i-- ;
         }
     }
@@ -812,9 +888,7 @@ sub columns
         $idname = $style->{$sig} ;
     }
 
-    $out
-        .= "<div id='$idname' class='$tag $params->{class}'>\n$content\n</div>\n"
-        ;
+    $out .= "<div id='$idname' class='$tag $params->{class}'>\n$content\n</div>\n" ;
 
     return $out ;
 }
@@ -831,6 +905,7 @@ pipe '|' symbol
     class   - name of class for the list
     table   - create a table rather than a list
     width   - width of the table, if used
+    hide    - hide the links, still allows them to act as references to websites
 
 =cut
 
@@ -839,8 +914,7 @@ sub links
     my $self = shift ;
     my ( $tag, $content, $params, $cachedir ) = @_ ;
 
-    # strip any ending linefeed
-    chomp $content if ($content) ;
+    chomp $content ;
     return "" if ( !$content ) ;
 
     $params->{class} ||= "" ;
@@ -848,11 +922,11 @@ sub links
     my $ul         = "<ul class='$tag $params->{class}'>\n" ;
     my %refs       = () ;
     my %uls        = () ;
-    my $width      = $params->{width} ? "width='$params->{width}'" : "" ;
+    my $width      = $params->{width} ? " width='$params->{width}'" : "" ;
 
     if ( $params->{table} ) {
-        $ul
-            = "<table class='$params->{class} $tag'$width><tr><th>Reference</th><th>Link</th></tr>\n"
+        $ul =
+            "<table class='$params->{class} $tag'$width><tr><th>Reference</th><th>Link</th></tr>\n"
             ;
     }
 
@@ -875,13 +949,11 @@ sub links
         # list of links
         if ( $link !~ /^#/ ) {
             if ( $params->{table} ) {
-                $uls{ lc($ref) }
-                    = "<tr><td class='reference'><a href='$link'>$ref</a></td><td class='link'>$link</td></tr>\n"
+                $uls{ lc($ref) } =
+                    "<tr><td class='reference'><a href='$link'>$ref</a></td><td class='link'>$link</td></tr>\n"
                     ;
             } else {
-                $uls{ lc($ref) }
-                    = "<li><a href='$link'>$ref</a><ul><li>$link</li></ul></li>\n"
-                    ;
+                $uls{ lc($ref) } = "<li><a href='$link'>$ref</a><ul><li>$link</li></ul></li>\n" ;
             }
         }
     }
@@ -893,6 +965,11 @@ sub links
         $ul .= "</table>\n" ;
     } else {
         $ul .= "</ul>\n" ;
+    }
+    if ( $params->{hide} ) {
+        # wrap the output in a hidden div
+        $references = "<div style='display: none'>\n$references" ;
+        $ul .= "\n</div>" ;
     }
 
     return "\n" . $references . "\n" . $ul . "\n" ;
@@ -1018,7 +1095,7 @@ Y2hgQIf/GbAAAKCTBYBUjWvCAAAAAElFTkSuQmCC
 
 # ----------------------------------------------------------------------------
 
-=item box | note | info | tip | important | caution | warning | danger | todo | aside
+=item box | note | info | tip | important | caution | warn | warning | danger | todo | aside | question | fixme | error | sample | read | console
 
 create a box around some text, if note is used and there is no title, then 'Note'
 will be added as a default
@@ -1026,24 +1103,64 @@ will be added as a default
     hashref params of
         class   - HTML/CSS class name
         id      - HTML/CSS class
-        width   - width of the box (default 98%)
+        width   - width of the box (default 99%)
         title   - optional title for the section
         style   - style the box if not doing anything else
         icon    - add a fontawesome or google material icon to match the tag
                 - default is fontawesome name if not specific trash -> :fa:trash
+        align   - left, center, right
 
 =cut
 
 my %icons = (
-    note      => ':fa:bookmark:[#green]',
-    info      => ':fa:info-circle:[#01579B]',
-    tip       => ':fa:lightbulb-o:[ #FFA000]',
-    important => ':fa:exclamation:[ #blue]',
-    caution   => ':fa:minus-circle:[ #crimson]',
-    warning   => ':fa:exclamation-triangle:[ #red]',
-    danger    => ':fa:bomb',
-    todo      => ':fa:crosshairs:[ #00695C]',
-    aside     => ':fa:angle-double-right:[ #teal]',
+    # danger    => ':mi:report:[2x]',
+    # note      => ':mi:bookmark-border:[2x]',
+    # info      => ':mi:info-outline:[2x]',
+    # tip       => ':mi:lightbulb-outline:[2x]',
+    # important => ':mi:star-border:[fliph 2x]',
+    # warning   => ':mi:error-outline:[2x]',
+    # caution   => ':mi:remove-circle-outline:[2x]',
+    # danger    => ':mi:block:[2x #crimson]',
+    # aside     => ':mi:center-focus-weak:[2x]',
+    # todo      => ':mi:chat-bubble-outline:[fliph 2x]',
+    # question  => ':mi:help-outline:[2x]',
+    # fixme     => ':mi:pan-tool:[2x fliph #crimson]',
+    # error     => ':mi:highlight-off:[2x #crimson]',
+    danger    => ':mi:report:',
+    note      => ':mi:bookmark-border:',
+    info      => ':mi:info-outline:',
+    tip       => ':mi:lightbulb-outline:',
+    important => ':mi:star-border:[fliph]',
+    warning   => ':mi:error-outline:',
+    caution   => ':mi:remove-circle-outline:',
+    danger    => ':mi:block:[#crimson]',
+    aside     => ':mi:center-focus-weak:',
+    todo      => ':mi:chat-bubble-outline:[fliph]',
+    question  => ':mi:help-outline:',
+    fixme     => ':mi:pan-tool:[fliph #crimson]',
+    error     => ':mi:highlight-off:[#crimson]',
+    sample    => ':fa:flask:',
+    read      => ':fa:book:',
+    console   => ':fa:terminal:[border]',
+) ;
+
+my %classmap = (
+    box       => 'light',
+    note      => 'normal',
+    aside     => 'normal',
+    todo      => 'primary',
+    tip       => 'primary',
+    info      => 'success',
+    important => 'success',
+    warning   => 'warning',
+    caution   => 'danger',
+    danger    => 'danger',
+    question  => 'secondary',
+    fixme     => 'danger',
+    error     => 'danger',
+    sample    => 'sample',
+    read      => 'light',
+    console   => 'console',
 ) ;
 
 sub box
@@ -1052,6 +1169,7 @@ sub box
     my ( $tag, $content, $params, $cachedir ) = @_ ;
 
     #  defaults
+    # $params->{width} ||= '100%' ;
     $params->{width} ||= '100%' ;
     $params->{class} ||= "" ;
     $params->{style} ||= "" ;
@@ -1059,19 +1177,38 @@ sub box
     # notes may get a default title if its missing
     $params->{title} = ucfirst($tag)
         if ( !defined $params->{title} && $tag ne 'box' ) ;
+    $params->{title} ||= "" ;
     my $out ;
+    if($tag eq 'console') {
+        # ALWAYS make console text in a pre block
+        $content = "<pre>\n$content\n</pre>" ;
+    }
 
-    $params->{class} = "$tag $params->{class}" ;
+    # $params->{class} = "$tag $params->{class} shadow" ;
+    $params->{class} = "alert $classmap{$tag} $params->{class}" ;
 
-    my $icon ;
+    my $icon = "" ;
     $params->{style} = "width:$params->{width};$params->{style}" ;
+    # if ( $tag ne 'box' ) {
+    #     $params->{style} .= "margin-left: auto; margin-right: auto;" ;
+    # }
+    my $align = "margin-left: 0 ; margin-right: auto;" ;
+    if ( $params->{align} ) {
+        if ( $params->{align} =~ /center|centre/i ) {
+            $align = "margin: 0 auto;" ;
+        } elsif ( $params->{align} =~ /right/i ) {
+            $align = "margin-left: auto; margin-right 0;" ;
+        }
+    }
+    $params->{style} .= $align ;
+
 
     # boxes cannot have icons
     if ( $tag ne 'box' && $params->{icon} ) {
 
         # we can over-ride the icon with a string
-        $icon
-            = $params->{icon} eq "1"
+        $icon =
+            $params->{icon} eq "1"
             ? ( $icons{$tag} || "" )
             : $params->{icon} ;
 
@@ -1083,42 +1220,27 @@ sub box
         if ( $icon !~ /:\[.*?\]/ ) {
             $icon .= ':[]' ;
         }
-
-        # icons need to be at least 2x size to look good here
-        if ( $icon !~ /\[(.*?\blg\b|.*?\b\[2345]x\b).*?\]/ ) {
-            $icon =~ s/\]/ 2x]/ ;
-        }
+        $icon =~ s/::/:/g ;
 
         # make them fixed width too
         if ( $icon !~ /\[.*?\bfw\b.*?\]/ ) {
             $icon =~ s/\]/ fw]/ ;
         }
-
-        $out .= "<div class='$params->{class}' style='$params->{style}' " ;
-        $out .= "id='$params->{id}' " if ( $params->{id} ) ;
-        $out .= ">" ;
+    }
+    $out .= "<div style='$params->{style}' class='$params->{class}' " ;
+    $out .= "id='$params->{id}' " if ( $params->{id} ) ;
+    $out .= ">" ;
+    if ( $icon || $params->{title} ) {
+        # $out .= "\n\n$icon " . ( $params->{title} ? "**$params->{title}**" : "" ) . "\n\n" ;
         $out
-            .= "<table width='100%' class='$params->{class}'><tr>"
-            . "<td class='$tag"
-            . "_left'>$icon</td>\n"
-            . "<td class='$tag"
-            . "_right'>" ;
-    } else {
-        $out .= "<div style='$params->{style}' " ;
-        $out .= "class='$params->{class}' " if ( !$icon ) ;
-        $out .= "id='$params->{id}' " if ( $params->{id} ) ;
-        $out .= ">" ;
+            .= "\n\n<span class='alert_title'><span class='alert_icon'>$icon</span> "
+            . ( $params->{title} ? "$params->{title}</span>\n\n" : "" )
+            . "\n\n" ;
     }
-    $out .= "<p class='$tag" . "_header'>$params->{title}</p>\n"
-        if ( $params->{title} ) ;
-
     # convert any content to HTML from Markdown
-    $out .= convert_md($content) ;
-    if ($icon) {
-        $out .= "</td></tr></table></div>\n" if ($icon) ;
-    } else {
-        $out .= "</div>\n" ;
-    }
+    # $out .= convert_md($content) ;
+    $out .= "<div class='alert_content'>$content\n</div>" if ($content) ;
+    $out .= "</div>\n" ;
 
     return $out ;
 }
@@ -1163,7 +1285,8 @@ sub quote
 
 # ----------------------------------------------------------------------------
 
-=item appendix
+=item appen
+dix
 
 return the next appendix value 'Appendix A' 'Appendix B'
 
@@ -1178,12 +1301,8 @@ sub appendix
     state $count = 0 ;
     my $str = "Appendix " . chr( 65 + $count ) ;
     if ( $count > 26 ) {
-
         # gives AA, AB, AC etc
-        $str
-            = "Appendix "
-            . chr( 65 + int( $count / 26 ) )
-            . chr( 65 + $count % 26 ) ;
+        $str = "Appendix " . chr( 65 + int( $count / 26 ) ) . chr( 65 + $count % 26 ) ;
     }
 
     $count++ ;
@@ -1271,7 +1390,7 @@ sub indent
 
 =item percent
 
-return each line of the content by 4 spaces
+draw a percent bar
 
  parameters
      value - value of the percent, required, max 100, min 0
@@ -1322,8 +1441,8 @@ sub percent
 
     # $barstyle .= $params->{size} ? "font-size:$params->{size};" : "" ;
     $barstyle .= "width:$value%;" ;
-    $content
-        = "<div class='percent' style='$style'>"
+    $content =
+          "<div class='percent' style='$style'>"
         . "<div class='bar' style='$barstyle'>$value%</div>"
         . "</div>" ;
 
@@ -1332,59 +1451,60 @@ sub percent
 
 # ----------------------------------------------------------------------------
 # build the css for the different box types
-sub _admonition_css
-{
-    my $css = "    /* style for boxes/notes */\n" ;
+# sub _admonition_css
+# {
+#     my $css = "    /* style for boxes/notes */\n" ;
 
-    $css .= "    " . join( ", ", map {"div.$_ "} keys %as_box ) ;
-    $css .= " {
-        margin-bottom: 1em;
-    }\n" ;
+# $css .= "    " . join( ", ", map {"div.$_ "} keys %as_box ) ;
+# $css .= " {
+#     margin-bottom: 1em;
+#     border: 1px solid #e0e0e0 ;
+# }\n" ;
 
-    $css .= "    " . join( ", ", map {"table.$_ "} keys %as_box ) ;
-    $css .= " {
-        padding: 0px;
-        margin: 0px;
-        text-align: left;
-        border-collapse: collapse;
-    }\n" ;
+# $css .= "    " . join( ", ", map {"table.$_ "} keys %as_box ) ;
+# $css .= " {
+#     padding: 0px;
+#     margin: 0px;
+#     text-align: left;
+#     border-collapse: collapse;
+# }\n" ;
 
-    $css .= "    " . join( ", ", map { "td.$_" . "_left" } keys %as_box ) ;
-    $css .= " {
-        padding: 0px;
-        margin: 0px;
-        text-align: center;
-        vertical-align: middle;
-        width:4%;
-        border: 0px;
-        border-right: 1px solid black ;
-    }\n" ;
+# $css .= "    " . join( ", ", map { "td.$_" . "_left" } keys %as_box ) ;
+# $css .= " {
+#     padding: 0px;
+#     margin: 0px;
+#     text-align: center;
+#     vertical-align: middle;
+#     width:4%;
+#     border: 0px;
+#     border-right: 1px solid #e0e0e0 ;
+# }\n" ;
 
-    $css .= "    " . join( ", ", map { "td.$_" . "_right" } keys %as_box ) ;
-    $css .= " {
-        padding: 0px;
-        margin: 0px;
-        text-align: left;
-        border: 0px;
-    }\n" ;
+# $css .= "    " . join( ", ", map { "td.$_" . "_right" } keys %as_box ) ;
+# $css .= " {
+#     padding: 0px;
+#     margin: 0px;
+#     text-align: left;
+#     border: 0px;
+# }\n" ;
 
-    $css .= "    " . join( ", ", map { "p.$_" . "_header" } keys %as_box ) ;
-    $css .= " {
-        font-weight: bold;
-        padding-top: 0px;
-        margin-top: 0px;
-        padding-left: 5px ;
-    }\n" ;
+# $css .= "    " . join( ", ", map { "p.$_" . "_header" } keys %as_box ) ;
+# $css .= " {
+#     font-weight: bold;
+#     padding-top: 0px;
+#     margin-top: 0px;
+#     padding-left: 5px ;
+# }\n" ;
 
-    $css .= "    " . join( ", ", map {"div.$_ p"} keys %as_box ) ;
-    $css .= " {
-        padding: 0px;
-        margin: 0px;
-        margin-top: 0px;
-        padding-top: 0px;
-        padding-left: 5px ;
-    }\n" ;
-}
+# $css .= "    " . join( ", ", map {"div.$_ p"} keys %as_box ) ;
+# $css .= " {
+#     padding: 0px;
+#     margin: 0px;
+#     margin-top: 0px;
+#     padding-top: 0px;
+#     padding-left: 5px ;
+# }\n" ;
+# }
 
 # ----------------------------------------------------------------------------
 # decide which simple handler should process this request
@@ -1398,12 +1518,15 @@ sub process
 
     if ( !$css ) {
         add_css($default_css) ;
-        add_css( _admonition_css() ) ;
+        # add_css( _admonition_css() ) ;
         $css++ ;
     }
 
+    # same same
+    $tag = 'warning' if ( $tag eq 'warn' ) ;
+
     if ( $as_box{$tag} && $self->can('box') ) {
-        $retval = $self->box(@_) ;
+        $retval = $self->box( $tag, $content, $params, $cachedir ) ;
 
     } elsif ( $self->can($tag) ) {
         $retval = $self->$tag(@_) ;

@@ -23,6 +23,7 @@ App::Basis::ConvertText2::Plugin::Gle
 =head1 DESCRIPTION
 
 convert a gle/glx text string into a PNG, requires gle program http://glx.sourceforge.net/
+sudo apt-get install gle-graphics if you are using a debian based linux distro
 
 =cut
 

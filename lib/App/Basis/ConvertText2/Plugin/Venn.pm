@@ -8,10 +8,10 @@ App::Basis::ConvertText2::Plugin::Venn
     my $content = "abel edward momo albert jack julien chris
     edward isabel antonio delta albert kevin jake
     gerald jake kevin lucia john edward" ;
-    my $params = { 
+    my $params = {
         title   => "sample venn diagram",
         legends => "team1 team2 team3",
-        scheme  => "rgb", 
+        scheme  => "rgb",
         explain => '1'
     } ;
     my $obj = App::Basis::ConvertText2::Plugin::Venn->new() ;
@@ -19,7 +19,7 @@ App::Basis::ConvertText2::Plugin::Venn
 
 =head1 DESCRIPTION
 
-Convert a text string of comma separated numbers into a Venn diagran image PNG
+Convert a text string of comma separated numbers into a Venn diagran image JPEG
 
 =cut
 
@@ -61,12 +61,12 @@ my %_colour_schemes = (
 
 =item venn
 
-create a simple venn diagram image, with some nice defaults, returns some 
+create a simple venn diagram image, with some nice defaults, returns some
 markdown explaining the diagram, undex/empty if errors
 
  parameters
     text   - 2 or 3 space separated lines of items for the venn
-    filename - filename to save the created image as 
+    filename - filename to save the created image as
 
     hashref params of
         title   - title for the image
@@ -95,7 +95,7 @@ sub process {
 
     # we can use the cache or process everything ourselves
     my $sig = create_sig( $content, $params );
-    my $filename = cachefile( $cachedir, "$tag.$sig.png" );
+    my $filename = cachefile( $cachedir, "$tag.$sig.jpg" );
 
     # we will not check for the cachefile as we need to create the venn object
     # each time to get the explaination text, besides not many people will
@@ -144,8 +144,8 @@ sub process {
     # Create a diagram with gd object
     my $gd_venn = $venn_chart->plot(@data);
 
-    # Create a Venn diagram image in png format
-    path($filename)->spew_raw( $gd_venn->png() );
+    # Create a Venn diagram image in jpg format
+    path($filename)->spew_raw( $gd_venn->jpeg() );
 
     my $out;
     if ( -f $filename ) {
@@ -155,7 +155,7 @@ sub process {
 
         # create something suitable for the HTML
         $out = create_img_src( $filename, $params->{title} );
-        $out .= "\n\n" . "* only in $legends[0] : " . join( ' ', @{ $ref_lists[0] } ) . "  
+        $out .= "\n\n" . "* only in $legends[0] : " . join( ' ', @{ $ref_lists[0] } ) . "
     * only in $legends[1] : " . join( ' ', @{ $ref_lists[1] } ) . "
     * $legends[0] and $legends[1] share : " . join( ' ', @{ $ref_lists[2] } ) . "\n";
 

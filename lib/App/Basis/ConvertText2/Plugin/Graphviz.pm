@@ -39,7 +39,8 @@ App::Basis::ConvertText2::Plugin::Graphviz
 
 =head1 DESCRIPTION
 
-convert a graphviz text string into a PNG, requires dot program from http://graphviz.org
+convert a graphviz text string into a SVG requires uml program and plantuml jar
+from https://github.com/27escape/bin/blob/master/uml and http://plantuml.sourceforge.net
 
 =cut
 
@@ -56,6 +57,9 @@ use App::Basis ;
 use App::Basis::ConvertText2::Support ;
 use namespace::autoclean ;
 
+# uml is a script to run plantuml basically does java -jar plantuml.jar
+use constant UML => "uml" ;
+
 has handles => (
     is       => 'ro',
     init_arg => undef,
@@ -64,9 +68,20 @@ has handles => (
 
 # ----------------------------------------------------------------------------
 
-use constant DPI => 72 ;
+# now that plantuml is being used instead of graphviz directly
+# we lose the ability to use some of the different layout style programs
+my %commands = map { $_ => $_ } qw( dot neato twopi fdp sfdp circo osage patchwork) ;
 
-my %commands = map { $_ => $_ } qw( dot neato twopi fdp sfdp circo osage ) ;
+my %drawing_specific = (
+    dot       => "",
+    neato     => "",
+    twopi     => "",
+    fdp       => "",
+    sfdp      => "",
+    circo     => "",
+    osage     => "pack=16",
+    patchwork => "center=1\nmode=scale",
+) ;
 
 # ----------------------------------------------------------------------------
 
@@ -80,7 +95,7 @@ create a simple graphviz structured graph image, from the passed text
 
  hashref params of
         size    - size of image, widthxheight - optional
-        command - graphviz command to use to draw graph - optional
+        layout - graphviz command to use to draw graph - optional
                 - dot (default) neato twopi fdp sfdp circo osage
         width   - optional width
         height  - optional
@@ -100,34 +115,56 @@ sub graphviz
     $y = $params->{height} if ( $params->{height} ) ;
     $params->{title} ||= "" ;
     $params->{class} ||= "" ;
+    $params->{layout} ||= $params->{command} ; # compatibility with old parameter name
 
-    my $command = $commands{dot} ;
-
-    # if the drawing command is one we recognise, use it
-    if ( $params->{command} && $commands{ $params->{command} } ) {
-        $command = $params->{command} ;
-    }
+    #my $command = $commands{dot} ;
+    my $command = UML ;
 
     # strip any ending linefeed
     chomp $content ;
     return "" if ( !$content ) ;
 
+    if (   $params->{layout}
+        && $commands{ $params->{layout} }
+        && $content !~ /^\s+layout=/ ) {
+        $content =~ s/(graph\s.*?\s\{)/$1\nlayout=$params->{layout}/ ;
+    }
+
+    # we need to do this to enable plantuml to generate from graphviz format
+    $content = "\@startdot\n$content\n\@enddot\n" ;
+    delete $params->{layout} ;
+
+    my $out ;
+
     # we can use the cache or process everything ourselves
     my $sig = create_sig( $content, $params ) ;
     my $filename = cachefile( $cachedir, "$tag.$sig.svg" ) ;
+
+    # path("/tmp/$tag.$sig.dot")->spew_utf8($content) ;
+
     if ( !-f $filename ) {
         my $dotfile = Path::Tiny->tempfile("graphviz.XXXX") ;
         path($dotfile)->spew_utf8($content) ;
-        my $cmd = "$command -Tsvg -o$filename $dotfile" ;
+        my $cmd ;
+        $cmd = $command . " -s $dotfile $filename" ;
         my ( $exit, $stdout, $stderr ) = run_cmd($cmd) ;
         if ($exit) {
-            warn
-                "Could not run script $command get it from http://graphviz.org"
-                ;
+            if ( $params->{layout} ) {
+                warn "You need to install Graphviz" ;
+            } else {
+                warn
+                    "You need to install PlantUml and the get the uml script from https://github.com/27escape/bin/blob/master/uml"
+                    ;
+            }
+        } elsif ( $stderr =~ /Syntax Error/i ) {
+
+            # make sure that there is no file
+            unlink($filename) ;
+            warn("Syntax error in $tag") ;
+            $out = "**Syntax Error** in $tag\n\n" ;
         }
     }
 
-    my $out ;
     if ( -f $filename ) {
 
         # create something suitable for the HTML
@@ -135,14 +172,12 @@ sub graphviz
         $s .= " width='$x'"  if ($x) ;
         $s .= " height='$y'" if ($y) ;
 
-        $out
-            = "<img src='$filename' class='$tag $params->{class}' alt='$params->{title}' $s />"
-            ;
+        $out = "<img src='$filename' class='$tag $params->{class}' alt='$params->{title}' $s />" ;
     }
     return $out ;
 }
 
-my $head = "graph {
+my $head = "graph mindmap {
     graph [fontname = \"helvetica\"];
     node [fontname = \"helvetica\"];
     edge [fontname = \"helvetica\"];
@@ -150,11 +185,10 @@ my $head = "graph {
     center=true;
     rankdir=LR;
     node [ shape=circle, style=\"rounded,filled\", color=\"black\"] ;
-    edge [ style=tapered, penwidth=10, arrowtail=none, arrowhead=none, dir=forward, color=grey50] ;
+    edge [ style=tapered, penwidth=2, arrowtail=none, arrowhead=none, dir=forward, color=grey50] ;
 " ;
 
 my $foot = "}\n" ;
-
 
 # ----------------------------------------------------------------------------
 
@@ -174,9 +208,9 @@ create a simple mindmap, from the passed text
                 - default pastel28, see L<http://www.graphviz.org/content/color-names#brewer>
                 - blue purple green grey mono orange red brown  are shortcuts
         shapes  - list of shapes to use - optional
-                - default box ellipse hexagon octagon 
-        command - graphviz command to use to draw graph - optional
-                - dot neato twopi fdp (default) sfdp circo osage        
+                - default box ellipse hexagon octagon
+        layout - graphviz command to use to draw graph - optional
+                - dot neato twopi fdp (default) sfdp circo osage
 
 =cut
 
@@ -185,22 +219,27 @@ sub mindmap
     my $self = shift ;
     my ( $tag, $content, $params, $cachedir ) = @_ ;
     my $size = "" ;
-    $params->{size}    ||= "" ;
-    $params->{command} ||= "fdp" ;    # default mindmap layout
-                                      # replace tabs with 4 spaces
+    $params->{size} ||= "" ;
+
+    $params->{layout} ||= "fdp" ;    # default mindmap layout
+                                     # replace tabs with 4 spaces
     $content =~ s/\t/    /gsm ;
 
     my ( $scheme, $shapelist ) = ( $params->{scheme}, $params->{shapes} ) ;
     my $out ;
-    my $level  = 0 ;
-    my @lines  = split( /\n/, $content ) ;
-    my $header = "" ;
-    my $links  = "" ;
-    my @parent = () ;
-    my @shapes = qw( box ellipse hexagon octagon) ;
-
+    my $level       = 0 ;
+    my @lines       = split( /\n/, $content ) ;
+    my $header      = "" ;
+    my $links       = "" ;
+    my @parent      = () ;
+    my @shapes      = qw( box ellipse hexagon octagon) ;
     my $colorscheme = "pastel28" ;
     my $last        = -1 ;
+
+    $header =
+          $params->{layout} && $commands{ $params->{layout} }
+        ? $drawing_specific{ $params->{layout} } . "\n"
+        : "" ;
 
     if ($scheme) {
         my %s = (
@@ -245,10 +284,10 @@ sub mindmap
         if ( $txt =~ s|#(\w+)\s?$|| ) {
             $color = $1 ;
         } elsif ( $txt =~ s|#(\w+)?\/(\w+)|| ) {
-            $color = $1 if( $1);
-            $font  = $2 ;
+            $color = $1 if ($1) ;
+            $font = $2 ;
         } elsif ( $txt =~ s|#(\w+)?\.(\w+)|| ) {
-            $font  = $1 if( $1);
+            $font = $1 if ($1) ;
             $color = $2 ;
         }
         $txt =~ s/\s+$// ;    # remove trailing spaces
@@ -272,8 +311,10 @@ sub mindmap
         # basic style markup as HTML
         # replace bold
         $txt =~ s/\*\*(.*?)\*\*/<B>$1<\/B>/g ;
+
         # replace italic
         $txt =~ s/\*(.*?)\*/<I>$1<\/I>/g ;
+
         # replace newline
         $txt =~ s|\\n|<BR/>|g ;
         $txt =~ s|<br>|<BR/>|gi ;
@@ -286,11 +327,13 @@ sub mindmap
             # calc the number of indents (4 spaces)
             $indent = ( int( $spaces / 4 ) + ( $spaces % 4 ? 1 : 0 ) ) ;
         }
+
         # are we setting a new parent level
         if ( $last != $indent && $level == $indent ) {
             # remove children
             @parent = splice( @parent, 0, $level ) ;
             $parent[$level] = $id ;
+
             # set root always to be an octagon
             $shape = 'doubleoctagon' ;
             $color = "/$colorscheme/1" ;
@@ -313,14 +356,15 @@ sub mindmap
 
         # don't link root to root
         if ( $parent[$off] && $parent[$off] ) {
+            # $links .= "  $parent[$off] -> $id\n";
             $links .= "  $parent[$off] -- $id\n" ;
         } else {
             # add link to root, but not root to root
-            $links .= "  0 -- $id\n" if( $id != 0);
+            # $links .= "  0 -> $id\n" if ( $id != 0 );
+            $links .= "  0 -- $id\n" if ( $id != 0 ) ;
         }
         $header
-            .= "  $id [label=<$txt> shape=\"$shape\" fillcolor=\"$color\" fontcolor=\"$font\" ]\n"
-            ;
+            .= "  $id [label=<$txt> shape=\"$shape\" fillcolor=\"$color\" fontcolor=\"$font\" ]\n" ;
 
         $last = $indent ;
     }
@@ -328,7 +372,7 @@ sub mindmap
     $out = $head . $header . $links . $foot ;
 
     # pass any other commands through to graphviz to handle
-    return $self->graphviz( 'graphviz', $out, $params, $cachedir ) ;
+    return $self->graphviz( 'mindmap', $out, $params, $cachedir ) ;
 }
 
 # ----------------------------------------------------------------------------
@@ -339,7 +383,7 @@ sub process
     my $self = shift ;
     my ( $tag, $content, $params, $cachedir ) = @_ ;
 
-    my %alt = ( dot => 'graphviz' ) ;
+    # my %alt = ( dot => 'graphviz' ) ;
 
     if ( $self->can($tag) ) {
         return $self->$tag(@_) ;

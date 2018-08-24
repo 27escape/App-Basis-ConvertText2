@@ -1,10 +1,16 @@
 0.6
-    * Button.pm     
+    * removed commonmark, not used
+    * removed verbose from ConvertText2.pm, not used
+    * common.css created in ~/.ct2/css, will be used in all templates
+    * Button.pm
         * new plugin to give simple buttons
     * color HTML-like construct <c:color>
     * Text.pm
+        * new percent plugin, draws percent bars
         * new indent plugin, indents contents to 4 spaces
-        * table plugin can now align left, middle, right
+        * table plugin can now align left, middle, right entire table and individual cells can be aligned, colored and have a width
+        * tables can have a title, which becomes the caption for the table
+        * new plugin spreadsheet based on table, arguments are the same
     * added Google Material Font icon support
     * dataflow and uml diagrams can now be align-ed
     * comment, appendix and counter added to Text.pm
@@ -19,7 +25,7 @@
     * Support.pm now holds the blocks to process, allows the plugins to call other plugins
     * Support.pm has functions for javascript and css storage and retrival
         * will allow plugins to specify their own css and not have it in the base template
-    * base template modified to allow %CSS% and %JAVASCRIPT% 
+    * base template modified to allow %CSS% and %JAVASCRIPT%
     * phantomjs added to Support.pm, allows calling javascrip like googlecharts
     * GoogleCharts plugin added
     * updated documentation

@@ -1,9 +1,9 @@
 title: Using App::Basis::ConvertText2
 format: pdf
-date: 2015-08-05
 author: Kevin Mulholland
 keywords: perl, readme, markdown
-template: coverpage
+template: default
+date: 2017-02-28
 version: 8
 
 ## Introduction
@@ -75,16 +75,16 @@ The keys may be used as variables in your document or in the template, by upper-
 <tr><th width='100%'>Example</th></tr>
 <tr>
 <td>
-    version as a variable _%VERSION%
+    version as a variable %VERSION%
 </td></tr></table>
 
-If you want to display the name of a variable without it being interpreted, prefix it
-with an underscore '_', this underscore will be removed in the final document.
+**If you want to display the name of a variable without it being interpreted, prefix it
+with a backslash '\', this will be removed in the final document.**
 
 <table class='box' width='99%'>
 <thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
 <tr><td>
-    _%TITLE%
+    %TITLE%
 </td>
 <td><br>
 %TITLE%
@@ -103,7 +103,7 @@ As documents are processed, the HTML headers (H2..H6) are collected together to 
 <tr><th width='100%'>Example</th></tr>
 <tr>
 <td>
-    _%TOdC%
+    %TOdC%
 </td></tr></table>
 
 The built table of contents is at the top of this document.
@@ -129,7 +129,7 @@ This feature is disabled at the moment while bugs are fixed.
 
 ## Admonitions
 
-There are certain statements that you may want to draw attention to by taking them out of the content’s flow and labeling them with a priority. These are called admonitions. It’s rendered style is determined by the assigned label (i.e., value). We provide nine admonition style labels:
+There are certain statements that you may want to draw attention to by taking them out of the content’s flow and labeling them with a priority. These are called admonitions. It’s rendered style is determined by the assigned label (i.e., value). We provide twelve admonition style labels:
 
 * NOTE
 * INFO
@@ -140,6 +140,9 @@ There are certain statements that you may want to draw attention to by taking th
 * DANGER
 * TODO
 * ASIDE
+* QUESTION
+* FIXME
+* ERROR
 
 When you want to call attention to a single paragraph, start the first line of the paragraph with the label you want to use. The label must be uppercase and followed by a colon ':'
 
@@ -147,10 +150,19 @@ When you want to call attention to a single paragraph, start the first line of t
 
 * The label must be uppercase and immediately followed by a colon ':'
 * Separate the first line of the paragraph from the label by a single space.
+* Title is the name of the admonition, unless specified - see below
 
 And here is the generated Admonition
 
 WARNING: Something could go wrong if you do not follow the rules
+
+Titles may be included in admonitions, add them in within brackets, note that there are no spaces between the admonition name and the colon.
+
+    NOTE(title for note): Something could go wrong if you do not follow the rules
+
+And here is an example with a title
+
+NOTE(title for note): Something could go wrong if you do not follow the rules
 
 All the Admonitions have associated icons.
 
@@ -264,6 +276,12 @@ Anywhere in your document/css that uses color= or color: then these replacements
 For the complete list of colors see [Google Colors]
 ~~~~
 
+## Default Icons
+
+It is possible to specify icons without type, however this is currently defaulting to Material Icons, until a third option is found, like the github set.
+
+    \:cake: should show a :cake:
+
 ## Including other files
 
 It is possible to include content from other files, the methods match fenced code-block and their short cuts.
@@ -305,13 +323,13 @@ Markdown does not include any facility for setting the maniulating the font of t
 
 We have a HTML-like constructs
 
-* For Colors
-    * &lt;c\:colorname&gt; Your text &lt;/c&gt;
-    * &lt;c\:#foreground.background&gt; Your text &lt;/c&gt;
 * For Underline - standard HTML
     * &lt;u&gt; Your text &lt;/u&gt;
 * For Strikethroughs - standard HTML
     * &lt;s&gt; Your text &lt;/s&gt;
+* For Colors
+    * &lt;c\:colorname&gt; Your text &lt;/c&gt;
+    * &lt;c\:#foreground.background&gt; Your text &lt;/c&gt;
 
 <table class='box' width='99%'>
 <thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
@@ -487,8 +505,8 @@ once again with percent '%' symbols, once again we force upper case.
 <tr>
 <td>
 
-    _%SPARK_DATA% has content %SPARK_DATA%
-    _%GREENSPARK% has a generated image %GREENSPARK%
+    %SPARK_DATA% has content %SPARK_DATA%
+    %GREENSPARK% has a generated image %GREENSPARK%
 </td></tr></table>
 
 Buffering also allows us to add content into markdown constructs like bullets.
@@ -498,12 +516,18 @@ Buffering also allows us to add content into markdown constructs like bullets.
 <tr>
 <td>
 
-    * _%SPARK_DATA%
-    * _%GREENSPARK%
+    * %SPARK_DATA%
+    * %GREENSPARK%
 </td><td>
 * %SPARK_DATA%
 * %GREENSPARK%
 </td></tr></table>
+
+By using setting an **ifnot** attribute to a true value, it is possible to only set the contents of the buffer if the buffer is currently empty. This is useful in cases where a parent document wants to set a value and a child document, which may be used in other documents wants to have a default for instances when the parent document is not providing a value.
+
+    ~~~~{.buffer ifnot=1 to=buffer_name}
+    default_value
+    ~~~~
 
 ## Text
 
@@ -599,6 +623,8 @@ Create a simple table using CSV style data
     - align the table, left, middle/center (default), right
 * sort
     - column number to sort on, append 'r' to reverse the sort
+- title
+    - add a caption to the table
 
 ~~~~{.buffer to_buffer=table_data}
 Date,Item,Cost
@@ -613,7 +639,7 @@ Date,Item,Cost
 <tr>
 <td>
 
-    ~~~~{.table separator=',' width='100%' legends=1}
+    ~~~~{.table separator=',' width='100%' legends=1 title='a caption'}
     %TABLE_DATA%
     ~~~~
 
@@ -626,9 +652,9 @@ Date,Item,Cost
 </td></tr>
 <tr><th>Output</th></tr>
 <tr><td>
+<br>
 
-
-~~~~{.table separator=',' width='100%' legends=1 from_buffer='table_data'}
+~~~~{.table separator=',' width='100%' legends=1 from_buffer='table_data' title='a caption'}
 ~~~~
 
 The table can be sorted too, reverse date (newest first)
@@ -636,7 +662,95 @@ The table can be sorted too, reverse date (newest first)
 ~~~~{.table separator=',' width='100%' legends=1 from_buffer='table_data' sort='0r'}
 ~~~~
 
+Table cells can contain extra information to color the cell and provide alignment. This information needs to be enclosed in braces '{}' and be the last data in the cell
+
+* #foreground
+    - set the foreground color only
+    - eg #red  red text on a default background
+* #foreground.background
+    - set the foreground and background color
+    - eg #white.red white text on a red background
+* '=' align: center
+* '<' align: left
+* '>' align: right
+* '^' vertical align top
+* '-' vertical-align middle
+* '_' vertical-align bottom
+* '30px' set the width of a cell to 30px, obviously this can be any numerical value
+* '50%' set the width of a cell to 50%, obviously this can be any numerical value between 0 and 100
+* c2 - column span a number of columns, 2 in this case
+
+Currently the color needs to be the last thing in the braces for things to work properly
+
+* **{=- #white.red}**
+    * center white text on a red background vertically and horizontally
+
+<br>
 </td></tr></table>
+
+### Spreadsheet
+
+This is very similar to [Table](#table) but styled to look like a spreadsheet
+
+* class
+    * HTML/CSS class name
+* id
+    * HTML/CSS class
+* width
+    * width of the table
+* style
+    * style the table if not doing anything else
+* legends
+    * if true first line csv as headings for table, these correspond to the data sets
+* separator
+    * what should be used to separate cells, defaults to ','
+* align
+    - align the table, left, middle/center (default), right
+* sort
+    - column number to sort on, append 'r' to reverse the sort
+- title
+    - add a caption to the table
+- worksheets (sheets)
+    - adds 'tabs' to the spreadsheet, also adds a couple of blank rows to separate the spreadsheet from the rows
+    - csv of sheets in a workbook.
+    - to set one as active preceed name with '!'
+    - i.e. 'Sheet 1, !Sheet 2, Sheet 3' will highlight 'Sheet 2' as the active sheet
+
+The same cell align and color options from table are valid here too.
+
+<table class='box' width='99%'>
+<tr><th width='100%'>Example</th></tr>
+<tr>
+<td>
+
+    ~~~~{.spreadsheet separator=',' width='100%' legends=1
+      title='its a spreadsheet' worksheets='Sheet 1, !Sheet 2, Sheet 3'}
+    %TABLE_DATA%
+    ~~~~
+
+    The spreadsheet can be sorted too, reverse date (newest first)
+
+    ~~~~{.spreadsheet separator=',' width='100%' legends=1 sort='0r'
+       worksheets='Sheet 1, !Sheet 2, Sheet 3'}
+    %TABLE_DATA%
+    ~~~~
+
+</td></tr>
+<tr><th>Output</th></tr>
+<tr><td>
+<br>
+
+~~~~{.spreadsheet separator=',' width='100%' legends=1 from_buffer='table_data' title='its a spreadsheet' worksheets='Sheet 1, !Sheet 2, Sheet 3'}
+~~~~
+
+The spreadsheet can be sorted too, reverse date (newest first)
+
+~~~~{.spreadsheet separator=',' width='100%' legends=1 from_buffer='table_data' sort='0r' worksheets='Sheet 1, !Sheet 2, Sheet 3'}
+~~~~
+
+<br>
+</td></tr></table>
+
 
 ### Links
 
@@ -657,7 +771,7 @@ These links used in this example are the ones used in this document.
 ~~~~{.buffer to_buffer=weblinks}
 pandoc      | http://johnmacfarlane.net/pandoc
 PrinceXML   | http://www.princexml.com
-markdown    | http://daringfireball.net/projects/markdown
+Markdown    | http://daringfireball.net/projects/markdown
 msc         | http://www.mcternan.me.uk/mscgen/
 ditaa       | http://ditaa.sourceforge.net
 PlantUML    | http://plantuml.sourceforge.net
@@ -672,6 +786,7 @@ README PDF  | https://github.com/27escape/App-Basis-ConvertText2/blob/master/doc
 Font Awesome Cheatsheet | http://fontawesome.io/cheatsheet/
 Google Material Font Cheatsheet | https://www.google.com/design/icons/
 Google Colors | http://www.google.com/design/spec/style/color.html#color-color-palette
+Emoji Cheatsheet | http://www.emoji-cheat-sheet.com
 ~~~~
 
 <table class='box' width='99%'>
@@ -812,7 +927,7 @@ spelling.
 
 This should generally be used as a short block as an easy way to increment appendix values in headings.
 
-Appendicies will be created as 'Appendix A', 'Appendix B' etc
+Appendicies will be created as 'Appendix A', 'Appendix B' etc.
 
 <table class='box' width='99%'>
 <tr><th width='50%'>Example</th><th>Output</th></tr>
@@ -920,7 +1035,53 @@ The optional arguments are
 </tr>
 </table>
 
+### Percent
 
+Draw a percent bar
+
+
+The required arguments are
+
+* value
+    - value of the percent, required, max 100, min 0
+
+The optional arguments are
+
+* color
+    * color of the bar
+* border
+    * add a grey border to the box
+* trigger
+    * set the color based on the value, dark red, light red, orange, yellow, green
+* width
+    * width of the bounding box, ideally in px
+
+<table class='box' width='99%'>
+<tr><th width='50%'>Example</th><th>Output</th></tr>
+<tr>
+<td>
+
+    * \{\{.percent value=90 border=1}} default color
+    * \{\{.percent value=20 trigger=1 }}
+    * \{\{.percent value=40 trigger=1 }}
+    * \{\{.percent value=55 trigger=1}}
+    * \{\{.percent value=75 trigger=1}}
+    * \{\{.percent value=100 trigger=1}}
+    * \{\{.percent value=50 width=75px color=pink}}
+</td>
+<td>
+
+* default color {{.percent value=90 border=1}}
+* {{.percent value=20 trigger=1 }}
+* {{.percent value=40 trigger=1 }}
+* {{.percent value=55 trigger=1 }}
+* {{.percent value=75 trigger=1}}
+* {{.percent value=100 trigger=1 }}
+* {{.percent value=50 width=75px color=pink}}
+
+</td>
+</tr>
+</table>
 
 ### Tree
 
@@ -970,7 +1131,7 @@ by 4 spaces, we will only process bullets that are * +  or -.
 
 Badges (or shields) are a way to display information, often used to show status of an operation on websites such as github.
 
-Examples of shields can be seen at [sheilds.io](http://shields.io/)
+Examples of shields can be seen at [shields.io](http://shields.io/)
 
 The badges are placed inline, so you can insert text around the fenced codeblock.
 
@@ -1169,7 +1330,7 @@ Show that something is important by putting it in a box with an icon
 
 This is the complete form of the [Admonitions](#admoniotions).
 
-There are nine types
+There are thirteen types
 
 * note
 * info
@@ -1177,9 +1338,13 @@ There are nine types
 * important
 * caution
 * warning
-* error
+* danger
 * todo
 * aside
+* question
+* fixme
+* error
+* sample - this is not provided as a shortcut as 'SAMPLE:'
 
 The optional arguments are
 
@@ -1197,107 +1362,31 @@ The optional arguments are
     * give the admonition an icon
     * '1' uses the default, otherwise use a [Font Awesome](#font-awesome) or [Google Material Font](#google-material-font) named icon, without :fa or :ma prefix, default will be for fontawesome.
 
-<table class='box' width='99%'>
-<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
-<tr>
-<td>
-    \{\{.note icon=1
-      content='sample text'
-    }}
-</td>
-<td><br/>
-{{.note icon=1 content='sample text'}}</td>
-</tr>
-<tr>
-<td>
-    \{\{.info icon=1
-      content='sample text'
-    }}
-</td>
-<td><br/>
-{{.info icon=1 content='sample text'}}</td>
-</tr>
-<tr>
-<td>
-    \{\{.tip icon=1
-      content='sample text'
-    }}
-</td>
-<td><br/>
-{{.tip icon=1 content='sample text'}}</td>
-</tr>
-<tr>
-<td>
-    \{\{.important icon=1
-      content='sample text'
-    }}
-</td>
-<td><br/>
-{{.important icon=1 content='sample text'}}</td>
-</tr>
-<tr>
-<td>
-    \{\{.caution icon=1
-      content='sample text'
-    }}
-</td>
-<td><br/>
-{{.caution icon=1 content='sample text'}}</td>
-</tr>
-<tr>
-<td>
-    \{\{.warning icon=1
-      content='sample text'
-    }}
-</td>
-<td><br/>
-{{.warning icon=1 content='sample text'}}</td>
-</tr>
-<tr>
-<td>
-    \{\{.danger icon=1
-      content='sample text'
-      style='background-color:#FF80AB;
-      font-size:1.5em;'
-    }}
-</td>
-<td><br/>
-{{.danger icon=1 content='sample text' style='background-color:#FF80AB;font-size:1.5em;'}}</td>
-</tr>
-<tr>
-<td>
-    \{\{.todo icon=1
-      content='sample text'
-      width='70%'
-    }}
-</td>
-<td><br/>
-{{.todo icon=1 content='sample text' width='70%'}}</td>
-</tr>
-<tr>
-<td>
-    \{\{.aside icon=1
-      content='sample text'
-      title='Try this'
-    }}
-</td>
-<td><br/>
-{{.aside icon=1 content='sample text' title='Try this'}}</td>
-</tr>
+#### Examples
 
-<tr>
-<td>
-    \{\{.note
-      icon=\:mi:settings-bluetooth
-      content='Google material icon'
-      title='Bluetooth Settings'
-    }}
-</td>
-<td><br/>
-{{.note icon=:mi:settings-bluetooth content='Google material icon' title='Bluetooth Settings' }}
-</td>
-</tr>
-</table>
+{{.note explain=1 icon=1 content='sample text'}}
+
+{{.info explain=1 icon=1 content='sample text'}}
+
+{{.tip explain=1 icon=1 content='sample text'}}
+
+{{.important explain=1 icon=1 content='sample text'}}
+
+{{.warning explain=1 icon=1 content='sample text'}}
+
+{{.caution explain=1 icon=1 content='sample text'}}
+
+{{.danger explain=1 icon=1 content='sample text' style='background-color:green50;font-size:1.5em;'}}
+
+{{.todo explain=1 icon=1 content='sample text, 70% width' width='70%'}}
+
+{{.aside explain=1 icon=1 content='sample text' title='Try this'}}
+
+{{.question explain=1 icon=1 content='There is a lot to read' title='Have you read the docs'}}
+
+{{.note explain=1 icon=:mi:settings-bluetooth content='Google material icon' title='Bluetooth Settings' }}
+
+{{.sample icon=1 explain=1 content='Some sample code or notes etc' title='Sample' }}
 
 ### Glossary
 
@@ -1307,30 +1396,51 @@ Build a glossary of terms or abbreviations as you progress with your document. S
 <tr><th width='100%'>Example</th></tr>
 <tr>
 <td>
-    This is a \{\{.gloss abbr='SMPL' def='short spelling of SAMPLE'}}
-    There are other things we can do
-    \{\{.glossary abbr='test' define='Test long form and arguments'}}
+    This is a \{\{.gloss abbr='SMPL' def='short spelling of SAMPLE'}}. There are other things we can do \{\{.glossary abbr='test' define='Test long form and arguments'}}. You can also use the word *term* as a synonymn of *abbr*.
 
-    Optionally if there is a link to a item e.g. [Links](#links)
+    Optionally if there is a link to a item e.g. \[Links](#links)
     \{\{.gloss abbr='msc' define='Message Sequence Charts' link=1}}
     then this can link to the relevant website, the following link
     has not been added to
     \{\{.gloss abbr='JSON' define='JavaScript Object Notation'}},
     so no link to the website.
 
-    Now finally, show the results
+    Now finally, show the results using \{\{.gloss show=1}} or to get a more complete section use \{\{.gloss show=complete}} which will create a level 2 appendix section
+
     \{\{.gloss show=1}}
+
+    \{\{.gloss show=complete}}
 </td></tr>
 <tr><th>Output</th></tr>
 <tr><td>
-This is a {{.gloss abbr='SMPL' def='short spelling of SAMPLE'}}
-There are other things we can do {{.glossary abbr='test' define='Test long form and arguments'}}
+This is a {{.gloss abbr='SMPL' def='short spelling of SAMPLE'}}. There are other things we can do {{.glossary abbr='test' define='Test long form and arguments'}}. You can also use the word *term* as a synonymn of *abbr*.
 
 Optionally if there is a link to a item in [Links](#links) {{.gloss abbr='msc' define='Message Sequence Charts' link=1}} then this can link to the relevant website, the following link has not been added to {{.gloss abbr='JSON' define='JavaScript Object Notation'}}, so no link to the website.
 
-Now finally, show the results
+Now finally, show the results using \{\{.gloss show=1}} or to get a more complete section use \{\{.gloss show=complete}} which will create an appendix section
+
 {{.gloss show=1}}
+
+{{.gloss show=complete}}
+
 </td></tr></table>
+
+If you find that you are using the same items in multiple documents, then you may wish to use a glossary file, this is a YAML file
+
+    \{\{.gloss yaml='somefile.yaml'}}
+
+The YAML file has the format
+
+~~~~{.yaml}
+glossary:
+  abbr: definition
+  BBC: British Broadcasting Company
+~~~~
+
+    then anytime that you use an abbreviation without a definition, then this will attempt to fetch the definition from the loaded YAML data
+    \{\{.gloss abbr='BBC'}}
+
+
 
 ### Quote
 
@@ -1653,8 +1763,7 @@ Alice <-- Bob: Auth Response 2
 [PlantUML] can also create simple application interfaces See [Salt]
 
 ~~~~{.buffer to_buffer=salt}
-@startuml
-salt
+@startsalt
 {
   Just plain text
   [This is my button]
@@ -1680,7 +1789,7 @@ salt
    ++ Africa
   }
 }
-@enduml
+@endsalt
 ~~~~
 
 <table class='box' width='99%'>
@@ -1696,9 +1805,9 @@ salt
 ~~~~
 </td></tr></table>
 
-### Sudocku
+### Sudoku
 
-Plantuml can generate random sudocku patterns
+Plantuml can generate random sudoku patterns
 
 <table class='box' width='99%'>
 <thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
@@ -2024,7 +2133,7 @@ The arguments allowed are
 Code 39
 
     ~~~~{.barcode type='code39'}
-    123456789}
+    123456789
     ~~~~
 </td>
 <td><br> {{.barcode type='code39' content=123456789}}</td>
@@ -2061,6 +2170,7 @@ We can do qr codes, just put in anything you like, this is a URL for bbc news
 <thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
 <tr>
 <td>
+
     ~~~~{.qrcode }
     http://news.bbc.co.uk
     ~~~~
@@ -2787,6 +2897,61 @@ Set the 'labels' parameter to 'false' or 0.
 ~~~~
 </td></tr></table>
 
+### Gantt
+
+Gantt charts are useful for project management.
+
+The optional arguments are
+
+* title
+    * used as the generated images 'alt' argument
+* size
+    * size of image, widthxheight
+* width
+    - just constrain the width
+* height
+    - just constrain the height
++ class
+    - add this class to the image
+
+The gantt content consists of rows of lines with a task id, a task name, a task group,
+start and end times and optionally dependencies and percent completed.
+
+Dates should be in yyyy-mm-dd format.
+
+~~~~{.buffer to_buffer=gantt}
+1, count, Sums, 2015-10-28, 2015-10-29
+2, add one, Summs, 2015-10-29, 2015-10-30, 1
+3, add two, Sums, 2015-11-01, 2015-11-03, "1,2"
+4, Overall, Website, 2015-10-20, 2015-10-29, , 23
+5, route /index, Website, 2015-10-23, 2015-10-24
+6, route /help, Website, 2015-10-20, 2015-10-22, , 100
+7, route /about, Website, 2015-10-24, 2015-10-29, 5, 30
+~~~~
+
+We will set some data into a buffer for ease of use
+
+    ~~~~{.buffer to_buffer=gantt}
+    %GANTT%
+    ~~~~
+
+<table class='box' width='99%'>
+<thead><tr><th width='50%'>Example</th><th>Output</th></tr></thead>
+<tr>
+<td>Default
+
+    ~~~~{.gantt
+      from_buffer=gantt
+      size=350x300}
+    ~~~~
+</td>
+<td><br>
+~~~~{.gantt from_buffer=gantt size=350x300}
+~~~~
+</td></tr>
+</table>
+
+
 ### Sankey Chart
 
 *From google charts:*
@@ -2805,12 +2970,12 @@ The optional arguments are
     + gradient - link color starts as node color and ends as target color
 
 ~~~~{.buffer to_buffer=sankey_simple}
-A, X, 5
-A, Y, 7
-A, Z, 6
-B, X, 2
-B, Y, 9
-B, Z, 4
+A | X | 5
+A | Y | 7
+A | Z | 6
+B | X | 2
+B | Y | 9
+B | Z | 4
 ~~~~
 
 <table class='box' width='99%'>
@@ -2818,206 +2983,149 @@ B, Z, 4
 <tr>
 <td>A Simple set
 
-    ~~~~{.sankey size=350x200
+    ~~~~{.sankey width=90%
       mode=target}
     %SANKEY_SIMPLE%
     ~~~~
 </td><td>
 <br>
-~~~~{.sankey from_buffer=sankey_simple size=350x200 mode=target}
+~~~~{.sankey from_buffer=sankey_simple width=90%}
 ~~~~
 </td></tr>
 <tr>
 <td>A Complex set - only a small portion of the data is being shown
 
-    ~~~~{.sankey size=350x400
-      mode='source'
-      colors="#a6cee3, #b2df8a,
-        #fb9a99,#fdbf6f, #cab2d6,
-        #ffff99 #1f78b4"}}
-    Brazil, Portugal, 5 ,
-    Brazil, France, 1 ,
-    Brazil, Spain, 1 ,
-    Brazil, England, 1 ,
-    Canada, Portugal, 1 ,
-    Canada, France, 5 ,
-    Canada, England, 1 ,
-    Mexico, Portugal, 1 ,
-    Mexico, England, 1 ,
-    USA, Portugal, 1 ,
-    Portugal, Angola, 2 ,
+    ~~~~{.sankey width=90%}
+    Brazil | Portugal | 5
+    Brazil | France | 1
+    Brazil | Spain | 1
+    Brazil | England | 1
+    Canada | Portugal | 1
+    Canada | France | 5
+    Canada | England | 1
+    Mexico | Portugal | 1
+    Mexico | England | 1
+    USA ,|Portugal | 1
+    Portugal | Angola | 2
 
     ...
     ~~~~
 </td>
 <td><br>
-~~~~{.sankey size=350x400 mode='source' colors="#a6cee3, #b2df8a, #fb9a99, #fdbf6f, #cab2d6, #ffff99 #1f78b4"}
-Brazil, Portugal, 5 ,
-Brazil, France, 1 ,
-Brazil, Spain, 1 ,
-Brazil, England, 1 ,
-Canada, Portugal, 1 ,
-Canada, France, 5 ,
-Canada, England, 1 ,
-Mexico, Portugal, 1 ,
-Mexico, France, 1 ,
-Mexico, Spain, 5 ,
-Mexico, England, 1 ,
-USA, Portugal, 1 ,
-USA, France, 1 ,
-USA, Spain, 1 ,
-USA, England, 5 ,
-Portugal, Angola, 2 ,
-Portugal, Senegal, 1 ,
-Portugal, Morocco, 1 ,
-Portugal, South Africa, 3 ,
-France, Angola, 1 ,
-France, Senegal, 3 ,
-France, Mali, 3 ,
-France, Morocco, 3 ,
-France, South Africa, 1 ,
-Spain, Senegal, 1 ,
-Spain, Morocco, 3 ,
-Spain, South Africa, 1 ,
-England, Angola, 1 ,
-England, Senegal, 1 ,
-England, Morocco, 2 ,
-England, South Africa, 7 ,
-South Africa, China, 5 ,
-South Africa, India, 1 ,
-South Africa, Japan, 3 ,
-Angola, China, 5 ,
-Angola, India, 1 ,
-Angola, Japan, 3 ,
-Senegal, China, 5 ,
-Senegal, India, 1 ,
-Senegal, Japan, 3 ,
-Mali, China, 5 ,
-Mali, India, 1 ,
-Mali, Japan, 3 ,
-Morocco, China, 5 ,
-Morocco, India, 1 ,
-Morocco, Japan, 3
+~~~~{.sankey width=90% }
+Brazil | Portugal | 5
+Brazil | France | 1
+Brazil | Spain | 1
+Brazil | England | 1
+Canada | Portugal | 1
+Canada | France | 5
+Canada | England | 1
+Mexico | Portugal | 1
+Mexico | France | 1
+Mexico | Spain | 5
+Mexico | England | 1
+USA | Portugal | 1
+USA | France | 1
+USA | Spain | 1
+USA | England | 5
+Portugal | Angola | 2
+Portugal | Senegal | 1
+Portugal | Morocco | 1
+Portugal | South Africa | 3
+France | Angola | 1
+France | Senegal | 3
+France | Mali | 3
+France | Morocco | 3
+France | South Africa | 1
+Spain | Senegal | 1
+Spain | Morocco | 3
+Spain | South Africa | 1
+England | Angola | 1
+England | Senegal | 1
+England | Morocco | 2
+England | South Africa | 7
+South Africa | China | 5
+South Africa | India | 1
+South Africa | Japan | 3
+Angola | China | 5
+Angola | India | 1
+Angola | Japan | 3
+Senegal | China | 5
+Senegal | India | 1
+Senegal | Japan | 3
+Mali | China | 5
+Mali | India | 1
+Mali | Japan | 3
+Morocco | China | 5
+Morocco | India | 1
+Morocco | Japan | 3
 ~~~~
 </td></tr></table>
 
-## Gantt
 
-~~~~{.buffer to_buffer=gantt}
-section A section
-Completed item           :done,    des1, 2015-05-26,2015-05-28
-Active item              :active,  des2, 2015-05-29, 3d
-item                     :         des3, after des2, 5d
-item2                    :         des4, after des3, 5d
 
-section Critical items
-Completed critical item  :crit, done, 2015-06-06,24h
-Implement gantt          :crit, done, after des1, 2d
-Create tests             :crit, active, 2015-06-26, 3d
-critical item            :crit, 5d
-renderer tests           : 2d
-Add to CT2               : 1d
+## Smilies / Emoji's
 
-section Documentation
-Describe syntax          :active, a1, after des1, 3d
-Add to demo              : after a1  , 10d
+Conversion of some smilies to icons.
 
-section Last section
-Describe  syntax         : after doc1, 3d
-Add gantt                : 1d
-Add another              : 2d
+A small set of smilies are converted to UTF-8 characters, which can be tricky to show as not all fontsets support these.
+
+Basic text smilies are handled, however there is also a range of smilies that are also available as words pre/post fixed with a colon, e.g. **::word::**. Some of these will generate fontawesome icons and some will be picked from the very extensive [Emoji Cheatsheet], check this latter link for the full list of emoji words supported. Note that some of these may result, when generating PDFs, emoji's that do not display, trial and error is key!
+
+~~~~{.table class=box width=50% zebra=1 legends=1 separator='\|' caption="Some sample emoji's"}
+smilie      {=}| word
+<3          {=}| \:heart\:
+:)          {=}| \:smile\:
+:D or :grin:       {=}| \:grin\:
+8-) or :cool:      {=}| \:cool\:
+:P or :tongue:     {=}| \:tongue\:
+:'( or :cry:       {=}| \:cry\:
+:(  or :sad:       {=}| \:sad\:
+;)  or :wink:      {=}| \:wink\:
+:fear: or :fearful:{=}| \:fear\: or \:fearful\:
+:halo: or :angel:  {=}| \:halo\: or \:angel\:
+:devil: or :imp:   {=}| \:devil\: or \:imp\:
+(c)         {=}| \:c\:, \:copyright\:
+(r)         {=}| \:r\:, \:registered\:
+(tm)        {=}| \:tm\:, \:trademark\:
+:email:     {=}| \:email\:
+:yes:       {=}| \:yes\:
+:no:        {=}| \:no\:
+:beer:      {=}| \:beer\:
+:wine:      {=}| \:wine\:, \:glass\:
+:cake:      {=}| \:cake\:
+:star:      {=}| \:star\:
+:ok:        {=}| \:ok\:, \:thumbsup\:
+:bad:       {=}| \:bad\:, \:thumbsdown\:
+:ghost:     {=}| \:ghost\:
+:skull:     {=}| \:skull\:
+:hourglass: {=}| \:hourglass\:
+:time:      {=}| \:watch\:, \:clock\:
+:sleep:     {=}| \:sleep\:
+:zzz:       {=}| \:zzz\:, \:snooze\:
+:dm:        {=}| \:dm\:, dangermouse!
+:snowman:   {=}| \:snowman\:
+:cancer:     {=}| \:cancer\:
 ~~~~
 
-<table class='box' width='99%'>
-<tr><th width='100%'>Example</th></tr>
-<tr>
-<td>
+## Unicode replacements
 
-    ~~~~{.gantt title=Demo}
-    %GANTT%
-    ~~~~
-</td>
-</tr>
-<tr><th width='100%'>Output</th></tr>
-<tr><td>
+Some unicodes only work when viewed via a browser and would not appear if the HTML is converted to PDF, so images are used as replacements.
 
-~~~~{.gantt from_buffer=gantt title=Demo}
-~~~~
-
-timeline width same data
-
-~~~~{.timeline background='grey90' width=700 height=250}
-A section,Completed item, 2015-05-26,2015-05-28 #green
-A section,Active item, 2015-05-29, 2015-06-01   #darkorange
-A section,item, 2015-06-01, 2015-06-06 #grey
-A section,item2, 2015-06-06, 2015-06-11 #grey
-
-Critical items,Completed critical item, 2015-06-06,2015-06-07   #green
-Critical items,Implement gantt, 2015-05-28, 2015-05-30   #green
-Critical items,Create tests, 2015-06-26, 2015-06-29 #darkorange
-Critical items,critical item, 2015-06-29, 2015-07-05    #red
-Critical items,renderer tests, 2015-07-05, 2015-07-07 #grey
-Critical items,Add to CT2, 2015-07-07, 2015-07-08 #grey
-
-Documentation,Describe syntax, 2015-05-28, 2015-06-01   #darkorange
-Documentation,Add to demo, 2015-06-01  , 2015-06-11 #grey
-
-Last section,Describe  syntax, 2015-06-26, 2015-06-28 #grey
-Last section,Add gantt, 2015-06-28, 2015-06-29 #grey
-Last section,Add another, 2015-06-29, 2015-06-31 #grey
-~~~~
-
-</td>
-</tr></table>
-
-## Smilies
-
-Conversion of some smilies to font-awesome characters, others to general UTF8 characters that can be displayed in most browsers. **Not everything is working at the moment**
-
-This is tricky to show as however I change things the processor will make smilies of these   :) <3  ;) .
-
-Just try some of your favourite smilies and see what comes out!
-
-There are a range of smilies that are also available as words pre/post fixed with a colon like **:word:**
-
-~~~~{.table class=box width=50% zebra=1 legends=1 separator='\|'}
- smilie      | word
- <3          | \:heart\:
- :)          | \:smile\:
- :D          | \:grin\:
- 8-)         | \:cool\:
- :P          | \:tongue\:
- :'(         | \:cry\:
- :(          | \:sad\:
- ;)          | \:wink\:
- :fear:      | \:fear\:
- :halo:      | \:halo\:
- :devil:     | \:devil\:, \:horns\:
- (c)         | \:c\:, \:copyright\:
- (r)         | \:r\:, \:registered\:
- (tm)        | \:tm\:, \:trademark\:
- :email:     | \:email\:
- :yes:       | \:tick\:
- :no:        | \:cross\:
- :beer:      | \:beer\:
- :wine:      | \:wine\:, \:glass\:
- :cake:      | \:cake\:
- :star:      | \:star\:
- :ok:        | \:ok\:, \:thumbsup\:
- :bad:       | \:bad\:, \:thumbsdown\:
- :ghost:     | \:ghost\:
- :skull:     | \:skull\:
- :hourglass: | \:hourglass\:
- :time:      | \:watch\:, \:clock\:
- :sleep:     | \:sleep\:
- :zzz:       | \:zzz\:, \:snooze\:
+~~~~{.table legends=1 separator='|' class=box}
+Code    | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | A | B | C | D | E | F
+U+1F60x | 😀 | 😁 | 😂 | 😃 | 😄 | 😅 | 😆 | 😇 | 😈 | 😉 | 😊 | 😋 | 😌 | 😍 | 😎 | 😏
+U+1F61x | 😐 | 😑 | 😒 | 😓 | 😔 | 😕 | 😖 | 😗 | 😘 | 😙 | 😚 | 😛 | 😜 | 😝 | 😞 | 😟
+U+1F62x | 😠 | 😡 | 😢 | 😣 | 😤 | 😥 | 😦 | 😧 | 😨 | 😩 | 😪 | 😫 | 😬 | 😭 | 😮 | 😯
+U+1F63x | 😰 | 😱 | 😲 | 😳 | 😴 | 😵 | 😶 | 😷 | 😸 | 😹 | 😺 | 😻 | 😼 | 😽 | 😾 | 😿
+U+1F64x | 🙀 | 🙁 | 🙂 | 🙃 | 🙄 | 🙅 | 🙆 | 🙇 | 🙈 | 🙉 | 🙊 | 🙋 | 🙌 | 🙍 | 🙎 | 🙏
 ~~~~
 
 
 ----
 ## Using ct2 script to process files
 
-Included in the distribution is a script to make use of all of the above code-blocks to alter [markdown] into nicely formatted documents.
+Included in the distribution is a script to make use of all of the above code-blocks to alter [Markdown] into nicely formatted documents.
 
 Here is the help
 
@@ -3039,7 +3147,7 @@ Here is the help
         converting to doc/odt
         -o, --output          Filename to store the output as, extension will
         control conversion
-        -p, --prince          Convert to PDF using princexml
+        -p, --prince          Convert to PDF using princexml, rather than pandoc
         --templates           list available templates
         -t, --template        name of template to use
         -v, --verbose         verbose mode
