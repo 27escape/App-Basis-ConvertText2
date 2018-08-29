@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+# install everything to get App::Basis::ConvertText2 installed and working
+
+# CacaoBoughProvableForewarn6
+
+# This is everything that is needed on an ubuntu system, likely the packages have similar names
+# on other linux distributions
+
+# assumption is that you are going to use nvm to manage a local install of node
+# assumption is that you are going to use perlbrew to manage a local install of perl
+# these will be installed for you!
+
+# ------------ required packages  -------------
+
+sudo apt update
+sudo apt dist-upgrade
+sudo apt install -y apt-utils build-essential perlbrew git curl wget sqlite3 npm
+sudo apt install -y python2.7-dev python3-dev python-pip
+sudo apt install -y libgd-dev libjpeg8-dev libgd2-xpm-dev graphviz ploticus mscgen gnuplot gle-graphics
+sudo apt install -y cabal-install apt-get install libgd-dev libgd
+sudo apt install -y texlive-latex-base texlive-latex-recommended texlive-fonts-recommended
+sudo apt install -y octave wkhtmltopdf libgif7 postsql-client
+sudo apt install -y libgd-dev sudo apt-get install libmagickcore-dev
+sudo apt install -y ploticus graphvis ditaa gnuplot gle-graphics mscgen
+sudo apt install -y zlib1g-dev libssl-dev pkg-config # (for dist::zilla related stuff)
+
+sudo apt -y --purge autoremove
+
+cd /tmp
+curl https://www.princexml.com/download/prince_12-1_ubuntu18.04_amd64.deb -o prince_12-1_ubuntu18.04_amd64.deb
+sudo dpkg --install prince_12-1_ubuntu18.04_amd64.deb
+cd $HOME
+
+
+# ------------ python tools -------------
+# http://blockdiag.com/en/
+pip install beautifulsoup4
+pip install pyyaml
+pip install blockdiag
+pip install seqdiag
+pip install actdiag
+pip install nwdiag
+pip install argparse
+pip install setuptools
+easy_install lazyxml
+
+cd /tmp
+git clone https://github.com/kevinpt/syntrax
+cd syntrax
+sudo python setup.py install
+cd ../
+
+# for marbles
+cd /tmp
+git clone https://achary@bitbucket.org/achary/rx-marbles.git && \
+cd rx-marbles && sudo pip install .
+
+# ------------ haskell tools -------------
+
+cabal update
+# dataflow https://github.com/sonyxperiadev/dataflow
+cabal install dataflow
+cabal install pandoc
+
+# ------------ plantuml tools -------------
+
+# plantuml + uml script
+mkdir -p ~/bin/include
+cd ~/bin
+curl http://sourceforge.net/projects/plantuml/files/plantuml.jar/download -o plantuml.jar
+
+for script in uml xls2txt txt2db plantuml_update regen ; do
+    curl "https://raw.githubusercontent.com/27escape/bin/master/$script" -o "$script"
+    chmod a+x "$script"
+done
+curl https://raw.githubusercontent.com/27escape/bin/master/include/script_base -o include/script_base
+
+cd /tmp
+# install perlberw
+perlbrew init
+perlbrew install --threads --64int perl-5.26.2
+perlbrew switch perl-5.26.2
+perlbrew install-cpanm
+
+# install nvm for node
+wget -qO- https://raw.githubusercontent.com/creationix/nvm/v0.33.11/install.sh | bash
+# lets start using it, ahead of a logout/in activity
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+nvm install v10.8.0
+nvm use v10.8.0
+nvm alias v10.8.0 node
+cd $HOME
+ln -s "$(npm root -g)" "$HOME/.node_modules"
+
+npm install -g npm
+echo '{   "curly": true,   "eqeqeq": true, "esversion": 6, "strict": true}' > ~/.jshintrc
+
+# ------------ nodejs tools -------------
+
+npm install -g commander figlet shelljs jshint jest eslint
+npm install -g phantomjs get-stdin
+npm install -g prop-types react react-dom @nivo/chord request csv-parse
+npm install -g nomnoml
+npm install -g svg-radar-chart virtual-dom  virtual-dom-stringify js-yaml colorbrewer
+npm install -g svg-sankey gantt-chart csv csv-parse tracer wavedrom
+
+# ------------ perl modules -------------
+cpanm Moo Moose
+cpanm GD GD::Graph::lines GD::Graph::lines3d GD::Graph::bars
+cpanm GD::Graph::bars3d GD::Graph::pie GD::Graph::points GD::Graph::linespoints
+cpanm GD::Graph::area GD::Graph::mixed GD::Sparkline GD::Barcode
+cpanm Image::Resize Venn::Chart SVG::TrafficLight
+cpanm Data::Printer AnyEvent::Twitter::Stream Try::Tiny File::Slurp Path::Tiny
+cpanm DBIx::Class DBD::SQLite DBD::Pg Dist::Zilla
+cpanm JSON JSON::MaybeXS YAML::Tiny Text::Lorem
+# issue with a test against a PNG, I'm sure it will be fine!
+cpanm --force GD::Sparkline
+
+cd /tmp
+for package in App-Basis App-Basis-ConvertText2-UtfTransform Text-Markup-Wireframe WebColors Bullet-Tree App-Basis-ConvertText2
+do
+    echo "package $package"
+    git clone "https://github.com/27escape/$package"
+    cd "$package"
+    # at least one package will have a super installer for all the requirements
+    # if [ -f "INSTALLER" ] ; then
+    #     ./INSTALLER
+    # fi
+    dzil authordeps --missing | cpanm
+
+    dzil install
+    # dzil clean
+    cd ../
+done
+echo '
+# get perlbrew working
+if [ -f "$HOME/perl5/perlbrew/etc/bashrc" ] ; then
+    source "$HOME/perl5/perlbrew/etc/bashrc"
+fi
+export PATH=$PATH:$HOME/bin:$HOME/src
+' >> "$HOME/.bashrc"
+echo "thats it you're done, logout and back in again - hopefully things will work
+use the 'regen' script to convert markdown (.md) files to PDF's
+This does not include the file system monitoring stuff to make things work in the background
+"
+
+# extra need to get CT2 setup from kevins PC
